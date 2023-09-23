@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 use App\Models\User;
+use App\Models\Profile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
@@ -26,6 +27,9 @@ class UserController extends Controller
             'username' => $request->username,
             'password' => Hash::make($request->password),
         ]);
+
+        $profile = new Profile();
+        $user->profile()->save($profile);
 
         $data = [
             'token' => $createUser->createToken('UserAuthToken')->plainTextToken,
@@ -73,12 +77,13 @@ class UserController extends Controller
         return $data;
     }
 
-    public function updateProfile(Request $request, Cloudinary $cloudinary, $id)
+    public function updateProfile(Request $request, Cloudinary $cloudinary)
     {
         $user = Auth::user();
 
         $validatedData = $request->validate([
-            'name' => 'required|string|max:255',
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'is_seller' => 'boolean', // Assuming is_seller is a boolean field
             'profile_picture' => 'image|mimes:jpeg,png,jpg|max:2048', // Adjust validation rules for the profile picture
@@ -94,11 +99,15 @@ class UserController extends Controller
         }
 
         $user->update($validatedData);
-        
+
         return response()->json([
             'status' => 'success',
             'message' => 'Profile updated successfully'
         ]);
+
+    }
+
+    public function updateProfilePicture(Request $request, Cloudinary $cloudinary){
 
     }
 

@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Route;
 Route::post('/user/auth/register', 'UserController@signup');
 Route::post('/user/auth/login', 'UserController@login');
 Route::prefix('user')->middleware('auth:users-api')->group(function() {
-    Route::get('/account', 'UserController@getAccountDetails');
-
+    Route::get('/profile', 'ProfileController@getProfile');
+    Route::post('/profile/update', 'ProfileController@updateProfile');
 });
 
