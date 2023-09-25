@@ -2,12 +2,10 @@
 
 namespace App\Http\Controllers;
 use App\Models\User;
-use App\Models\Profile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
-use Cloudinary\Cloudinary;
 
 class UserController extends Controller
 {
@@ -28,9 +26,6 @@ class UserController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
-        $profile = new Profile();
-        $user->profile()->save($profile);
-
         $data = [
             'token' => $createUser->createToken('UserAuthToken')->plainTextToken,
             'token_type' => 'Bearer'
@@ -41,6 +36,7 @@ class UserController extends Controller
             'message' => 'New user created successfully',
             'data' => $data
         ], 200);
+
     }
 
     public function login(Request $request)
@@ -52,11 +48,10 @@ class UserController extends Controller
 
         // Attempt to authenticate the user
 
-        if (Auth::attempt(['email'|| 'username' => $request->email, 'password' => $request->password])) {
+        if (Auth::attempt(['email' => $request->email, 'password' => $request->password])) {
             $data = [
                 'token' => auth()->user()->createToken('UserAuthToken')->plainTextToken,
                 'token_type' => 'Bearer',
-                'user' => Auth::user()
             ];
 
             return response()->json([
@@ -104,10 +99,6 @@ class UserController extends Controller
             'status' => 'success',
             'message' => 'Profile updated successfully'
         ]);
-
-    }
-
-    public function updateProfilePicture(Request $request, Cloudinary $cloudinary){
 
     }
 

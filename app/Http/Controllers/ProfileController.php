@@ -11,8 +11,33 @@ use Cloudinary\Cloudinary;
 
 class ProfileController extends Controller
 {
+    public function createProfile(){
+        $user = auth()->user();
+
+        $profile = new Profile();
+
+        $profileData = [
+            'first_name' => '',
+            'last_name' => '',
+            'profile_picture' => '',
+            'biography' => '',
+            'is_seller' => false
+        ];
+
+        $profile = $user->profile()->create($profileData);
+
+        $profile->save();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Profile created successfully',
+        ], 200);
+    }
+
     public function getProfile(){
-        $data = $profile;
+        $user = auth()->user();
+
+        $data = $user->profile;
         return response()->json([
             'status' => 'success',
             'message' => 'Profile fetched successfully',
