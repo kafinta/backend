@@ -83,7 +83,7 @@ class ProfileController extends Controller
                 // $uploadedFileUrl = Cloudinary::upload($file->getRealPath())->getSecurePath();
     
                 // Save the Cloudinary public ID to the profiles's profile_picture column
-                $user->profile->profile_picture = $uploadedFileUrl['public_id'];
+                $profile->profile_picture = $uploadedFileUrl['public_id'];
             } catch (CloudinaryApiException $e) {
                 // Handle the Cloudinary API error here
                 return response()->json([
