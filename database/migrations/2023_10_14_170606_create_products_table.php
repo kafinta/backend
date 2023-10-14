@@ -21,8 +21,7 @@ return new class extends Migration
             $table->string('material');
             $table->string('image');
             $table->unsignedBigInteger('subcategory_id');
-            $table->foreign('room_id')->references('id')->on('subcategories');
-            $table->timestamps();
+            $table->foreign('subcategory_id')->references('id')->on('subcategories');
             $table->timestamps();
         });
     }
