@@ -4,13 +4,14 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use App\Models\Room;
 
 class RoomSeeder extends Seeder
 {
     /**
      * Run the database seeds.
      */
-    public function run(): void
+    public function run()
     {
         Room::create([
             'name' => 'Living Room',
@@ -63,6 +64,10 @@ class RoomSeeder extends Seeder
         Room::create([
             'name' => 'Toilet',
             'slug' => 'toilet',
+        ]);
+        Room::create([
+            'name' => 'Outdoors',
+            'slug' => 'outdoor',
         ]);
     }
 }
