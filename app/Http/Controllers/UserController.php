@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 use App\Models\User;
+use App\Http\Resources\UserAccountResource;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
@@ -9,6 +10,12 @@ use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
 {
+
+    public function validateParentSchoolLogin() {
+
+    }
+
+
     public function signup(Request $request){
 
         $validator = $this->validateNewUser();
@@ -37,6 +44,44 @@ class UserController extends Controller
             'data' => $data
         ], 200);
 
+    }
+
+    public function spaLogin(Request $request)
+    {
+        try {
+
+
+            // $validator = $this->validateParentSchoolLogin();
+
+            // if ($validator->fails()) {
+            //     return $this->respondWithError($validator->messages()->first(), 422);
+            // }
+
+            $credentials = $request->validate([
+                'email' => ['required', 'email'],
+                'password' => ['required'],
+            ]);
+
+            if (!$credentials) {
+                return $this->respondWithError("Email and Password is Required", 422);
+            }
+
+            if (Auth::guard('users-web')->attempt($credentials)) {
+
+                $user = auth()->guard('users-web');
+
+
+                $dataToReturn = [
+                    'account' => new UserAccountResource($user),
+                ];
+
+                $request->session()->regenerate();
+                return $this->respondWithSuccess("Account Logged In Successfully", 200, $dataToReturn);
+            }
+            return $this->respondWithError("Email or Password is Incorrect", 403);
+        } catch (\Exception $e) {
+            return $this->exceptionError($e->getMessage(), 500);
+        }
     }
 
     public function login(Request $request)

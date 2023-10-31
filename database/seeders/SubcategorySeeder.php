@@ -44,7 +44,7 @@ class SubcategorySeeder extends Seeder
         Subcategory::create([
             'name' => 'Entertainment Centers',
             'room_id' => $livingRoom->id,
-            'slug' => 'entertainment'
+            'slug' => 'stands'
         ]);
         Subcategory::create([
             'name' => 'Bookshelves & Storage Units',
@@ -59,7 +59,7 @@ class SubcategorySeeder extends Seeder
         Subcategory::create([
             'name' => 'Entertainment Systems',
             'room_id' => $livingRoom->id,
-            'slug' => 'cushions'
+            'slug' => 'entertainment'
         ]);
         Subcategory::create([
             'name' => 'Area Rugs',
@@ -67,9 +67,14 @@ class SubcategorySeeder extends Seeder
             'slug' => 'rugs'
         ]);
         Subcategory::create([
+            'name' => 'Lamps & Lighting',
+            'room_id' => $livingRoom->id,
+            'slug' => 'lighting'
+        ]);
+        Subcategory::create([
             'name' => 'Decorative Accessories',
             'room_id' => $livingRoom->id,
-            'slug' => 'accessories'
+            'slug' => 'decor'
         ]);
         Subcategory::create([
             'name' => 'Beds & Headboards',
@@ -87,14 +92,99 @@ class SubcategorySeeder extends Seeder
             'slug' => 'mattresses'
         ]);
         Subcategory::create([
-            'name' => 'Mattresses',
+            'name' => 'Makeup Vanities',
             'room_id' => $bedroom->id,
-            'slug' => 'mattresses'
+            'slug' => 'makeup'
         ]);
         Subcategory::create([
-            'name' => 'Mattresses',
+            'name' => 'Nightstands & Bedside Tables',
             'room_id' => $bedroom->id,
-            'slug' => 'mattresses'
+            'slug' => 'nightstands'
+        ]);
+        Subcategory::create([
+            'name' => 'Dressers & Cabinets',
+            'room_id' => $bedroom->id,
+            'slug' => 'dressers'
+        ]);
+        Subcategory::create([
+            'name' => 'Futons & Accessories',
+            'room_id' => $bedroom->id,
+            'slug' => 'futons'
+        ]);
+        Subcategory::create([
+            'name' => 'Lamps & Lighting',
+            'room_id' => $bedroom->id,
+            'slug' => 'lamps'
+        ]);
+        Subcategory::create([
+            'name' => 'Decorative Accessories',
+            'room_id' => $bedroom->id,
+            'slug' => 'bedrroom decor'
+        ]);
+        Subcategory::create([
+            'name' => 'Dining tables',
+            'room_id' => $dining->id,
+            'slug' => 'tables'
+        ]);
+        Subcategory::create([
+            'name' => 'Dining chairs',
+            'room_id' => $dining->id,
+            'slug' => 'chairs'
+        ]);
+        Subcategory::create([
+            'name' => 'Dining sets',
+            'room_id' => $dining->id,
+            'slug' => 'sets'
+        ]);
+        Subcategory::create([
+            'name' => 'Seat cushions',
+            'room_id' => $dining->id,
+            'slug' => 'seat cushions'
+        ]);
+        Subcategory::create([
+            'name' => 'Dining lighting',
+            'room_id' => $dining->id,
+            'slug' => 'dining lighting'
+        ]);
+        Subcategory::create([
+            'name' => 'Kitchen & table linens',
+            'room_id' => $kitchen->id,
+            'slug' => 'kitchen lighting'
+        ]);
+        Subcategory::create([
+            'name' => 'Kitchen & table linens',
+            'room_id' => $kitchen->id,
+            'slug' => 'kitchen lighting'
+        ]);
+        Subcategory::create([
+            'name' => 'Kitchen sinks',
+            'room_id' => $kitchen->id,
+            'slug' => 'sinks'
+        ]);
+        Subcategory::create([
+            'name' => 'Kitchen faucets',
+            'room_id' => $kitchen->id,
+            'slug' => 'faucets'
+        ]);
+        Subcategory::create([
+            'name' => 'Kitchen faucets',
+            'room_id' => $kitchen->id,
+            'slug' => 'faucets'
+        ]);
+        Subcategory::create([
+            'name' => 'Pot fillers',
+            'room_id' => $kitchen->id,
+            'slug' => 'pot fillers'
+        ]);
+        Subcategory::create([
+            'name' => 'Fixture parts',
+            'room_id' => $kitchen->id,
+            'slug' => 'fixtures'
+        ]);
+        Subcategory::create([
+            'name' => 'Garbage disposals',
+            'room_id' => $kitchen->id,
+            'slug' => 'faucets'
         ]);
     }
 }
