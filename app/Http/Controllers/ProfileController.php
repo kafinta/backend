@@ -7,7 +7,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
-use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
 
 class ProfileController extends Controller
 {
@@ -37,7 +36,7 @@ class ProfileController extends Controller
     public function getProfile(){
         $user = auth()->user();
 
-        $data = $user->profile;
+        $data = [$user->profile, 'username'=>$user->username];
         return response()->json([
             'status' => 'success',
             'message' => 'Profile fetched successfully',
@@ -45,10 +44,8 @@ class ProfileController extends Controller
         ], 200);
     }
 
-    public function updateProfile(Request $request, Cloudinary $cloudinary)
+    public function updateProfile(Request $request)
     {
-
-
         $user = auth()->user();
     
         $validatedData = $request->validate([
@@ -56,10 +53,9 @@ class ProfileController extends Controller
             'last_name' => 'required|string|max:255',
             'biography' => 'nullable|string',
             'is_seller' => 'nullable|boolean',
-            'profile_picture' => 'image|mimes:jpeg,png,jpg|max:2048',
         ]);
     
-        $user->profile->update($validatedData);
+        $user->profile->update([$validatedData, 'is_seller'=> 'true']);
     
         return response()->json([
             'status' => 'success',

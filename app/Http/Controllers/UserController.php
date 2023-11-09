@@ -10,12 +10,6 @@ use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
 {
-
-    public function validateParentSchoolLogin() {
-
-    }
-
-
     public function signup(Request $request){
 
         $validator = $this->validateNewUser();
@@ -33,29 +27,24 @@ class UserController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
-        $data = [
-            'token' => $createUser->createToken('UserAuthToken')->plainTextToken,
-            'token_type' => 'Bearer'
-        ];
+        $request->session()->regenerate();
+
+        // $data = [
+        //     'token' => $createUser->createToken('UserAuthToken')->plainTextToken,
+        //     'token_type' => 'Bearer'
+        // ];
 
         return response()->json([
             'status' => 'success',
-            'message' => 'New user created successfully',
-            'data' => $data
+            'message' => 'Registration completed successfully.',
+            // 'data' => $data
         ], 200);
-
     }
 
     public function spaLogin(Request $request)
     {
+
         try {
-
-
-            // $validator = $this->validateParentSchoolLogin();
-
-            // if ($validator->fails()) {
-            //     return $this->respondWithError($validator->messages()->first(), 422);
-            // }
 
             $credentials = $request->validate([
                 'email' => ['required', 'email'],
@@ -63,24 +52,30 @@ class UserController extends Controller
             ]);
 
             if (!$credentials) {
-                return $this->respondWithError("Email and Password is Required", 422);
+                return $this->respondWithError("Email or Password is Required", 422);
             }
 
+            
+
             if (Auth::guard('users-web')->attempt($credentials)) {
+                $user = auth()->guard('users-web')->user();
 
-                $user = auth()->guard('users-web');
-
-
+                
                 $dataToReturn = [
                     'account' => new UserAccountResource($user),
                 ];
 
                 $request->session()->regenerate();
-                return $this->respondWithSuccess("Account Logged In Successfully", 200, $dataToReturn);
+                return response()->json([
+                    'message' => "Account Logged In Successfully"
+                ], 200, $dataToReturn);
             }
-            return $this->respondWithError("Email or Password is Incorrect", 403);
+            // return $this->respondWithError("Email or Password is Incorrect", 403);
         } catch (\Exception $e) {
-            return $this->exceptionError($e->getMessage(), 500);
+            // return response()->json([
+            //     'message' => $e->getMessage()
+            // ], 500);
+            // return $this->exceptionError($e->getMessage(), 500);
         }
     }
 
@@ -110,41 +105,6 @@ class UserController extends Controller
             'status' => 'fail',
             'message' => 'Invalid credentials',
         ], 422);
-    }
-
-    public function getAccountDetails(){
-        $data = Auth::user();
-        return $data;
-    }
-
-    public function updateProfile(Request $request, Cloudinary $cloudinary)
-    {
-        $user = Auth::user();
-
-        $validatedData = $request->validate([
-            'first_name' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'is_seller' => 'boolean', // Assuming is_seller is a boolean field
-            'profile_picture' => 'image|mimes:jpeg,png,jpg|max:2048', // Adjust validation rules for the profile picture
-        ]);
-
-        // Handle profile picture upload
-        if ($request->hasFile('profile_picture')) {
-            $file = $request->file('profile_picture');
-            $uploadedFile = $cloudinary->uploadApi()->upload($file->getPathname());
-
-            // Save the Cloudinary public ID to the user's profile_picture column
-            $user->profile_picture = $uploadedFile['public_id'];
-        }
-
-        $user->update($validatedData);
-
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Profile updated successfully'
-        ]);
-
     }
 
     public function validateNewUser()
