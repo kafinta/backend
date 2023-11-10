@@ -18,20 +18,40 @@ class CategorySeeder extends Seeder
             'description' => 'Chairs, tables, beds, etc...'
         ]);
         Category::create([
-            'name' => 'Entertainment',
-            'description' => 'TVs, audio players, etc...'
-        ]);
-        Category::create([
-            'name' => 'Lighting',
-            'description' => 'Bulbs, lamps, chandeliers, etc...'
-        ]);
-        Category::create([
-            'name' => 'Decor',
+            'name' => 'Décor',
             'description' => 'Wall art, rugs, mirrors, etc...'
         ]);
         Category::create([
-            'name' => 'Fixtures',
-            'description' => 'Taps, sinks, utensils, etc...'
+            'name' => 'Entertainment',
+            'description' => 'TVs, computers, speakers, etc...'
+        ]);
+        Category::create([
+            'name' => 'Linens',
+            'description' => 'Bedding, curtains, towels, etc...'
+        ]);
+        Category::create([
+            'name' => 'Appliances',
+            'description' => 'Refrigerators, dishwashers, etc...'
+        ]);
+        Category::create([
+            'name' => 'Kitchenware',
+            'description' => 'Utensils, cookware, dining sets, etc...'
+        ]);
+        Category::create([
+            'name' => 'Home office',
+            'description' => 'Chairs, computers, printers, etc...'
+        ]);
+        Category::create([
+            'name' => 'Storage solutions',
+            'description' => 'Shelves, cabinets, baskets, etc...'
+        ]);
+        Category::create([
+            'name' => 'Outdoor & Gardening',
+            'description' => 'Patio furniture, grills, garden tools, etc...'
+        ]);
+        Category::create([
+            'name' => 'Personal Care & Hygiene',
+            'description' => 'Toiletries, grills, garden tools, etc...'
         ]);
     }
 }

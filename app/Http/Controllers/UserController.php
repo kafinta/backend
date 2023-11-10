@@ -45,7 +45,6 @@ class UserController extends Controller
     {
 
         try {
-
             $credentials = $request->validate([
                 'email' => ['required', 'email'],
                 'password' => ['required'],
@@ -55,26 +54,23 @@ class UserController extends Controller
                 return $this->respondWithError("Email or Password is Required", 422);
             }
 
-            
-
             if (Auth::guard('users-web')->attempt($credentials)) {
                 $user = auth()->guard('users-web')->user();
-
                 
                 $dataToReturn = [
                     'account' => new UserAccountResource($user),
                 ];
-
+                
                 $request->session()->regenerate();
                 return response()->json([
                     'message' => "Account Logged In Successfully"
                 ], 200, $dataToReturn);
             }
-            // return $this->respondWithError("Email or Password is Incorrect", 403);
+            return $this->respondWithError("Email or Password is Incorrect", 403);
         } catch (\Exception $e) {
-            // return response()->json([
-            //     'message' => $e->getMessage()
-            // ], 500);
+            return response()->json([
+                'message' => $e->getMessage()
+            ], 500);
             // return $this->exceptionError($e->getMessage(), 500);
         }
     }
