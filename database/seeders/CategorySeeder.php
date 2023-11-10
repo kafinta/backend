@@ -50,8 +50,16 @@ class CategorySeeder extends Seeder
             'description' => 'Patio furniture, grills, garden tools, etc...'
         ]);
         Category::create([
+            'name' => 'Tools & supplies',
+            'description' => 'Hammers, screwdrivers, cleaning supplies, etc...'
+        ]);
+        Category::create([
             'name' => 'Personal Care & Hygiene',
-            'description' => 'Toiletries, grills, garden tools, etc...'
+            'description' => 'Toiletries, grooming tools, etc...'
+        ]);
+        Category::create([
+            'name' => 'Miscellaneous',
+            'description' => 'Sporting goods, pet supplies, etc...'
         ]);
     }
 }

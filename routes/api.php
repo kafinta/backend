@@ -22,3 +22,5 @@ Route::prefix('user')->middleware('auth:users-api')->group(function() {
     Route::post('/profile/update', 'ProfileController@updateProfile');
 });
 
+Route::get('/categories', 'CategoryController@getAllCategories');
+Route::get('/categories/{number}', 'CategoryController@getSpecificNumberOfCategories');
