@@ -18,6 +18,10 @@ class CategorySeeder extends Seeder
             'description' => 'Chairs, tables, beds, etc...'
         ]);
         Category::create([
+            'name' => 'Lighting',
+            'description' => 'Lamps, bulbs, etc...'
+        ]);
+        Category::create([
             'name' => 'Décor',
             'description' => 'Wall art, rugs, mirrors, etc...'
         ]);
@@ -38,6 +42,10 @@ class CategorySeeder extends Seeder
             'description' => 'Utensils, cookware, dining sets, etc...'
         ]);
         Category::create([
+            'name' => 'Plumbing Fixtures',
+            'description' => 'Sinks, faucets, bathtubs, etc...'
+        ]);
+        Category::create([
             'name' => 'Home office',
             'description' => 'Chairs, computers, printers, etc...'
         ]);
@@ -50,8 +58,12 @@ class CategorySeeder extends Seeder
             'description' => 'Patio furniture, grills, garden tools, etc...'
         ]);
         Category::create([
-            'name' => 'Tools & supplies',
+            'name' => 'Hardware & Tools',
             'description' => 'Hammers, screwdrivers, cleaning supplies, etc...'
+        ]);
+        Category::create([
+            'name' => 'Home Improvement',
+            'description' => 'Doors, blinds, tiles, etc...'
         ]);
         Category::create([
             'name' => 'Personal Care & Hygiene',
