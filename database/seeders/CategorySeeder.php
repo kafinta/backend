@@ -30,7 +30,7 @@ class CategorySeeder extends Seeder
             'description' => 'TVs, computers, speakers, etc...'
         ]);
         Category::create([
-            'name' => 'Linens',
+            'name' => 'Fabrics',
             'description' => 'Bedding, curtains, towels, etc...'
         ]);
         Category::create([

@@ -24,3 +24,5 @@ Route::prefix('user')->middleware('auth:users-api')->group(function() {
 
 Route::get('/categories', 'CategoryController@getAllCategories');
 Route::get('/categories/{number}', 'CategoryController@getSpecificNumberOfCategories');
+Route::get('/categories/subcategories/{categoryId}', 'CategoryController@getSubcategories');
+Route::get('/categories/{categoryId}/subcategories', 'CategoryController@getSubcategorieswithQuery');
