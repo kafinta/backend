@@ -24,10 +24,7 @@ class LocationSeeder extends Seeder
         Location::create(['name' => 'Home Office']);
         Location::create(['name' => 'Nursery']);
         Location::create(['name' => 'Guest Room']);
-        Location::create(['name' => 'Backyard']);
-        Location::create(['name' => 'Front Yard']);
-        Location::create(['name' => 'Garage']);
-        Location::create(['name' => 'Shed']);
+        Location::create(['name' => 'Garage & Shed']);
         Location::create(['name' => 'Porch']);
         Location::create(['name' => 'Deck']);
         Location::create(['name' => 'Pool Area']);
@@ -40,8 +37,7 @@ class LocationSeeder extends Seeder
         Location::create(['name' => 'Utility Room']);
         Location::create(['name' => 'Home theater']);
         Location::create(['name' => 'Home Gym']);
-        Location::create(['name' => 'Driveway']);
-        Location::create(['name' => 'Walkway']);
+        Location::create(['name' => 'Driveway & Walkway']);
         Location::create(['name' => 'Playground']);
         Location::create(['name' => 'Exterior']);
         Location::create(['name' => 'Outdoor']);
