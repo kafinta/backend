@@ -13,33 +13,94 @@ class LocationSeeder extends Seeder
      */
     public function run(): void
     {
-        Location::create(['name' => 'Living Room']);
-        Location::create(['name' => 'Bedroom']);
-        Location::create(['name' => 'Kitchen']);
-        Location::create(['name' => 'Dining']);
-        Location::create(['name' => 'Bathroom']);
-        Location::create(['name' => 'Hallway']);
-        Location::create(['name' => 'Entryway']);
-        Location::create(['name' => 'Closet']);
-        Location::create(['name' => 'Home Office']);
-        Location::create(['name' => 'Nursery']);
-        Location::create(['name' => 'Guest Room']);
-        Location::create(['name' => 'Garage & Shed']);
-        Location::create(['name' => 'Porch']);
-        Location::create(['name' => 'Deck']);
-        Location::create(['name' => 'Pool Area']);
-        Location::create(['name' => 'Patio']);
-        Location::create(['name' => 'Basement']);
-        Location::create(['name' => 'Attic']);
-        Location::create(['name' => 'Laundry Room']);
-        Location::create(['name' => 'Play Room']);
-        Location::create(['name' => 'Pantry']);
-        Location::create(['name' => 'Utility Room']);
-        Location::create(['name' => 'Home theater']);
-        Location::create(['name' => 'Home Gym']);
-        Location::create(['name' => 'Driveway & Walkway']);
-        Location::create(['name' => 'Playground']);
-        Location::create(['name' => 'Exterior']);
-        Location::create(['name' => 'Outdoor']);
+        Location::create([
+            'name' => 'Living Room',
+            'image' => '/images/locations/living room.jpg'
+        ]);
+        Location::create([
+            'name' => 'Bedroom',
+            'image' => '/images/location/bedroom.jpg'
+
+        ]);
+        Location::create([
+            'name' => 'Kitchen',
+            'image' => '/images/locations/kitchen.jpg'
+        ]);
+        Location::create([
+            'name' => 'Dining',
+            'image' => '/images/locations/dining.jpg'
+        ]);
+        Location::create([
+            'name' => 'Bathroom',
+            'image' => '/images/locations/bathroom.jpg'
+        ]);
+        Location::create([
+            'name' => 'Hallway',
+            'image' => '/images/locations/hallway.jpg'
+        ]);
+        Location::create([
+            'name' => 'Closet',
+            'image' => '/images/locations/closet.jpg'
+        ]);
+        Location::create([
+            'name' => 'Home Office',
+            'image' => '/images/locations/home office.jpg'
+        ]);
+        Location::create([
+            'name' => 'Kids Room',
+            'image' => '/images/locations/nursery.jpg'
+        ]);
+        Location::create([
+            'name' => 'Garage & Shed',
+            'image' => '/images/locations/garage.jpg'
+        ]);
+        Location::create([
+            'name' => 'Porch',
+            'image' => '/images/locations/porch.jpg'
+        ]);
+        Location::create([
+            'name' => 'Deck',
+            'image' => '/images/locations/deck.jpeg'
+        ]);
+        Location::create([
+            'name' => 'Pool Area',
+            'image' => '/images/locations/pool area.jpg'
+        ]);
+        Location::create([
+            'name' => 'Patio',
+            'image' => '/images/locations/patio.png'
+        ]);
+        Location::create([
+            'name' => 'Basement',
+            'image' => '/images/locations/basement.jpg'
+        ]);
+        Location::create([
+            'name' => 'Attic',
+            'image' => '/images/locations/attic.jpg'
+        ]);
+        Location::create([
+            'name' => 'Utility Room',
+            'image' => '/images/locations/utility room.png'
+        ]);
+        Location::create([
+            'name' => 'Home theater',
+            'image' => '/images/locations/home theatre.jpg'
+        ]);
+        Location::create([
+            'name' => 'Home Gym',
+            'image' => '/images/locations/home gym.jpg'
+        ]);
+        Location::create([
+            'name' => 'Driveway & Walkway',
+            'image' => '/images/locations/driveway.jpg'
+        ]);
+        Location::create([
+            'name' => 'Exterior',
+            'image' => '/images/locations/exterior.jpg'
+        ]);
+        Location::create([
+            'name' => 'Outdoor',
+            'image' => '/images/locations/outdoor.jpg'
+        ]);
     }
 }
