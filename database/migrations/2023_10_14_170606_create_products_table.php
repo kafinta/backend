@@ -20,6 +20,8 @@ return new class extends Migration
             $table->string('style');
             $table->string('material');
             $table->string('image');
+            $table->unsignedBigInteger('user_id');
+            $table->foreign('user_id')->references('id')->on('users');
             $table->unsignedBigInteger('subcategory_id');
             $table->foreign('subcategory_id')->references('id')->on('subcategories');
             $table->timestamps();
