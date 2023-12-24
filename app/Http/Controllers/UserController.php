@@ -29,11 +29,6 @@ class UserController extends Controller
 
         $request->session()->regenerate();
 
-        // $data = [
-        //     'token' => $createUser->createToken('UserAuthToken')->plainTextToken,
-        //     'token_type' => 'Bearer'
-        // ];
-
         return response()->json([
             'status' => 'success',
             'message' => 'Registration completed successfully.',
@@ -59,19 +54,20 @@ class UserController extends Controller
                 
                 $dataToReturn = [
                     'account' => new UserAccountResource($user),
-                ];
-                
+                ]; 
+        
                 $request->session()->regenerate();
                 return response()->json([
-                    'message' => "Account Logged In Successfully"
-                ], 200, $dataToReturn);
+                    'message' => "Account Logged In Successfully",
+                    'data' => $dataToReturn
+                ], 200);
             }
             return $this->respondWithError("Email or Password is Incorrect", 403);
         } catch (\Exception $e) {
             return response()->json([
                 'message' => $e->getMessage()
             ], 500);
-            // return $this->exceptionError($e->getMessage(), 500);
+            return $this->exceptionError($e->getMessage(), 500);
         }
     }
 

@@ -22,23 +22,7 @@ class CategoryController extends Controller
 
         $subcategories = $category->subcategories;
 
-        return response()->json(['subcategories' => $subcategories]);
-    }
-
-    public function getSubcategorieswithQuery(Request $request, $categoryId)
-    {
-        $category = Category::find($categoryId);
-
-        if (!$category) {
-            return response()->json(['error' => 'Category not found'], 404);
-        }
-
-        $query = $request->query('query'); // Access the 'query' parameter from the URL
-
-        // Use the $query parameter to customize your query if needed
-        $subcategories = Category->subcategories()->where('name', 'like', "%$query%")->get();
-    
-        return response()->json(['subcategories' => $subcategories]);
+        return response()->json(['category' => $category,'subcategories' => $subcategories]);
     }
 
     public function getSpecificNumberOfCategories($number)
