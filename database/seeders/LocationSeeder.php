@@ -15,11 +15,11 @@ class LocationSeeder extends Seeder
         $locations = [
             [
                 'name' => 'Living Room',
-                'image' => '/images/locations/living room.jpg'
+                'image' => '/images/locations/living.jpg'
             ],
             [
                 'name' => 'Bedroom',
-                'image' => '/images/location/bedroom.jpg'
+                'image' => '/images/locations/bedroom.jpg'
     
             ],
             [
@@ -44,7 +44,7 @@ class LocationSeeder extends Seeder
             ],
             [
                 'name' => 'Home Office',
-                'image' => '/images/locations/home office.jpg'
+                'image' => '/images/locations/office.jpg'
             ],
             [
                 'name' => 'Kids Room',
@@ -64,7 +64,7 @@ class LocationSeeder extends Seeder
             ],
             [
                 'name' => 'Pool Area',
-                'image' => '/images/locations/pool area.jpg'
+                'image' => '/images/locations/pool.jpg'
             ],
             [
                 'name' => 'Patio',
@@ -80,15 +80,15 @@ class LocationSeeder extends Seeder
             ],
             [
                 'name' => 'Utility Room',
-                'image' => '/images/locations/utility room.png'
+                'image' => '/images/locations/utility.png'
             ],
             [
                 'name' => 'Home theater',
-                'image' => '/images/locations/home theatre.jpg'
+                'image' => '/images/locations/theatre.jpg'
             ],
             [
                 'name' => 'Home Gym',
-                'image' => '/images/locations/home gym.jpg'
+                'image' => '/images/locations/gym.jpg'
             ],
             [
                 'name' => 'Driveway & Walkway',
