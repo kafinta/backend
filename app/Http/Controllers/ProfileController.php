@@ -34,7 +34,10 @@ class ProfileController extends Controller
     }
 
     public function getProfile(){
+        \Log::info('Request Headers: ' . json_encode(request()->headers->all()));
+        \Log::info('Request Details: ' . json_encode(request()->all()));
         $user = auth()->user();
+        \Log::info('Authenticated User: ' . json_encode($user));
 
         $data = [$user->profile, 'username'=>$user->username];
         return response()->json([
