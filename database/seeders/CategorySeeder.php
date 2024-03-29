@@ -69,9 +69,5 @@ class CategorySeeder extends Seeder
             'name' => 'Personal Care & Hygiene',
             'description' => 'Toiletries, grooming tools, etc...'
         ]);
-        Category::create([
-            'name' => 'Miscellaneous',
-            'description' => 'Sporting goods, pet supplies, etc...'
-        ]);
     }
 }
