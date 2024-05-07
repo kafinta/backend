@@ -18,4 +18,4 @@ Route::get('/', function () {
 });
 
 
-Route::post('/user/auth/login', 'UserController@spaLogin');
+Route::post('/user/auth/login', 'UserController@login');

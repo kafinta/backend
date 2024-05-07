@@ -14,9 +14,8 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::post('/user/auth/register', 'UserController@register');
-Route::post('/user/auth/login', 'UserController@tokenLogin');
-Route::prefix('user')->middleware('auth:sanctum')->group(function() {
+Route::post('/user/auth/signup', 'UserController@signup');
+Route::prefix('user')->middleware('auth:users-web,users-api')->group(function() {
     Route::prefix('profile')->group(function() {
         Route::post('/', 'ProfileController@createProfile');
         Route::get('/', 'ProfileController@getProfile');

@@ -10,21 +10,17 @@ use Illuminate\Support\Facades\Hash;
 
 class ProfileController extends Controller
 {
-    public function createProfile(){
-        $user = auth()->user();
+    public function createProfile(Request $request){
 
-        $profile = new Profile();
+        $validatedData = $request->validate([
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'biography' => 'nullable|string',
+            'is_seller' => 'nullable|boolean',
+            'profile_picture' => 'nullable|string'
+        ]);
 
-        $profileData = [
-            'first_name' => '',
-            'last_name' => '',
-            'profile_picture' => '',
-            'biography' => '',
-            'is_seller' => false
-        ];
-
-        $profile = $user->profile()->create($profileData);
-
+        $profile = $user->profile()->create($validatedData);
         $profile->save();
 
         return response()->json([
@@ -34,11 +30,7 @@ class ProfileController extends Controller
     }
 
     public function getProfile(){
-        \Log::info('Request Headers: ' . json_encode(request()->headers->all()));
-        \Log::info('Request Details: ' . json_encode(request()->all()));
         $user = auth()->user();
-        \Log::info('Authenticated User: ' . json_encode($user));
-
         $data = [$user->profile, 'username'=>$user->username];
         return response()->json([
             'status' => 'success',
