@@ -15,13 +15,12 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::post('/user/auth/signup', 'UserController@signup');
-Route::prefix('user')->middleware('auth:users-web,users-api')->group(function() {
+Route::prefix('user')->middleware('auth:users-web')->group(function() {
     Route::prefix('profile')->group(function() {
         Route::post('/', 'ProfileController@createProfile');
         Route::get('/', 'ProfileController@getProfile');
         Route::post('/update', 'ProfileController@updateProfile');
     });
-
 });
 Route::get('/locations', 'LocationController@getAllLocations');
 Route::get('/categories', 'CategoryController@getAllCategories');
