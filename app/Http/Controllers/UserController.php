@@ -18,6 +18,7 @@ class UserController extends ImprovedController
 
     public function signup(Request $request){
 
+
         $validator = $this->validateUserInfo();
 
         if($validator->fails()){
@@ -30,13 +31,21 @@ class UserController extends ImprovedController
             'password' => Hash::make($request->password),
         ]);
 
-        $request->session()->regenerate();
+        if (Auth::guard('users-web')->attempt(['email' => $request->email, 'password' => $request->password])) {
+            $user = auth()->guard('users-web')->user();
+            
+            $dataToReturn = [
+                'account' => new UserAccountResource($user),
+            ]; 
+    
+            $request->session()->regenerate();
+            return response()->json([
+                'message' => "Account Created Successfully",
+                'data' => $dataToReturn
+            ], 200);
+        }
+        return $this->respondWithError("Unable to register now", 403);
 
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Registration completed successfully.',
-            // 'data' => $data
-        ], 200);
     }
 
     public function login(Request $request)

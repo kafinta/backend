@@ -12,6 +12,9 @@ class ProfileController extends Controller
 {
     public function createProfile(Request $request){
 
+        // $user = auth()->user();
+
+        return $user;
         $validatedData = $request->validate([
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
