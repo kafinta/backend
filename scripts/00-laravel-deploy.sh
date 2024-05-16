@@ -12,10 +12,13 @@ echo "Running migrations..."
 php artisan migrate --force
 
 echo "Seeding locations..."
-php artisan db:seed --class=LocationSeeder
+php artisan db:seed --class=LocationSeeder --force
 
 echo "Seeding categories..."
-php artisan db:seed --class=CategorySeeder
+php artisan db:seed --class=CategorySeeder --force
 
 echo "Seeding subcategories..."
-php artisan db:seed --class=SubcategorySeeder
+php artisan db:seed --class=SubcategorySeeder --force
+
+echo "Symlinking..."
+php artisan storage:link
