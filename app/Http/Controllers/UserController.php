@@ -18,34 +18,44 @@ class UserController extends ImprovedController
 
     public function signup(Request $request){
 
+        try {
+            $validator = $this->validateUserInfo();
 
-        $validator = $this->validateUserInfo();
-
-        if($validator->fails()){
-            return $this->respondWithValidationError($validator->messages()->first(), 422);
-        }
-
-        $createUser = User::create([
-            'email' => $request->email,
-            'username' => $request->username,
-            'password' => Hash::make($request->password),
-        ]);
-
-        if (Auth::guard('users-web')->attempt(['email' => $request->email, 'password' => $request->password])) {
-            $user = auth()->guard('users-web')->user();
-            
-            $dataToReturn = [
-                'account' => new UserAccountResource($user),
-            ]; 
+            if($validator->fails()){
+                return $this->respondWithValidationError($validator->messages()->first(), 422);
+            }
     
-            $request->session()->regenerate();
+            DB::beginTransaction();
+    
+            $createUser = User::create([
+                'email' => $request->email,
+                'username' => $request->username,
+                'password' => Hash::make($request->password),
+            ]);
+    
+            if (Auth::guard('users-web')->attempt(['email' => $request->email, 'password' => $request->password])) {
+                DB::commit();
+                $user = auth()->guard('users-web')->user();
+                
+                $dataToReturn = [
+                    'account' => new UserAccountResource($user),
+                ]; 
+        
+                $request->session()->regenerate();
+                return response()->json([
+                    'message' => "Account Created Successfully",
+                    'data' => $dataToReturn
+                ], 200);
+            } else {
+                DB::rollBack();
+                return $this->respondWithError("Something went wrong", 503);
+            }
+        } catch (\Exception $e) {
             return response()->json([
-                'message' => "Account Created Successfully",
-                'data' => $dataToReturn
-            ], 200);
+                'message' => $e->getMessage()
+            ], 500);
+            return $this->exceptionError($e->getMessage(), 500);
         }
-        return $this->respondWithError("Unable to register now", 403);
-
     }
 
     public function login(Request $request)
@@ -73,8 +83,9 @@ class UserController extends ImprovedController
                     'message' => "Account Logged In Successfully",
                     'data' => $dataToReturn
                 ], 200);
+            } else {
+                return $this->respondWithError("Email or Password is Incorrect", 403);
             }
-            return $this->respondWithError("Email or Password is Incorrect", 403);
         } catch (\Exception $e) {
             return response()->json([
                 'message' => $e->getMessage()
