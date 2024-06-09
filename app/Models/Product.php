@@ -19,11 +19,11 @@ class Item extends Model
         return $this->belongsTo(User::class);
     }
 
-    function images() {
+    public function images() {
         return $this->hasMany(Image::class);
     }
 
-    function variants() {
+    public function variants() {
         return $this->hasMany(Variant::class);
     }
 }
