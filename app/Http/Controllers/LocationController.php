@@ -1,6 +1,8 @@
 <?php
 
 namespace App\Http\Controllers;
+use App\Http\Controllers\Controller;
+use App\Http\Controllers\ImprovedController;
 use App\Models\Location;
 use Illuminate\Http\Request;
 
