@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
 
-class ProfileController extends Controller
+class ProfileController extends ImprovedController
 {
     public function createProfile(Request $request){
 

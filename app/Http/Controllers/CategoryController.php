@@ -6,7 +6,7 @@ use App\Http\Controllers\ImprovedController;
 use App\Models\Category;
 use Illuminate\Http\Request;
 
-class CategoryController extends Controller
+class CategoryController extends ImprovedController
 {
     public function getAllCategories()
     {

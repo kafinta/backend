@@ -5,7 +5,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\ImprovedController;
 use Illuminate\Http\Request;
 
-class VariantController extends Controller
+class VariantController extends ImprovedController
 {
     //
 }

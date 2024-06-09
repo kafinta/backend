@@ -6,7 +6,7 @@ use App\Http\Controllers\ImprovedController;
 use App\Models\Location;
 use Illuminate\Http\Request;
 
-class LocationController extends Controller
+class LocationController extends ImprovedController
 {
     public function getAllLocations() {
         $locations = Location::all();

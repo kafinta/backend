@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\ImprovedController;
 use Illuminate\Http\Request;
 
-class SubcategoryController extends Controller
+class SubcategoryController extends ImprovedController
 {
     public function getAllSubcategories()
     {
