@@ -12,9 +12,4 @@ class Color extends Model
         'subcategory_id',
         'product_id', 
     ];
-
-    public function subcategory()
-    {
-        return $this->belongsToMany(Subcategory::class);
-    }
 }

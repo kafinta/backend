@@ -14,21 +14,6 @@ class ColorSeeder extends Seeder
     public function run(): void
     {
         Color::truncate();
-        $subcategories = [
-            Subcategory::find(1),
-            Subcategory::find(2),
-            Subcategory::find(3),
-            Subcategory::find(4),
-            Subcategory::find(5),
-            Subcategory::find(6),
-            Subcategory::find(7),
-            Subcategory::find(8),
-            Subcategory::find(9),
-            Subcategory::find(20),
-            Subcategory::find(21),
-
-        ];
-
         $colors = [
             [
                 'name' => 'Black',
@@ -93,10 +78,8 @@ class ColorSeeder extends Seeder
             ]
         ];
 
-        foreach ($subcategories as $subcategory) {
-            foreach ($colors as $color) {
-                $subcategory->colors()->create($color);
-            }
+        foreach ($colors as $color) {
+            Color::create($color);
         }
     }
 }

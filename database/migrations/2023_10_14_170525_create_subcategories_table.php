@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('image')->nullable();
+            $table->boolean('has_colors')->nullable()->default(false);
             $table->foreignId('category_id')->constrained()->onDelete('cascade');
             $table->timestamps();
         });

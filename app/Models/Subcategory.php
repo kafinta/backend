@@ -14,11 +14,6 @@ class Subcategory extends Model
         return $this->belongsTo(Category::class, 'category_id');
     }
 
-    public function colors()
-    {
-        return $this->hasMany(Color::class);
-    }
-
     public function products()
     {
         return $this->hasMany(Product::class);
