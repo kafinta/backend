@@ -18,4 +18,12 @@ class Item extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    function images() {
+        return $this->hasMany(Image::class);
+    }
+
+    function variants() {
+        return $this->hasMany(Variant::class);
+    }
 }
