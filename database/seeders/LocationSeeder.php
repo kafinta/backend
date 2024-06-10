@@ -11,7 +11,6 @@ class LocationSeeder extends Seeder
 {
     public function run(): void
     {
-        Location::truncate();
         $locations = [
             [
                 'name' => 'Living Room',

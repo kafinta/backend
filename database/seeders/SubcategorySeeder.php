@@ -11,20 +11,20 @@ class SubcategorySeeder extends Seeder
 {
     public function run()
     {
-        $furniture = Category::find(1);
-        $lighting = Category::find(2);
-        $decor = Category::find(3);
-        $entertainment = Category::find(4);
-        $fabrics = Category::find(5);
-        $appliances = Category::find(6);
-        $Kitchenware = Category::find(7);
-        $fixtures = Category::find(8);
-        $office = Category::find(9);
-        $storage = Category::find(10);
-        $outdoor = Category::find(11);
-        $tools = Category::find(12);
-        $improvement = Category::find(13);
-        $hygiene = Category::find(14);
+        $furniture = Category::where('name', 'Furniture')->first();
+        $lighting = Category::where('name', 'Lighting')->first();
+        $decor = Category::where('name', 'Décor')->first();
+        $entertainment = Category::where('name', 'Entertainment')->first();
+        $fabrics = Category::where('name', 'Fabrics')->first();
+        $appliances = Category::where('name', 'Appliances')->first();
+        $Kitchenware = Category::where('name', 'Kitchenware')->first();
+        $fixtures = Category::where('name', 'Plumbing Fixtures')->first();
+        $office = Category::where('name', 'Home office')->first();
+        $storage = Category::where('name', 'Storage solutions')->first();
+        $outdoor = Category::where('name', 'Outdoor & Gardening')->first();
+        $tools = Category::where('name', 'Hardware & Tools')->first();
+        $improvement = Category::where('name', 'Home Improvement')->first();
+        $hygiene = Category::where('name', 'Personal Care & Hygiene')->first();
 
 
         $furniture->subcategories()->create(['name' => 'Sofas & Sectionals']);
