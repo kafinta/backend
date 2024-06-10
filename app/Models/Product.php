@@ -9,6 +9,11 @@ class Item extends Model
 {
     use HasFactory;
 
+    public function location()
+    {
+        return $this->belongsTo(Location::class);
+    }
+
     public function subcategory()
     {
         return $this->belongsTo(Subcategory::class);
