@@ -14,9 +14,10 @@ return new class extends Migration
         Schema::create('subcategories', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->string('image')->nullable();
+            $table->string('image_path')->nullable();
             $table->boolean('has_colors')->nullable()->default(false);
             $table->foreignId('category_id')->constrained()->onDelete('cascade');
+            $table->foreignId('location_id')->nullable()->constrained()->onDelete('cascade');
             $table->timestamps();
         });
     }
