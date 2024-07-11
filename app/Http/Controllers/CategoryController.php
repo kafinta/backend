@@ -14,19 +14,6 @@ class CategoryController extends ImprovedController
         return response()->json($categories);
     }
 
-    public function getSubcategories($categoryId)
-    {
-        $category = Category::find($categoryId);
-
-        if (!$category) {
-            return response()->json(['error' => 'Category not found'], 404);
-        }
-
-        $subcategories = $category->subcategories;
-
-        return response()->json(['category' => $category,'subcategories' => $subcategories]);
-    }
-
     public function getSpecificNumberOfCategories($number)
     {
         $categories = Category::take($number)->get();
