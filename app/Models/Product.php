@@ -9,11 +9,6 @@ class Item extends Model
 {
     use HasFactory;
 
-    public function location()
-    {
-        return $this->belongsTo(Location::class);
-    }
-
     public function subcategory()
     {
         return $this->belongsTo(Subcategory::class);
@@ -31,4 +26,12 @@ class Item extends Model
     public function variants() {
         return $this->hasMany(Variant::class);
     }
+
+    public function attributes()
+    {
+        return $this->belongsToMany(Attribute::class, 'product_attributes')
+            ->withPivot('value')
+            ->withTimestamps();
+    }
+
 }
