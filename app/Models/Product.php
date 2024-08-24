@@ -33,5 +33,4 @@ class Item extends Model
             ->withPivot('value')
             ->withTimestamps();
     }
-
 }

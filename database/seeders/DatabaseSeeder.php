@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
             CategorySeeder::class,
             SubcategorySeeder::class,
             ColorSeeder::class,
+            AttributeSeeder::class
         ]);
     }
 }
