@@ -11,12 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('cart_items', function (Blueprint $table) {
+        Schema::create('subcategory_attributes', function (Blueprint $table) {
             $table->id();
-            $table->integer('quantity')->default(1);
-            $table->foreignId('cart_id')->constrained()->onDelete('cascade');
-            $table->foreignId('product_id')->constrained()->onDelete('cascade');
+            $table->foreignId('subcategory_id')->constrained();
+            $table->foreignId('attribute_id')->constrained();
+            $table->string('value');
             $table->timestamps();
+
+            $table->unique(['subcategory_id', 'attribute_id', 'value']);
         });
     }
 
@@ -25,6 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('cart_items');
+        Schema::dropIfExists('subcategory_attributes');
     }
 };

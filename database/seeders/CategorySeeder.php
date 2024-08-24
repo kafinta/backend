@@ -56,11 +56,6 @@ class CategorySeeder extends Seeder
             'image' => Storage::url('/images/categories/plumbing.jpeg'),
         ]);
         Category::create([
-            'name' => 'Home office',
-            'description' => 'Chairs, computers, printers, etc...',
-            'image' => Storage::url('/images/categories/office.jpg')
-        ]);
-        Category::create([
             'name' => 'Storage solutions',
             'description' => 'Shelves, cabinets, baskets, etc...',
             'image' => Storage::url('/images/categories/storage.png')

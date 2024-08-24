@@ -47,4 +47,9 @@ class User extends Model implements Authenticatable
     {
         return $this->hasOne(Profile::class);
     }
+
+    public function product()
+    {
+        return $this->hasMany(Product::class);
+    }
 }

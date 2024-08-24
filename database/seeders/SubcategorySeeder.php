@@ -5,51 +5,758 @@ namespace Database\Seeders;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use App\Models\Category;
+use App\Models\Location;
 use App\Models\SubCategory;
 
 class SubcategorySeeder extends Seeder
 {
     public function run()
     {
-        $furniture = Category::find(1);
-        $lighting = Category::find(2);
-        $decor = Category::find(3);
-        $entertainment = Category::find(4);
-        $fabrics = Category::find(5);
-        $appliances = Category::find(6);
-        $Kitchenware = Category::find(7);
-        $fixtures = Category::find(8);
-        $office = Category::find(9);
-        $storage = Category::find(10);
-        $outdoor = Category::find(11);
-        $tools = Category::find(12);
-        $improvement = Category::find(13);
-        $hygiene = Category::find(14);
+        $furniture = Category::where('name', 'Furniture')->first();
+        $lighting = Category::where('name', 'Lighting')->first();
+        $decor = Category::where('name', 'Décor')->first();
+        $entertainment = Category::where('name', 'Entertainment')->first();
+        $fabrics = Category::where('name', 'Fabrics')->first();
+        $appliances = Category::where('name', 'Appliances')->first();
+        $Kitchenware = Category::where('name', 'Kitchenware')->first();
+        $fixtures = Category::where('name', 'Plumbing Fixtures')->first();
+        $storage = Category::where('name', 'Storage solutions')->first();
+        $outdoor = Category::where('name', 'Outdoor & Gardening')->first();
+        $tools = Category::where('name', 'Hardware & Tools')->first();
+        $improvement = Category::where('name', 'Home Improvement')->first();
+        $hygiene = Category::where('name', 'Personal Care & Hygiene')->first();
 
 
-        $furniture->subcategories()->create(['name' => 'Sofas & Sectionals']);
-        $furniture->subcategories()->create(['name' => 'Chairs']);
-        $furniture->subcategories()->create(['name' => 'Tables']);
-        $furniture->subcategories()->create(['name' => 'Desks']);
-        $furniture->subcategories()->create(['name' => 'Beds']);
-        $furniture->subcategories()->create(['name' => 'Futons & Accessories']);
-        $furniture->subcategories()->create(['name' => 'Footstools and Ottomans']);
-        $furniture->subcategories()->create(['name' => 'Cushions']);
-        $furniture->subcategories()->create(['name' => 'Chests & drawers']);
-        $furniture->subcategories()->create(['name' => 'Headboards']);
-        $furniture->subcategories()->create(['name' => 'Mattresses']);
-        $furniture->subcategories()->create(['name' => 'Bed frames']);
-        $furniture->subcategories()->create(['name' => 'Benches']);
-        $furniture->subcategories()->create(['name' => 'Vanities']);
-        $furniture->subcategories()->create(['name' => 'Buffets & sideboards']);
-        $furniture->subcategories()->create(['name' => 'Carts']);
-        $furniture->subcategories()->create(['name' => 'Racks']);
-        $furniture->subcategories()->create(['name' => 'Hammock']);
-        $furniture->subcategories()->create(['name' => 'Swing chairs']);
-        $furniture->subcategories()->create(['name' => 'Chaise lounges']);
-        $furniture->subcategories()->create(['name' => 'Porch Swings']);
-        $furniture->subcategories()->create(['name' => 'Hall trees']);
-        $furniture->subcategories()->create(['name' => 'Umbrellas and coatracks']);
+
+        $living = Location::where('name', 'Living Room')->first();
+        $bedroom = Location::where('name', 'Bedroom')->first();
+        $kitchen = Location::where('name', 'Kitchen')->first();
+        $diningroom = Location::where('name', 'Dining Room')->first();
+        $bathroom = Location::where('name', 'Bathroom')->first();
+        $hall = Location::where('name', 'Entryway & Hallway')->first();
+        $closet = Location::where('name', 'Closet & Storage')->first();
+        $office = Location::where('name', 'Home Office')->first();
+        $kids = Location::where('name', 'Children\'s Room')->first();
+        $garage = Location::where('name', 'Garage & Shed')->first();
+        $porch = Location::where('name', 'Porch')->first();
+        $deck = Location::where('name', 'Deck')->first();
+        $pool = Location::where('name', 'Pool Area')->first();
+        $basement = Location::where('name', 'Basement')->first();
+        $attic = Location::where('name', 'Attic')->first();
+        $game = Location::where('name', 'Game Room')->first();
+        $utility = Location::where('name', 'Utility Room')->first();
+        $theater = Location::where('name', 'Home theater')->first();
+        $gym = Location::where('name', 'Home Gym')->first();
+        $driveway = Location::where('name', 'Driveway & Walkway')->first();
+        $exterior = Location::where('name', 'Outdoor & Exterior')->first();
+
+        Subcategory::create([
+            'name' => 'Sofas & Sectionals',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $living->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Chairs',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $living->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Tables',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $living->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Media Storage',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $living->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Futons & Accessories',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $living->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Footstools and Ottomans',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $living->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Bookcases',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $living->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Slipcovers & Chair Covers',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $living->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Accent Chests & Cabinets',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $living->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Beds',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $bedroom->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Nightstands & Bedside Tables',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $bedroom->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Dressers and Chests',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $bedroom->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Armoires and Wardrobes',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $bedroom->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Mattresses',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $bedroom->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Headboards',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $bedroom->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Bedroom and Makeup Vanities',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $bedroom->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Vanity Stools and Benches',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $bedroom->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Bed Frames',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $bedroom->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Bed Accessories',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $bedroom->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Bedroom Sets',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $bedroom->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Bar Stools & Counter Stools',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $kitchen->id,
+        ]);
+        Subcategory::create([
+            'name' => "Dining Chairs",
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $diningroom->id,
+        ]);
+        Subcategory::create([
+            'name' => "Dining Tables",
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $diningroom->id,
+        ]);
+        Subcategory::create([
+            'name' => "Dining Sets",
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $diningroom->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Buffets & Sideboards',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $kitchen->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Kitchen Islands & Carts',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $kitchen->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Bar Carts',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $kitchen->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Bar Carts',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $kitchen->id,
+        ]);
+        Subcategory::create([
+            'name' => 'China Cabinets & Hutches',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $kitchen->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Pantry Cabinets',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $kitchen->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Pub & Bistro Tables',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $kitchen->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Pub & Bistro Sets',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $kitchen->id,
+        ]);
+        Subcategory::create([
+            'name' => "Baker's Racks",
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $kitchen->id,
+        ]);
+        Subcategory::create([
+            'name' => "Dining Benches",
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $kitchen->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Table Tops and Bases',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $kitchen->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Folding Tables',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $kitchen->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Seat Cushions',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $kitchen->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Bathroom Vanities',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $bathroom->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Bathroom Cabinets',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $bathroom->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Bathroom Shelves',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $bathroom->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Medicine Cabinets',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $bathroom->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Medicine Cabinets',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $bathroom->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Vanity Tops & Side Splashes',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $bathroom->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Bathroom Organizers',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $bathroom->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Desks',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $office->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Office Chairs',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $office->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Bookcases',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $office->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Filing Cabinets',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $office->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Drafting Tables',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $office->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Storage Cabinets',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $office->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Bookcases',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $closet->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Buffets and Sideboards',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $closet->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Dressers and Chests',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $closet->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Media Storage',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $closet->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Vanities',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $closet->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Cabinets & Hutches',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $closet->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Armoires & Wardrobes',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $closet->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Islands and Carts',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $closet->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Racks',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $closet->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Racks',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $closet->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Benches',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $hall->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Coat Racks and Umbrella Stands',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $hall->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Console Tables',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $hall->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Hall Trees',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $hall->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Shoe Storage',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $hall->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Display and Wall Shelves',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $hall->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Display and Wall Shelves',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $hall->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Bean Bag Chairs',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $game->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Gaming Chairs',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $game->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Game Tables',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $game->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Wine & Bar Cabinets',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $game->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Cribs',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $kids->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Cradles & Bassinets',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $kids->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Gliders',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $kids->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Baby Gates and Child Safety',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $kids->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Baby Swings and Bouncers',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $kids->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Bed Rails',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $kids->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Changing Table Pads and Covers',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $kids->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Crib Mattresses',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $kids->id,
+        ]);
+        Subcategory::create([
+            'name' => 'High Chairs and Booster Seats',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $kids->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Step Stools',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $kids->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Table and Chair Sets',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $kids->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Beds and Bedroom Sets',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $kids->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Bunk Beds',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $kids->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Loft Beds',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $kids->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Toddler Beds',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $kids->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Dressers',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $kids->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Toy Organizers',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $kids->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Toy Boxes',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $kids->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Bookcases',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $kids->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Vanities',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $kids->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Nightstands',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $kids->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Assistive Furniture',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Lounge Sets',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $exterior->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Lounge Chairs',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $exterior->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Accent & Garden Stools',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $exterior->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Coffee Tables',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $exterior->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Love Seats',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $exterior->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Ottomans and Footstools',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $exterior->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Serving Carts',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $exterior->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Side Tables',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $exterior->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Sofas',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $exterior->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Dining Sets',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $exterior->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Dining Tables',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $exterior->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Dining Chairs',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $exterior->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Pub and Bistro Sets',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $exterior->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Bar Stools',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $exterior->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Pub and Bistro Tables',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $exterior->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Pub and Bistro Tables',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $exterior->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Chaise Lounges',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $exterior->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Lounge Chairs',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $exterior->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Adirondack Chairs',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $exterior->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Rocking Chairs',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $exterior->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Benches',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $exterior->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Porch Swings',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $exterior->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Hammocks and Swing Chairs',
+            'has_colors' => true,
+            'category_id' => $furniture->id,
+            'location_id' => $exterior->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Hammock Stands and Accessories',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $exterior->id,
+        ]);
+        Subcategory::create([
+            'name' => 'Hammock Stands and Accessories',
+            'has_colors' => false,
+            'category_id' => $furniture->id,
+            'location_id' => $exterior->id,
+        ]);
 
 
         $lighting->subcategories()->create(['name' => 'Chandeliers']);
@@ -182,11 +889,11 @@ class SubcategorySeeder extends Seeder
         $fixtures->subcategories()->create(['name' => 'Toilets']);
 
 
-        $office->subcategories()->create(['name' => 'Computers']);
-        $office->subcategories()->create(['name' => 'Printers']);
-        $office->subcategories()->create(['name' => 'Desks']);
-        $office->subcategories()->create(['name' => 'Chairs']);
-        $office->subcategories()->create(['name' => 'Bookshelves']);
+        // $office->subcategories()->create(['name' => 'Computers']);
+        // $office->subcategories()->create(['name' => 'Printers']);
+        // $office->subcategories()->create(['name' => 'Desks']);
+        // $office->subcategories()->create(['name' => 'Chairs']);
+        // $office->subcategories()->create(['name' => 'Bookshelves']);
 
 
         $storage->subcategories()->create(['name' => 'Bookcases']);

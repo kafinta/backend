@@ -11,7 +11,6 @@ class LocationSeeder extends Seeder
 {
     public function run(): void
     {
-        Location::truncate();
         $locations = [
             [
                 'name' => 'Living Room',
@@ -20,14 +19,13 @@ class LocationSeeder extends Seeder
             [
                 'name' => 'Bedroom',
                 'image' => '/images/locations/bedroom.jpg'
-    
             ],
             [
                 'name' => 'Kitchen',
                 'image' => '/images/locations/kitchen.jpg'
             ],
             [
-                'name' => 'Dining',
+                'name' => 'Dining Room',
                 'image' => '/images/locations/dining.jpg'
             ],
             [
@@ -35,11 +33,11 @@ class LocationSeeder extends Seeder
                 'image' => '/images/locations/bathroom.jpg'
             ],
             [
-                'name' => 'Hallway',
+                'name' => 'Entryway & Hallway',
                 'image' => '/images/locations/hallway.jpg'
             ],
             [
-                'name' => 'Closet',
+                'name' => 'Closet & Storage',
                 'image' => '/images/locations/closet.jpg'
             ],
             [
@@ -47,7 +45,7 @@ class LocationSeeder extends Seeder
                 'image' => '/images/locations/office.jpg'
             ],
             [
-                'name' => 'Kids Room',
+                'name' => 'Children\'s Room',
                 'image' => '/images/locations/nursery.jpg'
             ],
             [
@@ -59,16 +57,12 @@ class LocationSeeder extends Seeder
                 'image' => '/images/locations/porch.jpg'
             ],
             [
-                'name' => 'Deck',
+                'name' => 'Deck & Patio',
                 'image' => '/images/locations/deck.jpeg'
             ],
             [
                 'name' => 'Pool Area',
                 'image' => '/images/locations/pool.jpg'
-            ],
-            [
-                'name' => 'Patio',
-                'image' => '/images/locations/patio.png'
             ],
             [
                 'name' => 'Basement',
@@ -77,6 +71,10 @@ class LocationSeeder extends Seeder
             [
                 'name' => 'Attic',
                 'image' => '/images/locations/attic.jpg'
+            ],
+            [
+                'name' => 'Game Room',
+                'image' => '/images/locations/game_room.webp'
             ],
             [
                 'name' => 'Utility Room',
@@ -95,12 +93,8 @@ class LocationSeeder extends Seeder
                 'image' => '/images/locations/driveway.jpg'
             ],
             [
-                'name' => 'Exterior',
+                'name' => 'Outdoor & Exterior',
                 'image' => '/images/locations/exterior.jpg'
-            ],
-            [
-                'name' => 'Outdoor',
-                'image' => '/images/locations/outdoor.jpg'
             ],
         ];
 

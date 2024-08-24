@@ -1,6 +1,8 @@
 <?php
 
 namespace App\Http\Controllers;
+use App\Http\Controllers\Controller;
+use App\Http\Controllers\ImprovedController;
 use App\Models\User;
 use App\Models\Profile;
 use Illuminate\Http\Request;
@@ -8,7 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
 
-class ProfileController extends Controller
+class ProfileController extends ImprovedController
 {
     public function createProfile(Request $request){
 

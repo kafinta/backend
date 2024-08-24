@@ -23,6 +23,7 @@ Route::prefix('user')->middleware('auth:users-web,users-api')->group(function() 
     });
 });
 Route::get('/locations', 'LocationController@getAllLocations');
+Route::get('/colors', 'ColorController@getAllColors');
 Route::get('/categories', 'CategoryController@getAllCategories');
 Route::get('/categories/{number}', 'CategoryController@getSpecificNumberOfCategories');
-Route::get('/categories/{categoryId}/subcategories', 'CategoryController@getSubcategories');
+Route::get('/subcategories', 'SubcategoryController@getSubcategories');
