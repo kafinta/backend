@@ -27,3 +27,10 @@ Route::get('/colors', 'ColorController@getAllColors');
 Route::get('/categories', 'CategoryController@getAllCategories');
 Route::get('/categories/{number}', 'CategoryController@getSpecificNumberOfCategories');
 Route::get('/subcategories', 'SubcategoryController@getSubcategories');
+
+
+
+
+// Attributte apis
+Route::get('attributes','AttributeController@index');
+Route::get('subcategories/{subcategoryId}/attributes', 'AttributeController@getAttributesBySubcategory');

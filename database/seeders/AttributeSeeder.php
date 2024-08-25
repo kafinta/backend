@@ -92,11 +92,10 @@ class AttributeSeeder extends Seeder
 
         // Prepare the data for attaching, reusing attribute sets
     $subcategoryAttributes = [
-      $sofasandsectionals->id => $livingRoom + $materialSet,
+      $sofasandsectionals->id => $livingRoom,
       $futonsandaccessories->id => $livingRoom + [
         $features->id => ['value' => 'Tufted, Storage, Reclining, Pillows Included']
       ],
-      
     ];
 
     // Attach attributes to subcategories
