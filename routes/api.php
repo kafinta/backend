@@ -24,15 +24,23 @@ Route::prefix('user')->middleware('auth:users-web,users-api')->group(function() 
 });
 Route::get('/locations', 'LocationController@getAllLocations');
 Route::get('/colors', 'ColorController@getAllColors');
-Route::get('/categories', 'CategoryController@getAllCategories');
-Route::get('/categories/{number}', 'CategoryController@getSpecificNumberOfCategories');
+
 Route::get('/subcategories', 'SubcategoryController@getSubcategories');
 
 
+Route::prefix('categories')->group(function () {
+    Route::get('/categories', 'CategoryController@getAllCategories');
+    Route::get('/categories/{number}', 'CategoryController@getSpecificNumberOfCategories');
+});
 
+Route::prefix('subcategories')->group(function () {
+    Route::get('/', 'SubcategoryController@index');    // get all subcategories
+    Route::get('/{id}', 'SubcategoryController@show');    // get all subcategories
+    Route::get('/subcategory', 'SubcategoryController@getSubcategorieswithQuery');    // uses query to fetch subcategories using category or location
+    Route::get('/{subcategoryId}/attributes', 'SubcategoryController@getSubcategoryWithAttributes');
+});
 
 // Attributte apis
 Route::get('attributes','SubcategoryController@index');
 Route::get('attributes/{id}', 'SubcategoryController@show');
-
 Route::get('subcategories/{subcategoryId}/attributes', 'AttributeController@getAttributesBySubcategory');

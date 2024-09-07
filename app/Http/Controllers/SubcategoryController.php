@@ -13,13 +13,19 @@ use Illuminate\Support\Facades\DB;
 
 class SubcategoryController extends ImprovedController
 {
-    public function getAllSubcategories()
+    public function index()
     {
         $subcategories = Subcategory::all();
-        return response()->json($subcategories);
+        return response()->json($subcategories, 200);
     }
 
-    public function getSubcategories(Request $request)
+    public function show($id)
+    {
+        $subcategory = Subcategory::findOrFail($id);
+        return response()->json([$subcategory, $this->formatSubcategory($subcategory)]);
+    }
+
+    public function getSubcategorieswithQuery(Request $request)
     {
         $category = $request->query('category');
         $location = $request->query('location');
@@ -49,49 +55,7 @@ class SubcategoryController extends ImprovedController
         }
     }
 
-    public function getFormattedSubcategory($id)
-    {
-        $subcategory = Subcategory::findOrFail($id);
-        
-        $attributes = DB::table('attributes')
-            ->join('attribute_subcategory', 'attributes.id', '=', 'attribute_subcategory.attribute_id')
-            ->where('attribute_subcategory.subcategory_id', $subcategory->id)
-            ->select('attributes.id', 'attributes.name')
-            ->get();
 
-        $formattedSubcategory = [
-            'id' => $subcategory->id,
-            'name' => $subcategory->name,
-            'attributes' => $attributes->map(function ($attribute) {
-                $values = AttributeValue::where('attribute_id', $attribute->id)
-                    ->pluck('value')
-                    ->toArray();
-                
-                return [
-                    'id' => $attribute->id,
-                    'name' => $attribute->name,
-                    'values' => $values
-                ];
-            })
-        ];
-
-        return response()->json($formattedSubcategory);
-    }
-
-    public function index()
-    {
-        $subcategories = Subcategory::all()->map(function ($subcategory) {
-            return $this->formatSubcategory($subcategory);
-        });
-
-        return response()->json($subcategories);
-    }
-
-    public function show($id)
-    {
-        $subcategory = Subcategory::findOrFail($id);
-        return response()->json($this->formatSubcategory($subcategory));
-    }
 
     private function formatSubcategory($subcategory)
     {

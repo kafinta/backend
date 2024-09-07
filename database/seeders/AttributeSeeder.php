@@ -111,10 +111,10 @@ class AttributeSeeder extends Seeder
           
           // Create attribute values
           foreach ($values as $value) {
-              AttributeValue::firstOrCreate([
-                  'attribute_id' => $attributeId,
-                  'value' => trim($value)
-              ]);
+            AttributeValue::firstOrCreate([
+              'attribute_id' => $attributeId,
+              'value' => trim($value)
+            ]);
           }
       }
   }
