@@ -7,6 +7,7 @@ use Illuminate\Database\Seeder;
 use App\Models\Attribute;
 use App\Models\Location;
 use App\Models\SubCategory;
+use App\Models\AttributeValue;
 
 class AttributeSeeder extends Seeder
 {
@@ -64,44 +65,69 @@ class AttributeSeeder extends Seeder
 
     // generalAttributes
     $generalAttributes = [
-      $style->id => ['value' => 'Contemporary, Modern, Traditional, Mid-Century Modern, Farmhouse, Transitional, Industrial, Coastal, Victorian, Scandinavian, Rustic, Eclectic, Southwestern, Asian, Tropical, Craftsman, Mediterranean'],
+      $style->id => ['Contemporary', 'Modern', 'Traditional', 'Mid-Century Modern', 'Farmhouse', 'Transitional', 'Industrial', 'Coastal', 'Victorian', 'Scandinavian', 'Rustic', 'Eclectic', 'Southwestern', 'Asian', 'Tropical', 'Craftsman', 'Mediterranean'],
 
-      $cushion_fill->id => ['value' => 'Foam, Feather & Down, Polyester, Memory Foam, Down Alternative']
+      $cushion_fill->id => ['value' => 'Foam', 'Feather & Down', 'Polyester', 'Memory Foam', 'Down Alternative']
     ];
 
 
-    $livingRoom = [
-      $upholstery_material->id => ['value' => 'Polyester,Velvet,Leather,Faux Leather,Linen,Microsuede & Microfiber,Chenille,Canvas,Cotton,Vinyl,Suede,Felt,Silk, Cowhide,Synthetic,Acrylic,Faux Fur,Wool,Jute & Sisal, Satin'],
-      $arm_style->id => ['value' => 'Square Arms, Armless, Round Arms, Pillow Top Arms, Sloped Arms, Flared Arms, Tuxedo, One Arm'],
-      $back_type->id => ['value' => 'Tight Back, Cushion Back, Channel Back, Pillow Back, Camel Back'],
-      $frame_material->id => ['value' => 'Manufactured Wood, Metal, Plastic & Acrylic, Wicker & Rattan, Wood'],
-      $pattern->id => ['value' => 'Solid Color,Striped, Novelty, Nature & Floral, Geometric, Animal Print, Chevron, Moroccan'],
-      $design->id => ['value' => 'Chesterfield, Curved, Standard'],
-      $assembly->id => ['value' => 'Fully Assembled'],
-      $back_type->id => ['value' => 'Low Back, High Back'],
-      $configuration->id => ['value' => 'L Shape, U Shape, Curved'],
-      $orientation->id => ['value' => 'Reversible, Left-Facing, Right-Facing'],
-      $seating_capacity->id => ['value' => 'Seats 2, Seats 3, Seats 4, Seats 5, Seats 6, Seats 7, Seats 8'],
-      $no_of_shelves->id => ['value' => '2 Piece Set, 3 Piece Set, 4 Piece Set, 5 Piece Set, 6 Piece Set, 7 Piece Set'],
-      $mattress_type->id => ['value' => 'Foam, Memory Foam, Inner Spring, Pocket Coil, Gel Foam'],
-      $mattress_size->id => ['value' => 'Full & Double, Queen, Twin, King'],
-      $sofa_design->id => ['value' => 'Stationary Sofa, Reclining Sofa, Sleeper Sofa'],
-      $finish->id => ['value' => 'Brown, Black, White, Espresso'],
-    ];
+  //   $livingRoom = [
+  //     $upholstery_material->id => ['value' => 'Polyester,Velvet,Leather,Faux Leather,Linen,Microsuede & Microfiber,Chenille,Canvas,Cotton,Vinyl,Suede,Felt,Silk, Cowhide,Synthetic,Acrylic,Faux Fur,Wool,Jute & Sisal, Satin'],
+  //     $arm_style->id => ['value' => 'Square Arms, Armless, Round Arms, Pillow Top Arms, Sloped Arms, Flared Arms, Tuxedo, One Arm'],
+  //     $back_type->id => ['value' => 'Tight Back, Cushion Back, Channel Back, Pillow Back, Camel Back'],
+  //     $frame_material->id => ['value' => 'Manufactured Wood, Metal, Plastic & Acrylic, Wicker & Rattan, Wood'],
+  //     $pattern->id => ['value' => 'Solid Color,Striped, Novelty, Nature & Floral, Geometric, Animal Print, Chevron, Moroccan'],
+  //     $design->id => ['value' => 'Chesterfield, Curved, Standard'],
+  //     $assembly->id => ['value' => 'Fully Assembled'],
+  //     $back_type->id => ['value' => 'Low Back, High Back'],
+  //     $configuration->id => ['value' => 'L Shape, U Shape, Curved'],
+  //     $orientation->id => ['value' => 'Reversible, Left-Facing, Right-Facing'],
+  //     $seating_capacity->id => ['value' => 'Seats 2, Seats 3, Seats 4, Seats 5, Seats 6, Seats 7, Seats 8'],
+  //     $no_of_shelves->id => ['value' => '2 Piece Set, 3 Piece Set, 4 Piece Set, 5 Piece Set, 6 Piece Set, 7 Piece Set'],
+  //     $mattress_type->id => ['value' => 'Foam, Memory Foam, Inner Spring, Pocket Coil, Gel Foam'],
+  //     $mattress_size->id => ['value' => 'Full & Double, Queen, Twin, King'],
+  //     $sofa_design->id => ['value' => 'Stationary Sofa, Reclining Sofa, Sleeper Sofa'],
+  //     $finish->id => ['value' => 'Brown, Black, White, Espresso'],
+  //   ];
 
 
         // Prepare the data for attaching, reusing attribute sets
     $subcategoryAttributes = [
-      $sofasandsectionals->id => $livingRoom,
-      $futonsandaccessories->id => $livingRoom + [
-        $features->id => ['value' => 'Tufted, Storage, Reclining, Pillows Included']
+      $sofasandsectionals->id => $generalAttributes,
+      $futonsandaccessories->id => $generalAttributes + [
+        $features->id => ['value' => 'Tufted', 'Storage', 'Reclining', 'Pillows Included']
       ],
     ];
 
     // Attach attributes to subcategories
     foreach ($subcategoryAttributes as $subcategoryId => $attributes) {
       $subcategory = Subcategory::find($subcategoryId);
-      $subcategory->attributes()->attach($attributes);
-    }
+      
+      foreach ($attributes as $attributeId => $values) {
+          $attribute = Attribute::find($attributeId);
+          
+          // Attach the attribute to the subcategory
+          $subcategory->attributes()->syncWithoutDetaching([$attributeId]);
+          
+          // Create attribute values
+          foreach ($values as $value) {
+              AttributeValue::firstOrCreate([
+                  'attribute_id' => $attributeId,
+                  'value' => trim($value)
+              ]);
+          }
+      }
+  }
+
+  // Output some information for verification
+  $this->command->info('Seeding completed. Verification:');
+  foreach (Subcategory::all() as $subcategory) {
+      $this->command->info("Subcategory: {$subcategory->name}");
+      foreach ($subcategory->attributes as $attribute) {
+          $valueCount = $attribute->values()->count();
+          $this->command->info("  Attribute: {$attribute->name}, Values count: {$valueCount}");
+      }
+  }
+    
   }
 }

@@ -26,8 +26,6 @@ class Subcategory extends Model
 
   public function attributes()
   {
-    return $this->belongsToMany(Attribute::class, 'subcategory_attributes')
-    ->withPivot('value')
-    ->withTimestamps();
+    return $this->belongsToMany(Attribute::class)->withTimestamps();
   }
 }

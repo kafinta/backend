@@ -32,5 +32,7 @@ Route::get('/subcategories', 'SubcategoryController@getSubcategories');
 
 
 // Attributte apis
-Route::get('attributes','AttributeController@index');
+Route::get('attributes','SubcategoryController@index');
+Route::get('attributes/{id}', 'SubcategoryController@show');
+
 Route::get('subcategories/{subcategoryId}/attributes', 'AttributeController@getAttributesBySubcategory');

@@ -7,18 +7,20 @@ use Illuminate\Database\Eloquent\Model;
 
 class Attribute extends Model
 {
-  use HasFactory;
   public function subcategories()
   {
-    return $this->belongsToMany(Subcategory::class, 'subcategory_attributes')
-      ->withPivot('value')
-      ->withTimestamps();
+    return $this->belongsToMany(Subcategory::class)->withTimestamps();
   }
 
-  public function products()
+  public function values()
   {
-    return $this->belongsToMany(Product::class, 'product_attributes')
-      ->withPivot('value')
-      ->withTimestamps();
+    return $this->hasMany(AttributeValue::class);
   }
+
+  // public function products()
+  // {
+  //   return $this->belongsToMany(Product::class, 'product_attributes')
+  //     ->withPivot('value')
+  //     ->withTimestamps();
+  // }
 }

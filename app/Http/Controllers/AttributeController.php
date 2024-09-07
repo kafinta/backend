@@ -11,51 +11,48 @@ class AttributeController extends ImprovedController
 {
      /**
      * Display a listing of the attributes with their values.
-     *
-     * @return \Illuminate\Http\JsonResponse
      */
     public function index()
     {
-        $attributes = Attribute::with('subcategories')->get()->map(function ($attribute) {
-            return [
-                'id' => $attribute->id,
-                'name' => $attribute->name,
-                'values' => $attribute->subcategories->pluck('pivot.value')->unique()->sort()->values()->all()
-            ];
-        });
-
-        return response()->json(['attributes' => $attributes], 200);
+        $subcategories = Subcategory::with('attributes.values')->get();
+        return response()->json($subcategories);
     }
 
     /**
      * Display the specified attribute with its values.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\JsonResponse
      */
     public function show($id)
     {
-        $attribute = Attribute::with('subcategories')->find($id);
+        $subcategory = Subcategory::with('attributes.values')->findOrFail($id);
         
-        if (!$attribute) {
-            return response()->json(['message' => 'Attribute not found'], 404);
-        }
-
-        $attributeData = [
-            'id' => $attribute->id,
-            'name' => $attribute->name,
-            'values' => $attribute->subcategories->pluck('pivot.value')->unique()->sort()->values()->all()
+        $formattedSubcategory = [
+            'id' => $subcategory->id,
+            'name' => $subcategory->name,
+            'attributes' => $subcategory->attributes->map(function ($attribute) {
+                return [
+                    'id' => $attribute->id,
+                    'name' => $attribute->name,
+                    'values' => $attribute->values->pluck('value')
+                ];
+            })
         ];
 
-        return response()->json(['attribute' => $attributeData], 200);
+        return response()->json($formattedSubcategory);
+        // if (!$attribute) {
+        //     return response()->json(['message' => 'Attribute not found'], 404);
+        // }
+
+        // $attributeData = [
+        //     'id' => $attribute->id,
+        //     'name' => $attribute->name,
+        //     'values' => $attribute->subcategories->pluck('pivot.value')->unique()->sort()->values()->all()
+        // ];
+
+        // return response()->json(['attribute' => $attributeData], 200);
     }
 
     /**
      * Update the specified attribute and its values in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
-     * @return \Illuminate\Http\JsonResponse
      */
     public function update(Request $request, $id)
     {
