@@ -36,11 +36,9 @@ Route::prefix('categories')->group(function () {
 Route::prefix('subcategories')->group(function () {
     Route::get('/', 'SubcategoryController@index');    // get all subcategories
     Route::get('/{id}', 'SubcategoryController@show');    // get all subcategories
-    Route::get('/subcategory', 'SubcategoryController@getSubcategorieswithQuery');    // uses query to fetch subcategories using category or location
+    Route::get('/subcategory', 'SubcategoryController@getSubcategorieswithQuery');    // uses query to fetch subcategories by category or location
     Route::get('/{subcategoryId}/attributes', 'SubcategoryController@getSubcategoryWithAttributes');
 });
 
-// Attributte apis
-Route::get('attributes','SubcategoryController@index');
-Route::get('attributes/{id}', 'SubcategoryController@show');
-Route::get('subcategories/{subcategoryId}/attributes', 'AttributeController@getAttributesBySubcategory');
+Route::apiResource('attributes', AttributeController::class);
+Route::apiResource('attributes.values', AttributeValueController::class)->shallow();

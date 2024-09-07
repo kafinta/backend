@@ -7,6 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class Attribute extends Model
 {
+  use HasFactory;
+  protected $fillable = ['name'];
+
   public function subcategories()
   {
     return $this->belongsToMany(Subcategory::class)->withTimestamps();
