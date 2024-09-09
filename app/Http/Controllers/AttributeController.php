@@ -21,7 +21,10 @@ class AttributeController extends ImprovedController
 
     public function show($id)
     {
-        $attribute = Attribute::with('values')->findOrFail($id);
+        $attribute = Attribute::with('values')->find($id);
+        if (!$attribute) {
+            return $this->respondWithError(['message' => "Attribute not found"], 404);
+        }
         return response()->json($attribute);
     }
 
@@ -32,15 +35,18 @@ class AttributeController extends ImprovedController
         ]);
 
         $attribute = Attribute::create($validatedData);
-        return response()->json($attribute, 201);
+        return response()->json(['message' => "Attribute created successfully", $attribute], 201);
     }
 
     public function update(Request $request, $id)
     {
-        Log::info('Update request received:', $request->all());
+        $attribute = Attribute::find($id);
+        $name = $request->name;
 
-        $attribute = Attribute::findOrFail($id);
-        
+        if (!$attribute) {
+            return $this->respondWithError(['message' => "Attribute not found"], 404);
+        }
+
         $validatedData = $request->validate([
             'name' => [
                 'required',
@@ -49,17 +55,20 @@ class AttributeController extends ImprovedController
                 Rule::unique('attributes')->ignore($attribute->id),
             ],
         ]);
-
-        Log::info('Validated data:', $validatedData);
-
         $attribute->update($validatedData);
-        return response()->json($attribute);
+        return response()->json([
+            'message'=> "Attribute upddated successfully",
+            'data' => $attribute
+        ], 201);
     }
 
     public function destroy($id)
     {
-        $attribute = Attribute::findOrFail($id);
+        $attribute = Attribute::find($id);
+        if (!$attribute) {
+            return $this->respondWithError(['message' => "Attribute not found"], 404);
+        }
         $attribute->delete();
-        return response()->noContent();
+        return response()->json(['message' => 'Attribute deleted successfully'], 200);
     }
 }

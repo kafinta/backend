@@ -29,8 +29,8 @@ Route::get('/subcategories', 'SubcategoryController@getSubcategories');
 
 
 Route::prefix('categories')->group(function () {
-    Route::get('/categories', 'CategoryController@getAllCategories');
-    Route::get('/categories/{number}', 'CategoryController@getSpecificNumberOfCategories');
+    Route::get('/', 'CategoryController@getAllCategories');
+    Route::get('/{number}', 'CategoryController@getSpecificNumberOfCategories');
 });
 
 Route::prefix('subcategories')->group(function () {
@@ -41,4 +41,4 @@ Route::prefix('subcategories')->group(function () {
 });
 
 Route::apiResource('attributes', AttributeController::class);
-Route::apiResource('attributes.values', AttributeValueController::class)->shallow();
+Route::apiResource('attributes.values', AttributeValueController::class);
