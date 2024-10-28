@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\SubcategoryController;
 
 /*
 |--------------------------------------------------------------------------
@@ -22,22 +23,20 @@ Route::prefix('user')->middleware('auth:users-web,users-api')->group(function() 
         Route::post('/update', 'ProfileController@updateProfile');
     });
 });
+
 Route::get('/locations', 'LocationController@getAllLocations');
 Route::get('/colors', 'ColorController@getAllColors');
-
-Route::get('/subcategories', 'SubcategoryController@getSubcategories');
-
+Route::get('/{number}/categories', 'CategoryController@getSpecificNumberOfCategories');
 
 Route::prefix('categories')->group(function () {
     Route::get('/', 'CategoryController@getAllCategories');
-    Route::get('/{number}', 'CategoryController@getSpecificNumberOfCategories');
 });
 
 Route::prefix('subcategories')->group(function () {
-    Route::get('/', 'SubcategoryController@index');    // get all subcategories
-    Route::get('/{id}', 'SubcategoryController@show');    // get all subcategories
-    Route::get('/subcategory', 'SubcategoryController@getSubcategorieswithQuery');    // uses query to fetch subcategories by category or location
-    Route::get('/{subcategoryId}/attributes', 'SubcategoryController@getSubcategoryWithAttributes');
+    Route::get('/', [SubcategoryController::class, 'index']);    // get all subcategories
+    Route::get('/find', [SubcategoryController::class, 'getSubcategories']);
+    Route::get('/{id}', [SubcategoryController::class, 'show']);
+
 });
 
 Route::apiResource('attributes', AttributeController::class);

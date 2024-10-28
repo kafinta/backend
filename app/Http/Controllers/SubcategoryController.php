@@ -10,6 +10,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\ImprovedController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+
 
 class SubcategoryController extends ImprovedController
 {
@@ -25,38 +27,33 @@ class SubcategoryController extends ImprovedController
         return response()->json([$subcategory, $this->formatSubcategory($subcategory)]);
     }
 
-    public function getSubcategorieswithQuery(Request $request)
+    public function getSubcategories(Request $request)
     {
-        $category = $request->query('category');
-        $location = $request->query('location');
+        $query = Subcategory::query();
 
-        $requested_category = Category::where('name', $category)->first();
-        $requested_location = Location::where('name', $location)->first();
-
-        if (!$requested_category) {
-            return $this->respondWithError("Category not Found", 404);
+        if ($request->query('category_id')) {
+            $categoryId = (int)$request->query('category_id');
+            $query->where('category_id', $categoryId);
+            $categoryName = Category::find($categoryId)?->name;        
         }
 
-        // If I'm fetching for just the category
-        if (!$requested_location) {
-            $subcategories = $requested_category->subcategories()->get();
-            return response()->json(['message' => 'Location not found','category' => $category, 'subcategories' => $subcategories]);
+        if ($request->query('location_id')) {
+            $locationId = (int)$request->query('location_id');
+            $query->where('location_id', $locationId);
+            $locationName = Location::find($locationId)?->name;       
         }
 
-        $subcategories = $requested_category->subcategories()->where('location_id', $requested_location->id)->get();
+        $subcategories = $query->select('id', 'name')->get();
 
-        // If the location doesn't have subcategories
-        if (count($subcategories) === 0) {
-            // return ('The location does not return');
-            $subcategories = $requested_category->subcategories()->get();
-            return response()->json(['message' => 'Location does not have subcategories','category' => $category, 'subcategories' => $subcategories]);
-        } else {
-            return response()->json(['category' => $category, 'location' => $location, 'subcategories' => $subcategories]);
-        }
+
+        return response()->json([
+            'success' => true,
+            'location' => $locationName,
+            'category' => $categoryName,
+            'data' => $subcategories,
+        ]);
     }
-
-
-
+    
     private function formatSubcategory($subcategory)
     {
         $attributes = DB::table('attributes')

@@ -90,7 +90,7 @@ class AttributeValueController extends ImprovedController
 
         $value->update($validatedData);
         return response()->json([
-            'message'=> "Value created successfully",
+            'message'=> "Value upddated successfully",
             'data' => $value
         ], 201);
     }
