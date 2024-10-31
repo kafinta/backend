@@ -28,4 +28,9 @@ class Subcategory extends Model
   {
     return $this->belongsToMany(Attribute::class)->withTimestamps();
   }
+
+  protected $fillable = [
+    'name',
+    'image',
+  ];
 }

@@ -18,4 +18,9 @@ class Location extends Model
     {
         return $this->hasMany(Subcategory::class);
     }
+
+    protected $fillable = [
+        'name',
+        'image',
+    ];
 }
