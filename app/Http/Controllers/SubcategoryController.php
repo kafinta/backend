@@ -13,18 +13,18 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 
-class SubcategoryController extends ImprovedController
+class SubcategoryController extends Controller
 {
     public function index()
     {
         $subcategories = Subcategory::all();
-        return response()->json($subcategories, 200);
+        return response()->json(['message' => 'Subcategories fetched successfully', 'data' => $subcategories]);
     }
 
     public function show($id)
     {
         $subcategory = Subcategory::findOrFail($id);
-        return response()->json([$subcategory, $this->formatSubcategory($subcategory)]);
+        return response()->json(['message' => 'Subcategory fetched successfully', 'data' => $this->formatSubcategory($subcategory)]);
     }
 
     public function getSubcategories(Request $request)
@@ -47,11 +47,62 @@ class SubcategoryController extends ImprovedController
 
 
         return response()->json([
-            'success' => true,
+            'message' => 'Subcategories fetched successfully',
             'location' => $locationName,
             'category' => $categoryName,
             'data' => $subcategories,
         ]);
+    }
+    
+    public function store(Request $request, $categoryId, $locationId)
+    {
+        $validatedData = $request->validate([
+            'name' => 'required|string|max:255',
+            'image_path' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'has_colors' => 'nullable|boolean'
+        ]);
+
+        $validatedData['category_id'] = $categoryId;
+        $validatedData['location_id'] = $locationId;
+
+        $subcategory = Subcategory::create($validatedData);
+
+        return response()->json([
+            'message' => 'Subcategory created successfully',
+            'data' => $subcategory
+        ], 201);
+    }
+
+    public function update(Request $request, $id)
+    {
+        $subcategory = Subcategory::find($id);
+        $name = $request->name;
+
+        if (!$subcategory) {
+            return $this->respondWithError(['message' => "Subcategory not found"], 404);
+        }
+
+        $validatedData = $request->validate([
+            'name' => 'required|string|unique:subcategories,name,'.$id.'|max:255',
+            'image_path' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'has_colors' => 'nullable|boolean',
+        ]);
+
+        $subcategory->update($validatedData);
+        return response()->json([
+            'message'=> "Subcategory updated successfully",
+            'data' => $subcategory,
+        ], 200);
+    }
+
+    public function destroy($id)
+    {
+        $subcategory = Subcategory::find($id);
+        if (!$subcategory) {
+            return $this->respondWithError(['message' => "Subcategory not found"], 404);
+        }
+        $subcategory->delete();
+        return response()->json(['message' => 'Subcategory deleted successfully'], 200);
     }
     
     private function formatSubcategory($subcategory)
@@ -65,6 +116,8 @@ class SubcategoryController extends ImprovedController
         return [
             'id' => $subcategory->id,
             'name' => $subcategory->name,
+            'has_colors' => $subcategory->has_colors,
+            'image_path' => $subcategory->image_path,
             'attributes' => $attributes->map(function ($attribute) {
                 $values = AttributeValue::where('attribute_id', $attribute->id)
                     ->pluck('value')
