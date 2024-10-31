@@ -2,7 +2,6 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\SubcategoryController;
 
 /*
 |--------------------------------------------------------------------------
@@ -24,20 +23,11 @@ Route::prefix('user')->middleware('auth:users-web,users-api')->group(function() 
     });
 });
 
-Route::get('/locations', 'LocationController@getAllLocations');
-Route::get('/colors', 'ColorController@getAllColors');
-Route::get('/{number}/categories', 'CategoryController@getSpecificNumberOfCategories');
-
-Route::prefix('categories')->group(function () {
-    Route::get('/', 'CategoryController@getAllCategories');
-});
-
-Route::prefix('subcategories')->group(function () {
-    Route::get('/', [SubcategoryController::class, 'index']);    // get all subcategories
-    Route::get('/find', [SubcategoryController::class, 'getSubcategories']);
-    Route::get('/{id}', [SubcategoryController::class, 'show']);
-
-});
-
+Route::apiResource('categories', CategoryController::class);
+Route::apiResource('locations', LocationController::class);
+Route::apiResource('colors', ColorController::class);
+Route::get('subcategories/find', 'SubcategoryController@getSubcategories');
+Route::apiResource('subcategories', SubcategoryController::class);
 Route::apiResource('attributes', AttributeController::class);
 Route::apiResource('attributes.values', AttributeValueController::class);
+Route::post('categories/{category_id}/locations/{location_id}/subcategories', [SubcategoryController::class, 'store']);
