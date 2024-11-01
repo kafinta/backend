@@ -14,92 +14,92 @@ class LocationSeeder extends Seeder
         $locations = [
             [
                 'name' => 'Living Room',
-                'image' => '/images/locations/living.jpg'
+                'image_path' => '/images/locations/living.jpg'
             ],
             [
                 'name' => 'Bedroom',
-                'image' => '/images/locations/bedroom.jpg'
+                'image_path' => '/images/locations/bedroom.jpg'
             ],
             [
                 'name' => 'Kitchen',
-                'image' => '/images/locations/kitchen.jpg'
+                'image_path' => '/images/locations/kitchen.jpg'
             ],
             [
                 'name' => 'Dining Room',
-                'image' => '/images/locations/dining.jpg'
+                'image_path' => '/images/locations/dining.jpg'
             ],
             [
                 'name' => 'Bathroom',
-                'image' => '/images/locations/bathroom.jpg'
+                'image_path' => '/images/locations/bathroom.jpg'
             ],
             [
                 'name' => 'Entryway & Hallway',
-                'image' => '/images/locations/hallway.jpg'
+                'image_path' => '/images/locations/hallway.jpg'
             ],
             [
                 'name' => 'Closet & Storage',
-                'image' => '/images/locations/closet.jpg'
+                'image_path' => '/images/locations/closet.jpg'
             ],
             [
                 'name' => 'Home Office',
-                'image' => '/images/locations/office.jpg'
+                'image_path' => '/images/locations/office.jpg'
             ],
             [
                 'name' => 'Children\'s Room',
-                'image' => '/images/locations/nursery.jpg'
+                'image_path' => '/images/locations/nursery.jpg'
             ],
             [
                 'name' => 'Garage & Shed',
-                'image' => '/images/locations/garage.jpg'
+                'image_path' => '/images/locations/garage.jpg'
             ],
             [
                 'name' => 'Porch',
-                'image' => '/images/locations/porch.jpg'
+                'image_path' => '/images/locations/porch.jpg'
             ],
             [
                 'name' => 'Deck & Patio',
-                'image' => '/images/locations/deck.jpeg'
+                'image_path' => '/images/locations/deck.jpeg'
             ],
             [
                 'name' => 'Pool Area',
-                'image' => '/images/locations/pool.jpg'
+                'image_path' => '/images/locations/pool.jpg'
             ],
             [
                 'name' => 'Basement',
-                'image' => '/images/locations/basement.jpg'
+                'image_path' => '/images/locations/basement.jpg'
             ],
             [
                 'name' => 'Attic',
-                'image' => '/images/locations/attic.jpg'
+                'image_path' => '/images/locations/attic.jpg'
             ],
             [
                 'name' => 'Game Room',
-                'image' => '/images/locations/game_room.webp'
+                'image_path' => '/images/locations/game_room.webp'
             ],
             [
                 'name' => 'Utility Room',
-                'image' => '/images/locations/utility.png'
+                'image_path' => '/images/locations/utility.png'
             ],
             [
                 'name' => 'Home theater',
-                'image' => '/images/locations/theatre.jpg'
+                'image_path' => '/images/locations/theatre.jpg'
             ],
             [
                 'name' => 'Home Gym',
-                'image' => '/images/locations/gym.jpg'
+                'image_path' => '/images/locations/gym.jpg'
             ],
             [
                 'name' => 'Driveway & Walkway',
-                'image' => '/images/locations/driveway.jpg'
+                'image_path' => '/images/locations/driveway.jpg'
             ],
             [
                 'name' => 'Outdoor & Exterior',
-                'image' => '/images/locations/exterior.jpg'
+                'image_path' => '/images/locations/exterior.jpg'
             ],
         ];
 
         foreach ($locations as $location) {
-            $location['image'] = Storage::url($location['image']); // Get the public URL for the image
+            $location['image_path'] = Storage::url($location['image_path']); // Get the public URL for the image
             Location::create($location);
         }
     }
