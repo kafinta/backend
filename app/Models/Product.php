@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Item extends Model
+class Product extends Model
 {
     use HasFactory;
 
@@ -19,8 +19,9 @@ class Item extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function images() {
-        return $this->hasMany(Image::class);
+    public function images()
+    {
+        return $this->morphMany(Image::class, 'imageable');
     }
 
     public function variants() {
@@ -33,4 +34,18 @@ class Item extends Model
             ->withPivot('value')
             ->withTimestamps();
     }
+
+    protected $fillable = [
+        'name',
+        'slug',
+        'description',
+        'price',
+        'subcategory_id',
+        'is_active'
+    ];
+
+    protected $casts = [
+        'price' => 'decimal:2',
+        'is_active' => 'boolean',
+    ];
 }
