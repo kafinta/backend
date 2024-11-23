@@ -31,3 +31,7 @@ Route::apiResource('subcategories', SubcategoryController::class);
 Route::apiResource('attributes', AttributeController::class);
 Route::apiResource('attributes.values', AttributeValueController::class);
 Route::post('categories/{category_id}/locations/{location_id}/subcategories', [SubcategoryController::class, 'store']);
+
+// Route::middleware('auth:users-web,users-api')->group(function () {
+    Route::apiResource('products', ProductController::class);
+// });
