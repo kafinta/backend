@@ -16,56 +16,56 @@ class CategorySeeder extends Seeder
     {
         Category::create([
             'name' => 'Furniture',
-            'image_path' => Storage::url('/images/categories/furniture.jpg')
+            'image_path' => Storage::url('/categories/furniture.jpg')
         ]);
         Category::create([
             'name' => 'Lighting',
-            'image_path' => Storage::url('/images/categories/lighting.jpg')
+            'image_path' => Storage::url('/categories/lighting.jpg')
         ]);
         Category::create([
             'name' => 'Décor',
-            'image_path' => Storage::url('/images/categories/decor.jpg')
+            'image_path' => Storage::url('/categories/decor.jpg')
         ]);
         Category::create([
             'name' => 'Entertainment',
-            'image_path' => Storage::url('/images/categories/entertainment.jpg')
+            'image_path' => Storage::url('/categories/entertainment.jpg')
 
         ]);
         Category::create([
             'name' => 'Fabrics',
-            'image_path' => Storage::url('/images/categories/fabrics.jpg')
+            'image_path' => Storage::url('/categories/fabrics.jpg')
         ]);
         Category::create([
             'name' => 'Appliances',
-            'image_path' => Storage::url('/images/categories/appliances.jpg')
+            'image_path' => Storage::url('/categories/appliances.jpg')
         ]);
         Category::create([
             'name' => 'Kitchenware',
-            'image_path' => Storage::url('/images/categories/kitchenware.jpg')
+            'image_path' => Storage::url('/categories/kitchenware.jpg')
         ]);
         Category::create([
             'name' => 'Plumbing Fixtures',
-            'image_path' => Storage::url('/images/categories/plumbing.jpeg'),
+            'image_path' => Storage::url('/categories/plumbing.jpeg'),
         ]);
         Category::create([
             'name' => 'Storage solutions',
-            'image_path' => Storage::url('/images/categories/storage.png')
+            'image_path' => Storage::url('/categories/storage.png')
         ]);
         Category::create([
             'name' => 'Outdoor & Gardening',
-            'image_path' => Storage::url('/images/categories/gardening.jpg')
+            'image_path' => Storage::url('/categories/gardening.jpg')
         ]);
         Category::create([
             'name' => 'Hardware & Tools',
-            'image_path' => Storage::url('/images/categories/hardware.jpg')
+            'image_path' => Storage::url('/categories/hardware.jpg')
         ]);
         Category::create([
             'name' => 'Home Improvement',
-            'image_path' => Storage::url('/images/categories/improvement.jpeg')
+            'image_path' => Storage::url('/categories/improvement.jpeg')
         ]);
         Category::create([
             'name' => 'Personal Care & Hygiene',
-            'image_path' => Storage::url('/images/categories/hygiene.jpg')
+            'image_path' => Storage::url('/categories/hygiene.jpg')
         ]);
     }
 }
