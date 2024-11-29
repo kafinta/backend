@@ -57,9 +57,7 @@ class ImageController extends ImprovedController
             // Delete old image if it exists
             if ($image->path) {
                 $oldPath = str_replace('/storage/', '', $image->path);
-                if (Storage::disk('public')->exists($oldPath)) {
-                    Storage::disk('public')->delete($oldPath);
-                }
+                $this->deleteImage($oldPath);
             }
 
             if (!$request->hasFile('image')) {
@@ -122,8 +120,13 @@ class ImageController extends ImprovedController
 
     private function deleteImage($path)
     {
-        if ($path && Storage::exists($path)) {
-            Storage::delete($path);
+        if ($path && Storage::disk('public')->exists($path)) {
+            Storage::disk('public')->delete($path);
+            return true;
+        }
+        
+        if ($path && file_exists(public_path($path))) {
+            unlink(public_path($path));
             return true;
         }
         return false;
