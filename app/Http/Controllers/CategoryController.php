@@ -36,16 +36,18 @@ class CategoryController extends ImprovedController
 
     public function store(Request $request)
     {
-        \Log::info('Store method called', ['request' => $request->all()]);
-
-        $validatedData = $request->validate([
-            'name' => 'required|string|unique:categories|max:255',
-            'image_path' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-        ]);
+        try {
+            $validatedData = $request->validate([
+                'name' => 'required|string|unique:categories|max:255',
+                'image_path' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $validator) {
+            return $this->validationFailedResponse($validator);
+        }
 
         if ($request->hasFile('image_path')) {
             $image = $request->file('image_path');
-            $imageName = time() . '_' . uniqid() . '_' . $image->getClientOriginalName();
+            $imageName = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
             $path = $image->storeAs('categories', $imageName);
 
             if (!$path) {
@@ -64,10 +66,15 @@ class CategoryController extends ImprovedController
         if (!$category) {
             return $this->respondWithError('Category not found', 404);
         }
-        $validatedData = $request->validate([
-            'name' => 'sometimes|string|unique:categories,name,'.$id.'|max:255',
-            'image_path' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-        ]);
+
+        try {
+            $validatedData = $request->validate([
+                'name' => 'sometimes|string|unique:categories,name,'.$id.'|max:255',
+                'image_path' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $validator) {
+            return $this->validationFailedResponse($validator);
+        }
 
         // Handle image upload if a new image is provided
         if ($request->hasFile('image_path')) {
@@ -81,7 +88,7 @@ class CategoryController extends ImprovedController
 
             // Store the new image
             $image = $request->file('image_path');
-            $imageName = time() . '_' . uniqid() . '_' . $image->getClientOriginalName();
+            $imageName = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
             $path = $image->storeAs('categories', $imageName);
             $validatedData['image_path'] = '/storage/categories/' . $imageName;
         }
@@ -108,5 +115,10 @@ class CategoryController extends ImprovedController
 
         $category->delete();
         return $this->respondWithSuccess('Category deleted successfully', 200);
+    }
+
+    protected function validationFailedResponse($validator)
+    {
+        return $this->respondWithError($validator->errors(), 422, );
     }
 }
