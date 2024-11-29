@@ -16,7 +16,7 @@ class Location extends Model
 
     public function subcategories()
     {
-        return $this->hasMany(Subcategory::class);
+        return $this->belongsToMany(Subcategory::class, 'location_subcategory')->withTimestamps();
     }
 
     protected $fillable = [

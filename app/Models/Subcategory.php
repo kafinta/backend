@@ -29,6 +29,11 @@ class Subcategory extends Model
     return $this->belongsToMany(Attribute::class)->withTimestamps();
   }
 
+  public function locations()
+  {
+    return $this->belongsToMany(Location::class, 'location_subcategory')->withTimestamps();
+  }
+
   protected $fillable = [
     'name',
     'image_path',

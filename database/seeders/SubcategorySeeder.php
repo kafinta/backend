@@ -54,8 +54,8 @@ class SubcategorySeeder extends Seeder
             'name' => 'Sofas & Sectionals',
             'has_colors' => true,
             'category_id' => $furniture->id,
-            'location_id' => $living->id,
-        ]);
+        ])->locations()->attach($living->id);
+        
         Subcategory::create([
             'name' => 'Chairs',
             'has_colors' => true,
@@ -108,8 +108,7 @@ class SubcategorySeeder extends Seeder
             'name' => 'Beds',
             'has_colors' => false,
             'category_id' => $furniture->id,
-            'location_id' => $bedroom->id,
-        ]);
+        ])->locations()->attach($bedroom->id);
         Subcategory::create([
             'name' => 'Nightstands & Bedside Tables',
             'has_colors' => true,
