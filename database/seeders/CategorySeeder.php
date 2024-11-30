@@ -40,11 +40,7 @@ class CategorySeeder extends Seeder
             'image_path' => Storage::url('/categories/appliances.jpg')
         ]);
         Category::create([
-            'name' => 'Kitchenware',
-            'image_path' => Storage::url('/categories/kitchenware.jpg')
-        ]);
-        Category::create([
-            'name' => 'Plumbing Fixtures',
+            'name' => 'Fixtures',
             'image_path' => Storage::url('/categories/plumbing.jpeg'),
         ]);
         Category::create([

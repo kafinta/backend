@@ -45,7 +45,7 @@ class LocationSeeder extends Seeder
                 'image_path' => '/locations/office.jpg'
             ],
             [
-                'name' => 'Children\'s Room',
+                'name' => 'Children\'s Room & Nursery',
                 'image_path' => '/locations/nursery.jpg'
             ],
             [
@@ -77,8 +77,8 @@ class LocationSeeder extends Seeder
                 'image_path' => '/locations/game_room.webp'
             ],
             [
-                'name' => 'Utility Room',
-                'image_path' => '/locations/utility.png'
+                'name' => 'Laundry Room',
+                'image_path' => '/locations/laundry.png'
             ],
             [
                 'name' => 'Home theater',

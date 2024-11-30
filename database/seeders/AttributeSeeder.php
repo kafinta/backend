@@ -60,8 +60,8 @@ class AttributeSeeder extends Seeder
     $massage_technique = Attribute::create(['name' => 'Massage Technique']);
 
 
-    $sofasandsectionals = Subcategory::where('name', 'Sofas & Sectionals')->first();
-    $futonsandaccessories = Subcategory::where('name', 'Futons & Accessories')->first();
+    $sofasandsectionals = Subcategory::where('name', 'Sofas and Couches')->first();
+    $futonsandaccessories = Subcategory::where('name', 'Futons')->first();
 
     // generalAttributes
     $generalAttributes = [
