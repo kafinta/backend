@@ -9,10 +9,80 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\ImageController;   
 use Illuminate\Support\Facades\Log;
-
+use App\Traits\MultiStepFormTrait;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
+use App\Services\MultiStepFormService;
 
 class ProductController extends ImprovedController
 {
+    // use MultiStepFormTrait;
+
+    // protected function getStepValidationRules(): array
+    // {
+    //     return [
+    //         'product_info' => [
+    //             'name' => 'required|string|max:255',
+    //             'description' => 'required|string',
+    //             'price' => 'required|numeric|min:0',
+    //             'subcategory_id' => 'required|exists:subcategories,id',
+    //         ],
+    //         'image_info' => [
+    //             'images.*' => 'sometimes|file|image|max:2048'
+    //         ]
+    //     ];
+    // }
+
+    // protected function getStepSequence(): array
+    // {
+    //     return ['product_info', 'image_info'];
+    // }
+
+
+
+
+    protected $multiStepFormService;
+
+    public function __construct(MultiStepFormService $multiStepFormService)
+    {
+        $this->multiStepFormService = $multiStepFormService;
+    }
+
+    // Define step validation rules
+    protected function getStepValidationRules(): array
+    {
+        return [
+            'product_info' => [
+                'name' => 'required|string|max:255',
+                'description' => 'required|string',
+                'price' => 'required|numeric|min:0',
+                'subcategory_id' => 'required|exists:subcategories,id',
+            ],
+            'image_info' => [
+                'images.*' => 'required|file|image|max:2048',
+                'name' => 'required|string|max:255',
+                'description' => 'required|string',
+                'price' => 'required|numeric|min:0',
+                'subcategory_id' => 'required|exists:subcategories,id',
+            ]
+        ];
+    }
+
+    // Define step sequence
+    protected function getStepSequence(): array
+    {
+        return ['product_info', 'image_info'];
+    }
+
+
+
+
+
+
+
+
+
+
 
     public function index()
     {
@@ -28,43 +98,53 @@ class ProductController extends ImprovedController
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'required|string',
-            'price' => 'required|numeric|min:0',
-            'subcategory_id' => 'required|exists:subcategories,id',
-        ]);
-
-        DB::beginTransaction();
         try {
-            $product = Product::create($validated);
-            $imageResults = [
-                'messages' => ['No images were uploaded'],
-                'images' => []
-            ];
-    
-            if ($request->hasFile('images')) {
-                $imageResults = $this->storeImages($request, $product);
-            }
-    
-            DB::commit();
+            $data = $request->all();
+            $currentStep = $request->input('current_step');
 
-            $product = $product->fresh(['images']);
-            return $this->respondWithSuccess(
-                [
-                    'product' => 'Product created successfully',
-                    'images' => $imageResults['messages']
-                ], 
-                201, 
-                $product
+            // Handle current step
+            $result = $this->multiStepFormService->handleFormStep(
+                $data, 
+                $currentStep, 
+                $this->getStepValidationRules(), 
+                $this->getStepSequence()
             );
 
+            // Log session data for debugging
+            Log::info('Session Data:', session('multistep_form'));
+
+            // If there is a next step, return the response
+            if ($result['next_step']) {
+                return response()->json($result);
+            }
+
+            // If no next step, process the final submission
+            $product = $this->multiStepFormService->submitMultiStepForm(
+                $this->getStepValidationRules(), 
+                function($formData) {
+                    // Create the product
+                    $product = Product::create($formData['product_info']);
+                    
+                    // Store images if provided
+                    if (isset($formData['image_info']['images'])) {
+                        $this->storeImages(request(), $product);
+                    }
+                    
+                    return $product->fresh(['images']);
+                }
+            );
+
+            return $this->respondWithSuccess('Product created successfully', 201, $product);
+
+        } catch (ValidationException $e) {
+            return response()->json([
+                'status' => 'error',
+                'errors' => $e->errors()
+            ], 422);
         } catch (\Exception $e) {
-            DB::rollBack();
-            return $this->respondWithError('Product creation failed', 500, $e->getMessage());
+            return $this->respondWithError($e->getMessage(), 500);
         }
     }
-
 
     public function show($id)
     {
@@ -284,4 +364,6 @@ class ProductController extends ImprovedController
 
         return response()->json(['message' => 'No new images to update']);
     }
+
+
 }
