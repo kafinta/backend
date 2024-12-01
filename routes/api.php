@@ -22,6 +22,7 @@ Route::prefix('user')->middleware('auth:users-web,users-api')->group(function() 
         Route::post('/update', 'ProfileController@updateProfile');
     });
 });
+Route::get('{number}/categories', 'CategoryController@getSpecificNumberOfCategories');
 
 Route::apiResource('categories', CategoryController::class);
 Route::apiResource('locations', LocationController::class);
@@ -30,7 +31,6 @@ Route::get('subcategories/find', 'SubcategoryController@getSubcategories');
 Route::apiResource('subcategories', SubcategoryController::class);
 Route::apiResource('attributes', AttributeController::class);
 Route::apiResource('attributes.values', AttributeValueController::class);
-Route::post('categories/{category_id}/locations/{location_id}/subcategories', [SubcategoryController::class, 'store']);
 
 // Route::middleware('auth:users-web,users-api')->group(function () {
     Route::apiResource('products', ProductController::class);

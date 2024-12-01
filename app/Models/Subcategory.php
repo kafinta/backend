@@ -39,6 +39,5 @@ class Subcategory extends Model
     'image_path',
     'has_colors',
     'category_id',
-    'location_id',
   ];
 }

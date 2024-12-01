@@ -13,98 +13,160 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 
-class SubcategoryController extends Controller
+class SubcategoryController extends ImprovedController
 {
-    public function index()
+    public function index(Request $request)
     {
-        $subcategories = Subcategory::all();
-        return response()->json(['message' => 'Subcategories fetched successfully', 'data' => $subcategories]);
+        $query = Subcategory::with(['locations', 'category']); // Eager load locations and category
+
+        $categoryName = null;
+        $locationName = null;
+
+        // Filter by category if provided
+        if ($request->has('category_id')) {
+            $query->where('category_id', $request->input('category_id'));
+            $category = Category::find($request->input('category_id'));
+            $categoryName = $category ? $category->name : null; // Get category name
+        }
+
+        // Filter by locations if provided
+        if ($request->has('location_id')) {
+            $query->whereHas('locations', function ($q) use ($request) {
+                $q->where('location_id', $request->input('location_id'));
+            });
+            $location = Location::find($request->input('location_id'));
+            $locationName = $location ? $location->name : null; // Get location name
+        }
+
+        $subcategories = $query->get();
+
+        // Format the response to include the filtered category and location names
+        $data = [
+            'category' => $categoryName,
+            'location' => $locationName,
+            'subcategories' => $subcategories->map(function ($subcategory) {
+                return [
+                    'id' => $subcategory->id,
+                    'name' => $subcategory->name,
+                    'has_colors' => $subcategory->has_colors,
+                ];
+            })
+        ];
+
+        return $this->respondWithSuccess('Subcategories fetched successfully', 200, $data);
     }
 
     public function show($id)
     {
-        $subcategory = Subcategory::findOrFail($id);
-        return response()->json(['message' => 'Subcategory fetched successfully', 'data' => $this->formatSubcategory($subcategory)]);
+        try {
+            $subcategory = Subcategory::with('locations')->findOrFail($id);
+            return $this->respondWithSuccess('Subcategory fetched successfully', 200, [
+                'subcategory' => $this->formatSubcategory($subcategory),
+                'locations' => $subcategory->locations
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return $this->respondWithError('Subcategory not found', 404);
+        }
     }
 
-    public function getSubcategories(Request $request)
+    public function store(Request $request)
     {
-        $query = Subcategory::query();
-
-        if ($request->query('category_id')) {
-            $categoryId = (int)$request->query('category_id');
-            $query->where('category_id', $categoryId);
-            $categoryName = Category::find($categoryId)?->name;        
+        try {
+            $validatedData = $request->validate([
+                'name' => 'required|string|unique:subcategories|max:255',
+                'has_colors' => 'required|boolean',
+                'image_path' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+                'category_id' => 'required|exists:categories,id'
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $validator) {
+            return $this->validationFailedResponse($validator);
         }
 
-        if ($request->query('location_id')) {
-            $locationId = (int)$request->query('location_id');
-            $query->where('location_id', $locationId);
-            $locationName = Location::find($locationId)?->name;       
+        if ($request->hasFile('image_path')) {
+            $image = $request->file('image_path');
+            $imageName = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
+            $path = $image->storeAs('subcategories', $imageName);
+
+            if (!$path) {
+                return $this->respondWithError('Image upload failed', 500);
+            }
+
+            $validatedData['image_path'] = '/storage/subcategories/' . $imageName;
         }
-
-        $subcategories = $query->select('id', 'name')->get();
-
-
-        return response()->json([
-            'message' => 'Subcategories fetched successfully',
-            'location' => $locationName,
-            'category' => $categoryName,
-            'data' => $subcategories,
-        ]);
-    }
-    
-    public function store(Request $request, $categoryId, $locationId)
-    {
-        $validatedData = $request->validate([
-            'name' => 'required|string|max:255',
-            'image_path' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-            'has_colors' => 'nullable|boolean'
-        ]);
-
-        $validatedData['category_id'] = $categoryId;
-        $validatedData['location_id'] = $locationId;
-
         $subcategory = Subcategory::create($validatedData);
 
-        return response()->json([
-            'message' => 'Subcategory created successfully',
-            'data' => $subcategory
-        ], 201);
+        // Attach locations if provided
+        if ($request->has('locations')) {
+            $subcategory->locations()->attach($request->input('locations'));
+        }
+
+        return $this->respondWithSuccess('Subcategory created successfully', 201, $subcategory);
     }
 
     public function update(Request $request, $id)
     {
-        $subcategory = Subcategory::find($id);
-        $name = $request->name;
+        $subcategory = Subcategory::findOrFail($id);
 
-        if (!$subcategory) {
-            return $this->respondWithError(['message' => "Subcategory not found"], 404);
+        try {
+            $validatedData = $request->validate([
+                'name' => 'sometimes|string|unique:subcategories,name,'.$subcategory->id.'|max:255',
+                'has_colors' => 'sometimes|boolean',
+                'image_path' => 'sometimes|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+                'category_id' => 'sometimes|exists:categories,id',
+                'locations' => 'sometimes|array',
+                'locations.*' => 'integer|exists:locations,id'
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $validator) {
+            return $this->validationFailedResponse($validator);
         }
 
-        $validatedData = $request->validate([
-            'name' => 'required|string|unique:subcategories,name,'.$id.'|max:255',
-            'image_path' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-            'has_colors' => 'nullable|boolean',
-        ]);
+        // Handle image upload if a new image is provided
+        if ($request->hasFile('image_path')) {
+            // Delete the old image if it exists
+            if ($subcategory->image_path) {
+                $oldImagePath = public_path($subcategory->image_path);
+                if (file_exists($oldImagePath)) {
+                    unlink($oldImagePath);
+                }
+            }
 
+            // Store the new image
+            $image = $request->file('image_path');
+            $imageName = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
+            $validatedData['image_path'] = '/storage/subcategories/' . $imageName; // Set the new image path
+
+            // Save the new image to the storage
+            $image->storeAs('subcategories', $imageName);
+        }
+
+        // Update the subcategory with the validated data
         $subcategory->update($validatedData);
-        return response()->json([
-            'message'=> "Subcategory updated successfully",
-            'data' => $subcategory,
-        ], 200);
+
+        // Update locations if provided
+        if ($request->has('locations')) {
+            $subcategory->locations()->sync($request->input('locations')); // Sync locations
+        }
+
+        return $this->respondWithSuccess('Subcategory updated successfully', 200, $subcategory);
     }
 
     public function destroy($id)
     {
-        $subcategory = Subcategory::find($id);
-        if (!$subcategory) {
-            return $this->respondWithError(['message' => "Subcategory not found"], 404);
+        $subcategory = Subcategory::findOrFail($id);
+
+        // Delete the associated image if it exists
+        if ($subcategory->image_path) {
+            $oldImagePath = public_path($subcategory->image_path);
+            if (file_exists($oldImagePath)) {
+                unlink($oldImagePath); // Delete the file from the public/categories folder
+            }
         }
+
         $subcategory->delete();
-        return response()->json(['message' => 'Subcategory deleted successfully'], 200);
+        return $this->respondWithSuccess('Subcategory deleted successfully', 200);
     }
     
+
     private function formatSubcategory($subcategory)
     {
         $attributes = DB::table('attributes')
@@ -130,5 +192,10 @@ class SubcategoryController extends Controller
                 ];
             })
         ];
+    }
+
+    protected function validationFailedResponse($validator)
+    {
+        return $this->respondWithError($validator->errors(), 422, );
     }
 }
