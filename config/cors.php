@@ -15,11 +15,11 @@ return [
     |
     */
 
-    'paths' => ['api/*', 'sanctum/csrf-cookie', 'user/auth/login', 'user/auth/signup'],
+    'paths' => ['api/*'],
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['https://www.kafinta.com/', '*'],
+    'allowed_origins' => ['*'],
 
     'allowed_origins_patterns' => [],
 
