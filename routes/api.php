@@ -14,12 +14,18 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+Route::prefix('user')->group(function() {
+    Route::post('register', 'UserController@register');
+    Route::post('login', 'UserController@login');
+});
 
-Route::prefix('user')->middleware('auth:users-web,users-api')->group(function() {
-    Route::prefix('profile')->group(function() {
-        Route::post('/', 'ProfileController@createProfile');
-        Route::get('/', 'ProfileController@getProfile');
-        Route::post('/update', 'ProfileController@updateProfile');
+Route::middleware('auth:sanctum')->group(function() {
+    Route::prefix('user')->group(function() {
+        Route::prefix('profile')->group(function() {
+            Route::post('/', 'ProfileController@createProfile');
+            Route::get('/', 'ProfileController@getProfile');
+            Route::post('/update', 'ProfileController@updateProfile');
+        });
     });
 });
 Route::get('{number}/categories', 'CategoryController@getSpecificNumberOfCategories');
@@ -32,6 +38,6 @@ Route::apiResource('subcategories', SubcategoryController::class);
 Route::apiResource('attributes', AttributeController::class);
 Route::apiResource('attributes.values', AttributeValueController::class);
 
-// Route::middleware('auth:users-web,users-api')->group(function () {
+Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('products', ProductController::class);
-// });
+});

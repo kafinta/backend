@@ -16,80 +16,67 @@ class UserController extends ImprovedController
 {
     use ReferenceGeneratorTrait;
 
-    public function signup(Request $request){
-
+    public function register(Request $request)
+    {
         try {
             $validator = $this->validateUserInfo();
 
-            if($validator->fails()){
+            if ($validator->fails()) {
                 return $this->respondWithValidationError($validator->messages()->first(), 422);
             }
-    
+
             DB::beginTransaction();
-    
-            $createUser = User::create([
+
+            $user = User::create([
                 'email' => $request->email,
                 'username' => $request->username,
                 'password' => Hash::make($request->password),
             ]);
-    
-            if (Auth::guard('users-web')->attempt(['email' => $request->email, 'password' => $request->password])) {
-                DB::commit();
-                $user = auth()->guard('users-web')->user();
-                
-                $dataToReturn = [
-                    'account' => new UserAccountResource($user),
-                ]; 
-        
-                $request->session()->regenerate();
-                return response()->json([
-                    'message' => "Account Created Successfully",
-                    'data' => $dataToReturn
-                ], 200);
-            } else {
-                DB::rollBack();
-                return $this->respondWithError("Something went wrong", 503);
-            }
-        } catch (\Exception $e) {
+
+            DB::commit();
+            
+            $token = $user->createToken('auth_token')->plainTextToken;
+            
             return response()->json([
-                'message' => $e->getMessage()
-            ], 500);
+                'message' => "Account Created Successfully",
+                'data' => [
+                    'account' => new UserAccountResource($user),
+                    'access_token' => $token,
+                    'token_type' => 'Bearer'
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
             return $this->exceptionError($e->getMessage(), 500);
         }
     }
 
     public function login(Request $request)
     {
-
         try {
             $credentials = $request->validate([
                 'email' => ['required', 'email'],
                 'password' => ['required'],
             ]);
 
-            if (!$credentials) {
-                return $this->respondWithError("Email or Password is Required", 422);
+            if (!Auth::attempt($credentials)) {
+                return $this->respondWithError("Email or Password is Incorrect", 401);
             }
 
-            if (Auth::guard('users-web')->attempt($credentials)) {
-                $user = auth()->guard('users-web')->user();
-                
-                $dataToReturn = [
-                    'account' => new UserAccountResource($user),
-                ]; 
-        
-                $request->session()->regenerate();
-                return response()->json([
-                    'message' => "Account Logged In Successfully",
-                    'data' => $dataToReturn
-                ], 200);
-            } else {
-                return $this->respondWithError("Email or Password is Incorrect", 403);
-            }
-        } catch (\Exception $e) {
+            $user = User::where('email', $request->email)->firstOrFail();
+            $token = $user->createToken('auth_token')->plainTextToken;
+
             return response()->json([
-                'message' => $e->getMessage()
-            ], 500);
+                'message' => "Account Logged In Successfully",
+                'data' => [
+                    'account' => new UserAccountResource($user),
+                    'access_token' => $token,
+                    'token_type' => 'Bearer'
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
             return $this->exceptionError($e->getMessage(), 500);
         }
     }
