@@ -16,65 +16,25 @@ use App\Services\MultiStepFormService;
 
 class ProductController extends ImprovedController
 {
-    // use MultiStepFormTrait;
-
-    // protected function getStepValidationRules(): array
-    // {
-    //     return [
-    //         'product_info' => [
-    //             'name' => 'required|string|max:255',
-    //             'description' => 'required|string',
-    //             'price' => 'required|numeric|min:0',
-    //             'subcategory_id' => 'required|exists:subcategories,id',
-    //         ],
-    //         'image_info' => [
-    //             'images.*' => 'sometimes|file|image|max:2048'
-    //         ]
-    //     ];
-    // }
-
-    // protected function getStepSequence(): array
-    // {
-    //     return ['product_info', 'image_info'];
-    // }
-
-
-
 
     protected $multiStepFormService;
 
-    public function __construct(MultiStepFormService $multiStepFormService)
+    public function __construct(MultistepFormService $formService) 
     {
-        $this->multiStepFormService = $multiStepFormService;
+        $this->formService = $formService;
+        $this->middleware('auth:sanctum');
+        
+        $this->formService->addStep('details', [
+            'name' => 'required|string',
+            'description' => 'required|string',
+            'price' => 'required|numeric|min:0',
+            'subcategory_id' => 'required|exists:subcategories,id',
+        ])
+        ->addStep('images', [
+            'images' => 'required|array',
+            'images.*' => 'image|max:2048'
+        ]);
     }
-
-    // Define step validation rules
-    protected function getStepValidationRules(): array
-    {
-        return [
-            'product_info' => [
-                'name' => 'required|string|max:255',
-                'description' => 'required|string',
-                'price' => 'required|numeric|min:0',
-                'subcategory_id' => 'required|exists:subcategories,id',
-            ],
-            'image_info' => [
-                'images.*' => 'required|file|image|max:2048',
-                'name' => 'required|string|max:255',
-                'description' => 'required|string',
-                'price' => 'required|numeric|min:0',
-                'subcategory_id' => 'required|exists:subcategories,id',
-            ]
-        ];
-    }
-
-    // Define step sequence
-    protected function getStepSequence(): array
-    {
-        return ['product_info', 'image_info'];
-    }
-
-
 
 
 
@@ -95,57 +55,88 @@ class ProductController extends ImprovedController
         return $this->respondWithSuccess('Products fetched successfully', 200, $products);
     }
 
+    
 
     public function store(Request $request)
     {
         try {
-            $data = $request->all();
-            $currentStep = $request->input('current_step');
-
-            // Handle current step
-            $result = $this->multiStepFormService->handleFormStep(
-                $data, 
-                $currentStep, 
-                $this->getStepValidationRules(), 
-                $this->getStepSequence()
-            );
-
-            // Log session data for debugging
-            Log::info('Session Data:', session('multistep_form'));
-
-            // If there is a next step, return the response
-            if ($result['next_step']) {
-                return response()->json($result);
+            $result = $this->formService->process($request);
+            
+            if (!$result['success']) {
+                return response()->json([
+                    'status' => 'error',
+                    'errors' => $result['errors']
+                ], 422);
             }
-
-            // If no next step, process the final submission
-            $product = $this->multiStepFormService->submitMultiStepForm(
-                $this->getStepValidationRules(), 
-                function($formData) {
-                    // Create the product
-                    $product = Product::create($formData['product_info']);
-                    
-                    // Store images if provided
-                    if (isset($formData['image_info']['images'])) {
-                        $this->storeImages(request(), $product);
+            
+            if (!$result['completed']) {
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Step completed successfully',
+                    'next_step' => $result['nextStep']
+                ]);
+            }
+            
+            // If we reach here, the form is completed and we can create the product
+            $formData = $result['data'];
+            
+            DB::beginTransaction();
+            try {
+                // Create the product
+                $product = Product::create([
+                    'name' => $formData['details']['name'],
+                    'description' => $formData['details']['description'],
+                    'price' => $formData['details']['price'],
+                    'subcategory_id' => $formData['details']['subcategory_id'],
+                    'user_id' => auth()->id()
+                ]);
+                
+                // Handle images using existing storeImages method
+                if (isset($formData['images']['images'])) {
+                    $files = [];
+                    foreach ($formData['images']['images'] as $imageData) {
+                        $path = Storage::disk('public')->path($imageData['path']);
+                        $files[] = new \Illuminate\Http\UploadedFile(
+                            $path,
+                            $imageData['original_name'],
+                            $imageData['mime_type'],
+                            null,
+                            true
+                        );
                     }
                     
-                    return $product->fresh(['images']);
+                    // Create a new request with the reconstructed files
+                    $imageRequest = new Request();
+                    $imageRequest->files->set('images', $files);
+                    
+                    $imageResult = $this->storeImages($imageRequest, $product);
+                    
+                    // Clean up temporary files
+                    foreach ($formData['images']['images'] as $imageData) {
+                        Storage::disk('public')->delete($imageData['path']);
+                    }
                 }
-            );
-
-            return $this->respondWithSuccess('Product created successfully', 201, $product);
-
-        } catch (ValidationException $e) {
+                
+                DB::commit();
+                
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Product created successfully',
+                    'data' => $product->fresh(['images']),
+                    'images' => $imageResult ?? ['messages' => ['No images processed']]
+                ], 201);
+                
+            } catch (\Exception $e) {
+                DB::rollBack();
+                throw $e;
+            }
+        } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'errors' => $e->errors()
-            ], 422);
-        } catch (\Exception $e) {
-            return $this->respondWithError($e->getMessage(), 500);
+                'message' => $e->getMessage()
+            ], 500);
         }
     }
-
     public function show($id)
     {
         // Use findOrFail to get a proper 404 if product doesn't exist
@@ -160,8 +151,14 @@ class ProductController extends ImprovedController
     public function update(Request $request, $id)
     {
         $product = Product::find($id);
+        
         if (!$product) {
             return $this->respondWithError('Product not found', 404);
+        }
+
+        // Check if the authenticated user owns this product
+        if ($product->user_id !== auth()->id()) {
+            return $this->respondWithError('Unauthorized', 403);
         }
 
         $validated = $request->validate([
@@ -250,8 +247,14 @@ class ProductController extends ImprovedController
     public function destroy($id)
     {
         $product = Product::find($id);
+        
         if (!$product) {
             return $this->respondWithError('Product not found', 404);
+        }
+
+        // Check if the authenticated user owns this product
+        if ($product->user_id !== auth()->id()) {
+            return $this->respondWithError('Unauthorized', 403);
         }
 
         DB::beginTransaction();
@@ -286,7 +289,34 @@ class ProductController extends ImprovedController
 
 
 
+    public function resumeForm()
+    {
+        $formProgress = $this->multiStepFormService->resumeMultiStepForm();
+        
+        if ($formProgress) {
+            return response()->json([
+                'status' => 'success',
+                'current_step' => $formProgress['current_step'],
+                'form_data' => $formProgress['form_data']
+            ]);
+        }
+        
+        return response()->json([
+            'status' => 'error',
+            'message' => 'No form in progress'
+        ], 404);
+    }
 
+    // Method to clear form progress
+    public function clearFormProgress()
+    {
+        $this->multiStepFormService->clearMultiStepForm();
+        
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Form progress cleared'
+        ]);
+    }
 
 
 
