@@ -41,11 +41,11 @@ class Product extends Model
         'description',
         'price',
         'subcategory_id',
-        'is_active'
+        'user_id'
     ];
 
     protected $casts = [
         'price' => 'decimal:2',
-        'is_active' => 'boolean',
+        // 'is_active' => 'boolean',
     ];
 }
