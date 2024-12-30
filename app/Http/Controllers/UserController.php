@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
 use App\Traits\ReferenceGeneratorTrait;
+use Illuminate\Support\Facades\Log;
 
 class UserController extends ImprovedController
 {
@@ -36,7 +37,11 @@ class UserController extends ImprovedController
             DB::commit();
             
             $token = $user->createToken('auth_token')->plainTextToken;
-            
+            Log::info('Token generated', [
+                'user_id' => $user->id,
+                'token_type' => explode('|', $token)[0],
+                'token_length' => strlen($token)
+            ]);
             return response()->json([
                 'message' => "Account Created Successfully",
                 'data' => [
@@ -71,7 +76,7 @@ class UserController extends ImprovedController
                 'message' => "Account Logged In Successfully",
                 'data' => [
                     'account' => new UserAccountResource($user),
-                    'access_token' => $token,
+                    'auth_token' => $token,
                     'token_type' => 'Bearer'
                 ]
             ], 200);

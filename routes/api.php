@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 
 /*
 |--------------------------------------------------------------------------
@@ -19,7 +20,7 @@ Route::prefix('user')->group(function() {
     Route::post('login', 'UserController@login');
 });
 
-Route::middleware('auth:sanctum')->group(function() {
+Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('user')->group(function() {
         Route::prefix('profile')->group(function() {
             Route::post('/', 'ProfileController@createProfile');
@@ -27,6 +28,7 @@ Route::middleware('auth:sanctum')->group(function() {
             Route::post('/update', 'ProfileController@updateProfile');
         });
     });
+    Route::post('/products', [ProductController::class, 'store']);
 });
 Route::get('{number}/categories', 'CategoryController@getSpecificNumberOfCategories');
 
@@ -37,7 +39,4 @@ Route::get('subcategories/find', 'SubcategoryController@getSubcategories');
 Route::apiResource('subcategories', SubcategoryController::class);
 Route::apiResource('attributes', AttributeController::class);
 Route::apiResource('attributes.values', AttributeValueController::class);
-
-Route::middleware('auth:sanctum')->group(function () {
-    Route::apiResource('products', ProductController::class);
-});
+Route::apiResource('products', ProductController::class);
