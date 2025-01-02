@@ -3,7 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
-
+use App\Http\Controllers\ProductController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -28,8 +28,13 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/update', 'ProfileController@updateProfile');
         });
     });
-    Route::post('/products', [ProductController::class, 'store']);
-    Route::put('/products/{product}', [ProductController::class, 'update']);
+
+    Route::prefix('products')->group(function() {
+        Route::post('/', [ProductController::class, 'store']);
+        Route::put('/{id}', [ProductController::class, 'update']);
+        Route::delete('/{id}', [ProductController::class, 'destroy']);
+        Route::get('resume-form', [ProductController::class, 'resumeForm']);
+    });
 });
 Route::get('{number}/categories', 'CategoryController@getSpecificNumberOfCategories');
 
@@ -40,4 +45,6 @@ Route::get('subcategories/find', 'SubcategoryController@getSubcategories');
 Route::apiResource('subcategories', SubcategoryController::class);
 Route::apiResource('attributes', AttributeController::class);
 Route::apiResource('attributes.values', AttributeValueController::class);
-Route::apiResource('products', ProductController::class);
+Route::get('products', [ProductController::class, 'index']);
+Route::get('products/{id}', [ProductController::class, 'show']);
+
