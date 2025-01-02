@@ -36,24 +36,16 @@ class UserController extends ImprovedController
 
             DB::commit();
             
-            $token = $user->createToken('auth_token')->plainTextToken;
-            Log::info('Token generated', [
-                'user_id' => $user->id,
-                'token_type' => explode('|', $token)[0],
-                'token_length' => strlen($token)
+            $token = $user->createToken('auth_token', ['*'])->plainTextToken;
+            return $this->respondWithSuccess("Account Created Successfully", 200, [
+                'account' => new UserAccountResource($user),
+                'auth_token' => $token,
+                'token_type' => 'Bearer'
             ]);
-            return response()->json([
-                'message' => "Account Created Successfully",
-                'data' => [
-                    'account' => new UserAccountResource($user),
-                    'access_token' => $token,
-                    'token_type' => 'Bearer'
-                ]
-            ], 200);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return $this->exceptionError($e->getMessage(), 500);
+            return $this->respondWithError($e->getMessage(), 500);
         }
     }
 
@@ -70,19 +62,16 @@ class UserController extends ImprovedController
             }
 
             $user = User::where('email', $request->email)->firstOrFail();
-            $token = $user->createToken('auth_token')->plainTextToken;
+            $token = $user->createToken('auth_token', ['*'])->plainTextToken;
 
-            return response()->json([
-                'message' => "Account Logged In Successfully",
-                'data' => [
-                    'account' => new UserAccountResource($user),
-                    'auth_token' => $token,
-                    'token_type' => 'Bearer'
-                ]
-            ], 200);
+            return $this->respondWithSuccess("Account Logged In Successfully", 200, [
+                'account' => new UserAccountResource($user),
+                'auth_token' => $token,
+                'token_type' => 'Bearer'
+            ]);
 
         } catch (\Exception $e) {
-            return $this->exceptionError($e->getMessage(), 500);
+            return $this->respondWithError($e->getMessage(), 500);
         }
     }
 
@@ -93,5 +82,19 @@ class UserController extends ImprovedController
             'username' => 'required|unique:users',
             'password' => 'required|min:8'
         ]);
+    }
+
+    public function rotateToken(Request $request)
+    {
+        // Revoke current token
+        $request->user()->currentAccessToken()->delete();
+        
+        // Create new token
+        $token = $request->user()->createToken('auth_token', ['*'])->plainTextToken;
+        return $this->respondWithSuccess('Token rotated successfully', 200, [
+            'auth_token' => $token,
+            'token_type' => 'Bearer'
+        ]);
+
     }
 }

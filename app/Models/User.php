@@ -8,6 +8,8 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Auth\Authenticatable as AuthenticableTrait;
+use Illuminate\Support\Str;
+use Laravel\Sanctum\NewAccessToken;
 
 class User extends Model implements Authenticatable
 {
@@ -76,5 +78,16 @@ class User extends Model implements Authenticatable
     public function sellerProfile()
     {
         return $this->hasOne(Seller::class);
+    }
+
+    public function createToken(string $name, array $abilities = ['*'])
+    {
+        $token = $this->tokens()->create([
+            'name' => $name,
+            'token' => hash('sha256', $plainTextToken = Str::random(64)),
+            'abilities' => $abilities,
+        ]);
+
+        return new NewAccessToken($token, $token->getKey() . '|' . $plainTextToken);
     }
 }
