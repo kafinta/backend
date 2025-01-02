@@ -25,13 +25,13 @@ class ProductController extends ImprovedController
         $this->middleware('auth:sanctum');
         
         $this->formService->addStep('details', [
-            'name' => 'required|string',
-            'description' => 'required|string',
-            'price' => 'required|numeric|min:0',
-            'subcategory_id' => 'required|exists:subcategories,id',
+            'name' => 'sometimes|string',
+            'description' => 'sometimes|string',
+            'price' => 'sometimes|numeric|min:0',
+            'subcategory_id' => 'sometimes|exists:subcategories,id',
         ])
         ->addStep('images', [
-            'images' => 'required|array',
+            'images' => 'sometimes|array',
             'images.*' => 'image|max:2048'
         ]);
     }
@@ -148,98 +148,99 @@ class ProductController extends ImprovedController
         }
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, Product $product)
     {
-        $product = Product::find($id);
-        
-        if (!$product) {
-            return $this->respondWithError('Product not found', 404);
-        }
-
-        // Check if the authenticated user owns this product
-        if ($product->user_id !== auth()->id()) {
-            return $this->respondWithError('Unauthorized', 403);
-        }
-
-        $validated = $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'description' => 'sometimes|string',
-            'price' => 'sometimes|numeric|min:0',
-            'subcategory_id' => 'sometimes|exists:subcategories,id',
-            'image.*' => 'sometimes|file|image|max:2048'
-        ]);
-
-        DB::beginTransaction();
         try {
-            // Update product details
-            $data = $request->except(['image', 'image.*']);
-            $product->update($data);
-
-            $imageResults = [
-                'messages' => ['No images were updated'],
-                'images' => []
-            ];
+            $result = $this->formService->process($request);
             
-            // Handle image updates - works with both PUT and POST
-            if ($request->hasFile('image')) {
-                $messages = [];
-                $successCount = 0;
-                $failureCount = 0;
-                
-                foreach ($request->file('image') as $imageId => $imageFile) {
-                    try {
-                        $image = $product->images()->find($imageId);
-                        if (!$image) {
-                            throw new \Exception("Image not found");
-                        }
-
-                        $newRequest = new Request();
-                        $newRequest->files->set('image', $imageFile);
-                        
-                        $imageController = new ImageController();
-                        $imageController->update($newRequest, $image);
-                        
-                        $successCount++;
-                        $messages[] = [
-                            'status' => 'success',
-                            'index' => $imageId,
-                            'message' => "Image {$imageId} updated successfully"
-                        ];
-                    } catch (\Exception $e) {
-                        $failureCount++;
-                        $messages[] = [
-                            'status' => 'error',
-                            'index' => $imageId,
-                            'message' => "Failed to update image {$imageId}: " . $e->getMessage()
-                        ];
+            if (!$result['success']) {
+                return response()->json([
+                    'status' => 'error',
+                    'errors' => $result['errors']
+                ], 422);
+            }
+            
+            if (!$result['completed']) {
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Step completed successfully',
+                    'next_step' => $result['nextStep']
+                ]);
+            }
+            
+            // If we reach here, the form is completed and we can update the product
+            $formData = $result['data'];
+            
+            DB::beginTransaction();
+            try {
+                // Update only the provided fields
+                if (isset($formData['details'])) {
+                    $updateData = [];
+                    if (isset($formData['details']['name'])) {
+                        $updateData['name'] = $formData['details']['name'];
+                    }
+                    if (isset($formData['details']['description'])) {
+                        $updateData['description'] = $formData['details']['description'];
+                    }
+                    if (isset($formData['details']['price'])) {
+                        $updateData['price'] = $formData['details']['price'];
+                    }
+                    if (isset($formData['details']['subcategory_id'])) {
+                        $updateData['subcategory_id'] = $formData['details']['subcategory_id'];
+                    }
+                    
+                    if (!empty($updateData)) {
+                        $product->update($updateData);
                     }
                 }
-
-                $imageResults['messages'] = array_merge([
-                    [
-                        'status' => 'summary',
-                        'message' => "Processed " . count($request->file('image')) . " images: " .
-                                    $successCount . " succeeded, " .
-                                    $failureCount . " failed"
-                    ]
-                ], $messages);
+                
+                // Handle images only if new images are provided
+                if (isset($formData['images']['images'])) {
+                    // Delete old images if needed
+                    $product->images()->delete();
+                    
+                    $files = [];
+                    foreach ($formData['images']['images'] as $imageData) {
+                        $path = Storage::disk('public')->path($imageData['path']);
+                        $files[] = new \Illuminate\Http\UploadedFile(
+                            $path,
+                            $imageData['original_name'],
+                            $imageData['mime_type'],
+                            null,
+                            true
+                        );
+                    }
+                    
+                    // Create a new request with the reconstructed files
+                    $imageRequest = new Request();
+                    $imageRequest->files->set('images', $files);
+                    
+                    $imageResult = $this->updateImages($imageRequest, $product);
+                    
+                    // Clean up temporary files
+                    foreach ($formData['images']['images'] as $imageData) {
+                        Storage::disk('public')->delete($imageData['path']);
+                    }
+                }
+                
+                DB::commit();
+                
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Product updated successfully',
+                    'data' => $product->fresh(['images']),
+                    'images' => $imageResult ?? ['messages' => ['No images processed']]
+                ], 200);
+                
+            } catch (\Exception $e) {
+                DB::rollBack();
+                throw $e;
             }
-
-            DB::commit();
-            
-            $product = $product->fresh(['images']);
-            return $this->respondWithSuccess(
-                [
-                    'product' => 'Product updated successfully',
-                    'images' => $imageResults['messages']
-                ], 
-                200, 
-                $product
-            );
-            
         } catch (\Exception $e) {
-            DB::rollBack();
-            return $this->respondWithError('Product update failed', 500, $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage()
+            ], 500);
         }
     }
 
@@ -340,7 +341,7 @@ class ProductController extends ImprovedController
         foreach ($request->file('images') as $index => $imageFile) {
             try {
                 $newRequest = new Request();
-                $newRequest->files->set('image', $imageFile);
+                $newRequest->files->set('images', $imageFile);
                 
                 $storedImage = $imageController->store($newRequest, $product);
                 $images[] = $storedImage;
@@ -376,23 +377,56 @@ class ProductController extends ImprovedController
 
     private function updateImages(Request $request, Product $product)
     {
+        $messages = [];
+        $images = [];
+        $successCount = 0;
+        $failureCount = 0;
+    
         $imageController = new ImageController();
         
-        // Delete any existing images if requested
-        if ($request->has('delete_images')) {
-            foreach ($product->images as $image) {
-                $path = str_replace('/storage/', '', $image->path);
-                $imageController->deleteImage($path);
-                $image->delete();
+        // Get all files from the request
+        $imageFiles = $request->allFiles();
+        
+        if (isset($imageFiles['images'])) {
+            foreach ($imageFiles['images'] as $imageFile) {
+                try {
+                    // Create a new request instance for each file
+                    $newRequest = new Request();
+                    $newRequest->files->set('image', $imageFile);
+                    
+                    // Store new image
+                    $newImage = $imageController->store($newRequest, $product);
+                    $images[] = $newImage;
+                    $successCount++;
+                    $messages[] = [
+                        'status' => 'success',
+                        'message' => "New image uploaded successfully"
+                    ];
+                } catch (\Exception $e) {
+                    $failureCount++;
+                    $messages[] = [
+                        'status' => 'error',
+                        'message' => "Failed to upload image: " . $e->getMessage()
+                    ];
+                    \Log::error("Failed to upload image: " . $e->getMessage());
+                }
             }
         }
-
-        // Handle new image uploads
-        if ($request->hasFile('images')) {
-            return $imageController->store($request, $product);
+    
+        // Add summary message
+        if (!empty($messages)) {
+            array_unshift($messages, [
+                'status' => 'summary',
+                'message' => "Processed " . ($successCount + $failureCount) . " images: " .
+                            $successCount . " succeeded, " .
+                            $failureCount . " failed"
+            ]);
         }
-
-        return response()->json(['message' => 'No new images to update']);
+    
+        return [
+            'messages' => $messages,
+            'images' => $images
+        ];
     }
 
 
