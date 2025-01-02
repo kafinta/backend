@@ -18,14 +18,15 @@ class ImageController extends ImprovedController
 
     public function store(Request $request, $parentModel)
     {
-        if (!$request->hasFile('image')) {
+        if (!$request->hasFile('image') && !$request->hasFile('images')) {
             throw new \Exception('No image file provided');
         }
 
-        $image = $request->file('image');
+        // Handle both single 'image' and array 'images'
+        $imageFile = $request->hasFile('image') ? $request->file('image') : $request->file('images');
         
         // Validate image
-        if (!$image->isValid()) {
+        if (!$imageFile->isValid()) {
             throw new \Exception('Invalid image file');
         }
 
@@ -34,7 +35,7 @@ class ImageController extends ImprovedController
             $modelType = strtolower(class_basename($parentModel));
             
             // Store the image file
-            $path = $image->store($modelType, 'public');
+            $path = $imageFile->store($modelType, 'public');
             
             // Create image record
             $imageRecord = $parentModel->images()->create([
