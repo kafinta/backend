@@ -22,7 +22,7 @@ class ProductController extends ImprovedController
     public function __construct(MultistepFormService $formService) 
     {
         $this->formService = $formService;
-        $this->middleware('auth:sanctum');
+        $this->middleware('auth:sanctum')->except(['index', 'show']);
         
         $this->formService->addStep('details', [
             'name' => 'sometimes|string',
@@ -55,7 +55,15 @@ class ProductController extends ImprovedController
         return $this->respondWithSuccess('Products fetched successfully', 200, $products);
     }
 
-    
+    public function show($id)
+    {
+        try {
+            $product = Product::with('images')->findOrFail($id);
+            return $this->respondWithSuccess('Product fetched successfully', 200, $product);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return $this->respondWithError('Product not found', 404);
+        }
+    }
 
     public function store(Request $request)
     {
@@ -63,16 +71,11 @@ class ProductController extends ImprovedController
             $result = $this->formService->process($request);
             
             if (!$result['success']) {
-                return response()->json([
-                    'status' => 'error',
-                    'errors' => $result['errors']
-                ], 422);
+                return $this->respondWithError('Validation failed', 422, $result['errors']);
             }
             
             if (!$result['completed']) {
-                return response()->json([
-                    'status' => 'success',
-                    'message' => 'Step completed successfully',
+                return $this->respondWithSuccess('Step completed successfully', 200, [
                     'next_step' => $result['nextStep']
                 ]);
             }
@@ -80,14 +83,19 @@ class ProductController extends ImprovedController
             // If we reach here, the form is completed and we can create the product
             $formData = $result['data'];
             
+            // Validate that we have the required data
+            if (!isset($formData['details'])) {
+                return $this->respondWithError('Product details are missing', 422);
+            }
+            
             DB::beginTransaction();
             try {
-                // Create the product
+                // Create the product with null coalescing operators for safety
                 $product = Product::create([
-                    'name' => $formData['details']['name'],
-                    'description' => $formData['details']['description'],
-                    'price' => $formData['details']['price'],
-                    'subcategory_id' => $formData['details']['subcategory_id'],
+                    'name' => $formData['details']['name'] ?? null,
+                    'description' => $formData['details']['description'] ?? null,
+                    'price' => $formData['details']['price'] ?? null,
+                    'subcategory_id' => $formData['details']['subcategory_id'] ?? null,
                     'user_id' => auth()->id()
                 ]);
                 
@@ -115,38 +123,27 @@ class ProductController extends ImprovedController
                     foreach ($formData['images']['images'] as $imageData) {
                         Storage::disk('public')->delete($imageData['path']);
                     }
+                } else {
+                    return $this->respondWithError('Upload at least one image', 422);
                 }
                 
                 DB::commit();
                 
-                return response()->json([
-                    'status' => 'success',
-                    'message' => 'Product created successfully',
+                return $this->respondWithSuccess('Product created successfully', 201, [
                     'data' => $product->fresh(['images']),
                     'images' => $imageResult ?? ['messages' => ['No images processed']]
-                ], 201);
+                ]);
                 
             } catch (\Exception $e) {
                 DB::rollBack();
                 throw $e;
             }
         } catch (\Exception $e) {
-            return response()->json([
-                'status' => 'error',
-                'message' => $e->getMessage()
-            ], 500);
+            return $this->respondWithError('Failed to create product', 500, $e->getMessage());
         }
     }
-    public function show($id)
-    {
-        // Use findOrFail to get a proper 404 if product doesn't exist
-        try {
-            $product = Product::with('images')->findOrFail($id);
-            return $this->respondWithSuccess('Product fetched successfully', 200, $product);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return $this->respondWithError('Product not found', 404);
-        }
-    }
+
+
 
     public function update(Request $request, Product $product)
     {
@@ -154,16 +151,11 @@ class ProductController extends ImprovedController
             $result = $this->formService->process($request);
             
             if (!$result['success']) {
-                return response()->json([
-                    'status' => 'error',
-                    'errors' => $result['errors']
-                ], 422);
+                return $this->respondWithError('Validation failed', 422, $result['errors']);
             }
             
             if (!$result['completed']) {
-                return response()->json([
-                    'status' => 'success',
-                    'message' => 'Step completed successfully',
+                return $this->respondWithSuccess('Step completed successfully', 200, [
                     'next_step' => $result['nextStep']
                 ]);
             }
@@ -292,31 +284,26 @@ class ProductController extends ImprovedController
 
     public function resumeForm()
     {
-        $formProgress = $this->multiStepFormService->resumeMultiStepForm();
+        $currentStep = $this->formService->getCurrentStep();
+        $storedData = $this->formService->getStoredData();
         
-        if ($formProgress) {
-            return response()->json([
-                'status' => 'success',
-                'current_step' => $formProgress['current_step'],
-                'form_data' => $formProgress['form_data']
+        if ($storedData) {
+            return $this->respondWithSuccess('Form resumed successfully', 200, [
+                'current_step' => $currentStep,
+                'form_data' => $storedData
             ]);
         }
         
-        return response()->json([
-            'status' => 'error',
-            'message' => 'No form in progress'
-        ], 404);
+        return $this->respondWithError('No form in progress', 404);
     }
+    
+    
 
     // Method to clear form progress
     public function clearFormProgress()
     {
         $this->multiStepFormService->clearMultiStepForm();
-        
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Form progress cleared'
-        ]);
+        return $this->respondWithSuccess('Form progress cleared', 200);
     }
 
 
@@ -324,11 +311,6 @@ class ProductController extends ImprovedController
 
     private function storeImages(Request $request, Product $product)
     {
-        $messages = [];
-        $images = [];
-        $successCount = 0;
-        $failureCount = 0;
-
         if (!$request->hasFile('images')) {
             return [
                 'messages' => ['No images found in request'],
@@ -337,94 +319,41 @@ class ProductController extends ImprovedController
         }
 
         $imageController = new ImageController();
+        $images = [];
         
-        foreach ($request->file('images') as $index => $imageFile) {
-            try {
-                $newRequest = new Request();
-                $newRequest->files->set('images', $imageFile);
-                
-                $storedImage = $imageController->store($newRequest, $product);
-                $images[] = $storedImage;
-                $successCount++;
-                $messages[] = [
-                    'status' => 'success',
-                    'index' => $index,
-                    'message' => "Image uploaded successfully"
-                ];
-            } catch (\Exception $e) {
-                $failureCount++;
-                $messages[] = [
-                    'status' => 'error',
-                    'index' => $index,
-                    'message' => "Failed to upload image: " . $e->getMessage()
-                ];
-            }
+        foreach ($request->file('images') as $imageFile) {
+            $newRequest = new Request();
+            $newRequest->files->set('images', $imageFile);
+            
+            $storedImage = $imageController->store($newRequest, $product);
+            $images[] = $storedImage;
         }
 
-        // Add summary message
-        array_unshift($messages, [
-            'status' => 'summary',
-            'message' => "Processed " . count($request->file('images')) . " images: " .
-                        $successCount . " succeeded, " .
-                        $failureCount . " failed"
-        ]);
-
         return [
-            'messages' => $messages,
+            'messages' => ['Images uploaded successfully'],
             'images' => $images
         ];
     }
 
     private function updateImages(Request $request, Product $product)
     {
-        $messages = [];
-        $images = [];
-        $successCount = 0;
-        $failureCount = 0;
-    
         $imageController = new ImageController();
+        $images = [];
         
-        // Get all files from the request
         $imageFiles = $request->allFiles();
         
         if (isset($imageFiles['images'])) {
             foreach ($imageFiles['images'] as $imageFile) {
-                try {
-                    // Create a new request instance for each file
-                    $newRequest = new Request();
-                    $newRequest->files->set('image', $imageFile);
-                    
-                    // Store new image
-                    $newImage = $imageController->store($newRequest, $product);
-                    $images[] = $newImage;
-                    $successCount++;
-                    $messages[] = [
-                        'status' => 'success',
-                        'message' => "New image uploaded successfully"
-                    ];
-                } catch (\Exception $e) {
-                    $failureCount++;
-                    $messages[] = [
-                        'status' => 'error',
-                        'message' => "Failed to upload image: " . $e->getMessage()
-                    ];
-                    \Log::error("Failed to upload image: " . $e->getMessage());
-                }
+                $newRequest = new Request();
+                $newRequest->files->set('image', $imageFile);
+                
+                $newImage = $imageController->store($newRequest, $product);
+                $images[] = $newImage;
             }
         }
-    
-        // Add summary message
-        if (!empty($messages)) {
-            array_unshift($messages, [
-                'status' => 'summary',
-                'message' => "Processed " . ($successCount + $failureCount) . " images: " .
-                            $successCount . " succeeded, " .
-                            $failureCount . " failed"
-            ]);
-        }
-    
+
         return [
-            'messages' => $messages,
+            'messages' => ['Images updated successfully'],
             'images' => $images
         ];
     }
