@@ -52,4 +52,29 @@ class User extends Model implements Authenticatable
     {
         return $this->hasMany(Product::class);
     }
+
+    public function roles()
+    {
+        return $this->belongsToMany(Role::class);
+    }
+
+    public function hasRole($role)
+    {
+        return $this->roles()->where('slug', $role)->exists();
+    }
+
+    public function getIsSellerAttribute()
+    {
+        return $this->hasRole('seller');
+    }
+
+    public function getIsAdminAttribute()
+    {
+        return $this->hasRole('admin');
+    }
+
+    public function sellerProfile()
+    {
+        return $this->hasOne(Seller::class);
+    }
 }
