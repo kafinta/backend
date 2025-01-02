@@ -22,7 +22,7 @@ class ProductController extends ImprovedController
     public function __construct(MultistepFormService $formService) 
     {
         $this->formService = $formService;
-        $this->middleware('auth:sanctum')->except(['index', 'show']);
+        $this->middleware(['auth:sanctum', 'verified'])->except(['index', 'show']);
         
         $this->formService->addStep('details', [
             'name' => 'sometimes|string',
@@ -68,6 +68,10 @@ class ProductController extends ImprovedController
     public function store(Request $request)
     {
         try {
+            if (!auth()->user()->can('create', Product::class)) {
+                return $this->respondWithError('Unauthorized', 403);
+            }
+
             $result = $this->formService->process($request);
             
             if (!$result['success']) {
@@ -148,6 +152,10 @@ class ProductController extends ImprovedController
     public function update(Request $request, Product $product)
     {
         try {
+            if (!auth()->user()->can('update', $product)) {
+                return $this->respondWithError('Unauthorized', 403);
+            }
+
             $result = $this->formService->process($request);
             
             if (!$result['success']) {
@@ -245,8 +253,7 @@ class ProductController extends ImprovedController
             return $this->respondWithError('Product not found', 404);
         }
 
-        // Check if the authenticated user owns this product
-        if ($product->user_id !== auth()->id()) {
+        if (!auth()->user()->can('delete', $product)) {
             return $this->respondWithError('Unauthorized', 403);
         }
 
