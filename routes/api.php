@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\UserController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -16,8 +17,10 @@ use App\Http\Controllers\ProductController;
 */
 
 Route::prefix('user')->group(function() {
-    Route::post('register', 'UserController@register');
-    Route::post('login', 'UserController@login');
+    Route::middleware(['throttle:6,1'])->group(function () {
+        Route::post('/login', [UserController::class, 'login']);
+        Route::post('/register', [UserController::class, 'register']);
+    });
 });
 
 Route::middleware('auth:sanctum')->group(function () {
