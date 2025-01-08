@@ -8,123 +8,97 @@ use Illuminate\Support\Facades\Validator;
 
 class MultistepFormService
 {
-    protected $sessionKey;
-    protected $steps;
-    protected $currentStep;
-    
-    public function __construct(string $formIdentifier = 'default_form')
+    protected $sessionPrefix = 'form_data_';
+    protected $expirationHours = 24;
+
+    public function process(Request $request, string $formIdentifier)
     {
-        $this->sessionKey = "form_data_{$formIdentifier}";
-        $this->currentStep = Session::get("{$this->sessionKey}_step", 1);
-        $this->steps = [];
-    }
-    
-    public function addStep(string $name, array $validationRules, ?callable $beforeCallback = null, ?callable $afterCallback = null)
-    {
-        $this->steps[] = [
-            'name' => $name,
-            'rules' => $validationRules,
-            'beforeCallback' => $beforeCallback,
-            'afterCallback' => $afterCallback
-        ];
-        
-        return $this;
-    }
-    
-    public function process(Request $request)
-    {
-        // Get current step from request or session
-        $currentStepIndex = $request->input('step', $this->currentStep) - 1;
-        if (!isset($this->steps[$currentStepIndex])) {
-            throw new \Exception('Invalid step');
-        }
-        
-        $currentStep = $this->steps[$currentStepIndex];
-        
-        // Run before callback if exists
-        if ($currentStep['beforeCallback']) {
-            call_user_func($currentStep['beforeCallback'], $request);
-        }
-        
-        // Validate only the current step's rules
-        $validator = Validator::make(
-            $request->all(),
-            $currentStep['rules']
-        );
-        
-        if ($validator->fails()) {
-            return [
-                'success' => false,
-                'errors' => $validator->errors()
-            ];
-        }
-        
-        // Store the current step's data
-        $formData = Session::get($this->sessionKey, []);
-        
-        // Handle file uploads differently
-        if ($request->hasFile('images')) {
-            // Store file information instead of file objects
-            $images = [];
-            foreach ($request->file('images') as $image) {
-                // Store the file temporarily and save its path
-                $path = $image->store('temp/product-images', 'public');
-                $images[] = [
-                    'path' => $path,
-                    'original_name' => $image->getClientOriginalName(),
-                    'mime_type' => $image->getMimeType(),
-                    'size' => $image->getSize()
-                ];
+        try {
+            $sessionKey = $this->getSessionKey($formIdentifier);
+            $formData = cache()->get($sessionKey, []);
+            
+            // Add timestamp if starting new form
+            if (empty($formData)) {
+                $formData['created_at'] = now();
+                $formData['session_id'] = Str::uuid(); // Generate unique ID for this form
             }
-            $formData[$currentStep['name']] = [
-                'images' => $images
-            ];
-        } else {
-            $formData[$currentStep['name']] = $request->only(array_keys($currentStep['rules']));
-        }
-        
-        Session::put($this->sessionKey, $formData);
-        Session::put("{$this->sessionKey}_step", $currentStepIndex + 1);
-        
-        // Run after callback if exists
-        if ($currentStep['afterCallback']) {
-            call_user_func($currentStep['afterCallback'], $request, $formData);
-        }
-        
-        // Move to next step or complete
-        if ($currentStepIndex + 1 < count($this->steps)) {
+            
+            $formData = array_merge($formData, $request->except(['session_id']));
+            
+            // Store in cache instead of session
+            cache()->put(
+                $sessionKey, 
+                $formData, 
+                now()->addHours($this->expirationHours)
+            );
+            
             return [
                 'success' => true,
-                'completed' => false,
-                'nextStep' => $currentStepIndex + 2,
-                'current_data' => $formData
+                'session_id' => $formData['session_id'],
+                'completed' => $request->step == 2,
+                'current_step' => $request->step,
+                'data' => $formData,
+                'expires_at' => now()->addHours($this->expirationHours)->toDateTimeString()
+            ];
+            
+        } catch (\Exception $e) {
+            \Log::error('Form processing error: ' . $e->getMessage(), [
+                'formIdentifier' => $formIdentifier,
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return [
+                'success' => false,
+                'error' => $e->getMessage()
             ];
         }
+    }
+
+    public function getData(string $formIdentifier, string $sessionId)
+    {
+        $sessionKey = $this->getSessionKey($formIdentifier);
+        $data = cache()->get($sessionKey, []);
         
-        // Form completed
-        $finalData = $formData;
-        $this->reset(); // Clear the session data
+        // Verify session ID matches
+        if (!empty($data) && ($data['session_id'] ?? '') !== $sessionId) {
+            return [];
+        }
         
-        return [
-            'success' => true,
-            'completed' => true,
-            'data' => $finalData
-        ];
+        // Check expiration
+        if (!empty($data) && isset($data['created_at'])) {
+            $created = new \DateTime($data['created_at']);
+            $expires = $created->modify("+{$this->expirationHours} hours");
+            
+            if ($expires < now()) {
+                $this->clear($formIdentifier, $sessionId);
+                return [];
+            }
+        }
+        
+        return $data;
     }
-    
-    public function getCurrentStep(): int
+
+    public function clear(string $formIdentifier, string $sessionId)
     {
-        return $this->currentStep;
+        $sessionKey = $this->getSessionKey($formIdentifier);
+        cache()->forget($sessionKey);
     }
-    
-    public function getStoredData(): array
+
+    protected function getSessionKey(string $formIdentifier): string
     {
-        return Session::get($this->sessionKey, []);
+        return $this->sessionPrefix . $formIdentifier;
     }
-    
-    public function reset()
+
+    // Helper method to check if form has expired
+    public function hasExpired(array $data): bool
     {
-        Session::forget($this->sessionKey);
-        Session::forget("{$this->sessionKey}_step");
+        if (empty($data) || !isset($data['created_at'])) {
+            return true;
+        }
+
+        $created = new \DateTime($data['created_at']);
+        $expires = $created->modify("+{$this->expirationHours} hours");
+        
+        return $expires < now();
     }
 }
