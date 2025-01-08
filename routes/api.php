@@ -1,53 +1,81 @@
 <?php
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
-use App\Http\Controllers\ProductController;
-use App\Http\Controllers\UserController;
+// use App\Http\Controllers\{
+//     ProductController,
+//     UserController,
+//     SellerController,
+//     ProfileController,
+//     CategoryController,
+//     LocationController,
+//     ColorController,
+//     SubcategoryController,
+//     AttributeController,
+//     AttributeValueController
+// };
+
 /*
 |--------------------------------------------------------------------------
 | API Routes
 |--------------------------------------------------------------------------
-|
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "api" middleware group. Make something great!
-|
 */
 
-Route::prefix('user')->group(function() {
-    Route::middleware(['throttle:6,1'])->group(function () {
-        Route::post('/login', [UserController::class, 'login']);
-        Route::post('/register', [UserController::class, 'register']);
-    });
+// Public Routes
+Route::middleware(['throttle:6,1'])->prefix('user')->group(function () {
+    Route::post('/login', [UserController::class, 'login']);
+    Route::post('/register', [UserController::class, 'register']);
 });
 
-Route::middleware('auth:sanctum')->group(function () {
-    Route::prefix('user')->group(function() {
-        Route::prefix('profile')->group(function() {
-            Route::post('/', 'ProfileController@createProfile');
-            Route::get('/', 'ProfileController@getProfile');
-            Route::post('/update', 'ProfileController@updateProfile');
-        });
-    });
+// Public Resource Routes
+Route::apiResources([
+    'categories' => CategoryController::class,
+    'locations' => LocationController::class,
+    'colors' => ColorController::class,
+    'subcategories' => SubcategoryController::class,
+    'attributes' => AttributeController::class,
+    'attributes.values' => AttributeValueController::class,
+]);
 
-    Route::prefix('products')->group(function() {
-        Route::post('/', [ProductController::class, 'store']);
-        Route::put('/{id}', [ProductController::class, 'update']);
-        Route::delete('/{id}', [ProductController::class, 'destroy']);
-        Route::get('resume-form', [ProductController::class, 'resumeForm']);
-    });
-});
-Route::get('{number}/categories', 'CategoryController@getSpecificNumberOfCategories');
-
-Route::apiResource('categories', CategoryController::class);
-Route::apiResource('locations', LocationController::class);
-Route::apiResource('colors', ColorController::class);
-Route::get('subcategories/find', 'SubcategoryController@getSubcategories');
-Route::apiResource('subcategories', SubcategoryController::class);
-Route::apiResource('attributes', AttributeController::class);
-Route::apiResource('attributes.values', AttributeValueController::class);
+Route::get('{number}/categories', [CategoryController::class, 'getSpecificNumberOfCategories']);
+Route::get('subcategories/find', [SubcategoryController::class, 'getSubcategories']);
 Route::get('products', [ProductController::class, 'index']);
 Route::get('products/{id}', [ProductController::class, 'show']);
 
+// Protected Routes
+Route::middleware('auth:sanctum')->group(function () {
+    // User Profile Routes
+    Route::prefix('user/profile')->controller(ProfileController::class)->group(function() {
+        Route::post('/', 'createProfile');
+        Route::get('/', 'getProfile');
+        Route::post('/update', 'updateProfile');
+    });
+
+    // Product Management Routes
+    Route::prefix('products')->controller(ProductController::class)->group(function () {
+        Route::get('/', 'index');
+        Route::get('/{product}', 'show');
+        
+        // Product Form Routes
+        Route::post('/step', 'saveStep');
+        Route::post('/submit', 'store');
+        Route::post('/{product}/step', 'updateStep');
+        Route::put('/{product}', 'update');
+        Route::delete('/{product}', 'destroy');
+    });
+
+    // Seller Routes
+    Route::prefix('sellers')->controller(SellerController::class)->group(function () {
+        // Application Routes
+        Route::post('/apply/step', 'saveStep')->name('sellers.apply.step');
+        Route::post('/apply/submit', 'submit')->name('sellers.apply.submit');
+        
+        // Seller Profile Routes
+        Route::get('/{seller}', 'show')->name('sellers.show');
+        Route::get('/{seller}/document', 'downloadDocument')->name('sellers.document.download');
+        
+        // Admin Only Routes
+        Route::middleware('role:admin')->group(function() {
+            Route::post('/{seller}/verify', 'verify')->name('sellers.verify');
+        });
+    });
+});
