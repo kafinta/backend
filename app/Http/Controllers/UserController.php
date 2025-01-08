@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
 use App\Traits\ReferenceGeneratorTrait;
 use Illuminate\Support\Facades\Log;
+use App\Models\Role;
 
 class UserController extends ImprovedController
 {
@@ -34,9 +35,15 @@ class UserController extends ImprovedController
                 'password' => Hash::make($request->password),
             ]);
 
+            // Assign default customer role
+            $customerRole = Role::where('slug', 'customer')->first();
+            if ($customerRole) {
+                $user->roles()->attach($customerRole->id);
+            }
+
             DB::commit();
             
-            $token = $user->createToken('auth_token', ['*'])->plainTextToken;
+            $token = $user->createToken('auth_token')->plainTextToken;
             return $this->respondWithSuccess("Account Created Successfully", 200, [
                 'account' => new UserAccountResource($user),
                 'auth_token' => $token,
@@ -57,15 +64,19 @@ class UserController extends ImprovedController
                 'password' => ['required'],
             ]);
 
-            if (!Auth::attempt($credentials)) {
-                return $this->respondWithError("Email or Password is Incorrect", 401);
+            $user = User::where('email', $credentials['email'])->first();
+
+            if (!$user || !Hash::check($credentials['password'], $user->password)) {
+                return $this->respondWithError("Invalid credentials", 401);
             }
+            
+            // Delete existing tokens if you want to ensure single device login
+            // $user->tokens()->delete();
+            
+            $token = $user->createToken('auth_token')->plainTextToken;
 
-            $user = User::where('email', $request->email)->firstOrFail();
-            $token = $user->createToken('auth_token', ['*'])->plainTextToken;
-
-            return $this->respondWithSuccess("Account Logged In Successfully", 200, [
-                'account' => new UserAccountResource($user),
+            return $this->respondWithSuccess("Login successful", 200, [
+                'user' => $user->load('roles'),
                 'auth_token' => $token,
                 'token_type' => 'Bearer'
             ]);
