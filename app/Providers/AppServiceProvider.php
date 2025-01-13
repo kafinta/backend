@@ -4,6 +4,9 @@ namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Routing\UrlGenerator;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
+
 class AppServiceProvider extends ServiceProvider
 {
     /**

@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Session;
 
 class SellerController extends ImprovedController
 {
@@ -25,57 +26,97 @@ class SellerController extends ImprovedController
     public function saveStep(Request $request)
     {
         try {
-            // Validate step parameter
-            $request->validate([
-                'step' => 'required|integer|in:1,2'
-            ]);
-
-            $rules = $this->getValidationRules($request->step);
+            // Process form step first
+            $result = $this->formService->process($request, 'seller_form');
             
-            if (empty($rules)) {
-                return $this->respondWithError('Invalid step', 422);
+            if (!$result['success']) {
+                return $this->respondWithError($result, 400);
             }
 
-            // Validate the request
-            $validator = Validator::make($request->all(), $rules);
-            
-            if ($validator->fails()) {
-                return $this->respondWithError('Validation failed', 422, [
-                    'errors' => $validator->errors()
-                ]);
-            }
-
-            // Handle file upload after validation
-            if ($request->hasFile('id_document')) {
+            // If step 2 and file is present, handle file upload
+            if ($request->step == 2 && $request->hasFile('id_document')) {
                 $file = $request->file('id_document');
                 $fileName = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
                 $path = $file->storeAs('seller-documents', $fileName, 'public');
                 
-                // Remove the file from request and add only the path
-                $request = new Request(
-                    $request->except('id_document') + 
-                    ['id_document' => '/storage/' . $path]
-                );
+                // Update session data with file path
+                $sessionKey = 'form_data_seller_form';
+                $formData = Session::get($sessionKey, []);
+                
+                // Ensure data exists and update id_document with full path
+                $formData['data'] = $formData['data'] ?? [];
+                $formData['data']['id_document'] = '/storage/' . $path;
+                
+                Session::put($sessionKey, $formData);
+
+                // Update the result data to reflect the file path
+                $result['data']['data']['id_document'] = '/storage/' . $path;
             }
             
-            $result = $this->formService->process($request, 'seller_application');
-
             return $this->respondWithSuccess('Step saved successfully', 200, $result);
 
         } catch (\Exception $e) {
-            return $this->respondWithError($e->getMessage(), 500);
+            return $this->respondWithError([
+                'message'=> 'Error saving step', 
+                'error' => $e->getMessage()
+            ], 500);
         }
+    }
+
+    public function getFormMetadata()
+    {
+        $config = $this->formService->getFormConfig('seller_form');
+        
+        return $this->respondWithSuccess('Form metadata retrieved', 200, [
+            'total_steps' => $config['total_steps'],
+            'steps' => collect($config['steps'])->map(function($step) {
+                return [
+                    'label' => $step['label'],
+                    'description' => $step['description']
+                ];
+            })
+        ]);
     }
 
     public function submit(Request $request)
     {
         try {
-            $data = $this->formService->getData('seller_application', $request->session_id);
+            // Log the session ID and form identifier
+            \Log::info('Seller Submit Request', [
+                'session_id' => $request->session_id,
+                'form_identifier' => 'seller_form'
+            ]);
+
+            $data = $this->formService->getData('seller_form', $request->session_id);
+
+            // Log the retrieved data with more details
+            \Log::info('Retrieved Form Data', [
+                'data' => $data,
+                'is_empty' => empty($data),
+                'data_keys' => array_keys($data)
+            ]);
 
             // Check if session data exists
             if (empty($data)) {
+                // Log session contents for debugging
+                $sessionKey = 'form_data_seller_form';
+                $fullSessionData = Session::get($sessionKey, []);
+                
+                \Log::info('Full Session Data', [
+                    'session_key' => $sessionKey,
+                    'full_session_data' => $fullSessionData
+                ]);
+
                 return $this->respondWithError('No application data found. Please complete the application form.', 422);
             }
+
+            // Merge with request data to fill in missing fields
+            $completeData = array_merge([
+                'business_name' => $request->business_name ?? null,
+                'business_description' => $request->business_description ?? null,
+                'business_address' => $request->business_address ?? null,
+                'phone_number' => $request->phone_number ?? null,
+            ], $data);
 
             // Check if all required fields are present
             $requiredFields = [
@@ -87,23 +128,31 @@ class SellerController extends ImprovedController
                 'id_document'
             ];
 
+            $missingFields = [];
             foreach ($requiredFields as $field) {
-                if (!isset($data[$field])) {
-                    return $this->respondWithError("Incomplete application data. Missing: {$field}", 422);
+                if (!isset($completeData[$field]) || empty($completeData[$field])) {
+                    $missingFields[] = $field;
                 }
             }
 
-            return DB::transaction(function () use ($request, $data) {
+            if (!empty($missingFields)) {
+                return $this->respondWithError([
+                    'message' => 'Incomplete application data',
+                    'missing_fields' => $missingFields
+                ], 422);
+            }
+
+            return DB::transaction(function () use ($request, $completeData) {
                 // Create seller profile
                 $seller = Seller::create([
                     'user_id' => auth()->id(),
-                    'business_name' => $data['business_name'],
-                    'business_description' => $data['business_description'] ?? null,
-                    'business_address' => $data['business_address'],
-                    'phone_number' => $data['phone_number'],
-                    'id_type' => $data['id_type'],
-                    'id_number' => $data['id_number'],
-                    'id_document' => $data['id_document'],
+                    'business_name' => $completeData['business_name'],
+                    'business_description' => $completeData['business_description'] ?? null,
+                    'business_address' => $completeData['business_address'],
+                    'phone_number' => $completeData['phone_number'],
+                    'id_type' => $completeData['id_type'],
+                    'id_number' => $completeData['id_number'],
+                    'id_document' => $completeData['id_document'],
                 ]);
 
                 // Automatically assign seller role
@@ -111,12 +160,17 @@ class SellerController extends ImprovedController
                 auth()->user()->roles()->syncWithoutDetaching([$sellerRole->id]);
 
                 // Clear temporary form data
-                $this->formService->clear('seller_application', $request->session_id);
+                $this->formService->clear('seller_form', $request->session_id);
 
                 return $this->respondWithSuccess('Seller application submitted and approved', 201, $seller);
             });
 
         } catch (\Exception $e) {
+            \Log::error('Seller Submit Error', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
             return $this->respondWithError($e->getMessage(), 500);
         }
     }
@@ -181,30 +235,6 @@ class SellerController extends ImprovedController
         } catch (\Exception $e) {
             return $this->respondWithError($e->getMessage(), 500);
         }
-    }
-
-    protected function getValidationRules($step)
-    {
-        $rules = [
-            1 => [
-                'business_name' => 'required|string|max:255',
-                'business_description' => 'nullable|string',
-                'business_address' => 'required|string',
-                'phone_number' => 'required|string',
-            ],
-            2 => [
-                'id_type' => 'required|in:passport,national_id,nin',
-                'id_number' => 'required|string',
-                'id_document' => [
-                    'required',
-                    'file',
-                    'max:2048', // 2MB max
-                    'mimetypes:application/pdf,image/jpeg,image/png,image/jpg'
-                ],
-            ]
-        ];
-
-        return $rules[$step] ?? [];
     }
 
     protected function getFileType($file)
