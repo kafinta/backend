@@ -5,40 +5,87 @@ namespace App\Services;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Config;
+
 
 class MultistepFormService
 {
     protected $sessionPrefix = 'form_data_';
-    protected $expirationHours = 24;
+    protected $config;
+
+    public function __construct()
+    {
+        $this->config = Config::get('forms');
+    }
 
     public function process(Request $request, string $formIdentifier)
     {
         try {
+            // Validate form type exists
+            if (!isset($this->config[$formIdentifier])) {
+                throw new \Exception("Invalid form type: {$formIdentifier}");
+            }
+
+            $formConfig = $this->config[$formIdentifier];
             $sessionKey = $this->getSessionKey($formIdentifier);
             $formData = cache()->get($sessionKey, []);
             
-            // Add timestamp if starting new form
+            // Initialize new form
             if (empty($formData)) {
-                $formData['created_at'] = now();
-                $formData['session_id'] = Str::uuid(); // Generate unique ID for this form
+                $formData = $this->initializeForm($formIdentifier, $request->step);
             }
+
+            // Validate step exists
+            if (!isset($formConfig['steps'][$request->step])) {
+                throw new \Exception("Invalid step number");
+            }
+
+            // Validate current step data
+            $stepConfig = $formConfig['steps'][$request->step];
+            $validator = Validator::make(
+                $request->all(),
+                $stepConfig['validation_rules']
+            );
+
+            if ($validator->fails()) {
+                return [
+                    'success' => false,
+                    'error' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ];
+            }
+
+            // Get current step data
+            $stepData = $request->except(['session_id', 'step']);
             
-            $formData = array_merge($formData, $request->except(['session_id']));
+            // Merge with existing data
+            $formData['data'] = array_merge(
+                $formData['data'] ?? [], 
+                $stepData
+            );
             
-            // Store in cache instead of session
+            $formData['step'] = $request->step;
+            
+            // Store in cache
             cache()->put(
                 $sessionKey, 
                 $formData, 
-                now()->addHours($this->expirationHours)
+                now()->addHours($formConfig['expiration_hours'])
             );
             
             return [
                 'success' => true,
                 'session_id' => $formData['session_id'],
-                'completed' => $request->step == 2,
+                'completed' => $request->step >= $formConfig['total_steps'],
                 'current_step' => $request->step,
-                'data' => $formData,
-                'expires_at' => now()->addHours($this->expirationHours)->toDateTimeString()
+                'total_steps' => $formConfig['total_steps'],
+                'step_info' => [
+                    'label' => $stepConfig['label'],
+                    'description' => $stepConfig['description']
+                ],
+                'data' => $formData['data'],
+                'expires_at' => now()->addHours($formConfig['expiration_hours'])->toDateTimeString()
             ];
             
         } catch (\Exception $e) {
@@ -52,6 +99,31 @@ class MultistepFormService
                 'error' => $e->getMessage()
             ];
         }
+    }
+
+    protected function initializeForm(string $formIdentifier, int $step): array
+    {
+        return [
+            'created_at' => now(),
+            'session_id' => Str::uuid(),
+            'step' => $step,
+            'form_type' => $formIdentifier,
+            'data' => []
+        ];
+    }
+
+    public function getStepInfo(string $formIdentifier, int $step)
+    {
+        if (!isset($this->config[$formIdentifier]['steps'][$step])) {
+            return null;
+        }
+
+        return $this->config[$formIdentifier]['steps'][$step];
+    }
+
+    public function getFormConfig(string $formIdentifier)
+    {
+        return $this->config[$formIdentifier] ?? null;
     }
 
     public function getData(string $formIdentifier, string $sessionId)
