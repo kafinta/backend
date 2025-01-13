@@ -1,18 +1,18 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-// use App\Http\Controllers\{
-//     ProductController,
-//     UserController,
-//     SellerController,
-//     ProfileController,
-//     CategoryController,
-//     LocationController,
-//     ColorController,
-//     SubcategoryController,
-//     AttributeController,
-//     AttributeValueController
-// };
+use App\Http\Controllers\{
+    // ProductController,
+    UserController,
+    // SellerController,
+    ProfileController,
+    CategoryController,
+    LocationController,
+    ColorController,
+    SubcategoryController,
+    AttributeController,
+    AttributeValueController
+};
 
 /*
 |--------------------------------------------------------------------------
@@ -56,8 +56,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{product}', 'show');
         
         // Product Form Routes
-        Route::post('/step', 'saveStep');
-        Route::post('/submit', 'store');
+        Route::post('/step', 'saveStep')->name('products.create.step');
+        Route::post('/submit', 'store')->name('products.create.submit');
         Route::post('/{product}/step', 'updateStep');
         Route::put('/{product}', 'update');
         Route::delete('/{product}', 'destroy');
