@@ -31,34 +31,34 @@ return [
         ]
     ],
     // You can add more form types here
-    'service_form' => [
-        'total_steps' => 3,
+    'seller_form' => [
+        'total_steps' => 2,
         'expiration_hours' => 48,
         'steps' => [
-            1 => [
-                'label' => 'Service Details',
-                'description' => 'Enter basic service information',
-                'validation_rules' => [
-                    'title' => 'required|string|max:255',
-                    'description' => 'required|string',
-                ]
-            ],
-            2 => [
-                'label' => 'Pricing',
-                'description' => 'Set your service pricing',
-                'validation_rules' => [
-                    'price' => 'required|numeric|min:0',
-                    'duration' => 'required|integer|min:1',
-                ]
-            ],
-            3 => [
-                'label' => 'Additional Information',
-                'description' => 'Add any additional details',
-                'validation_rules' => [
-                    'terms' => 'required|string',
-                    'availability' => 'required|array',
-                ]
+          1 => [
+            'label' => 'Business Details',
+            'description' => 'Enter your business information',
+            'validation_rules' => [
+              'business_name' => 'required|string|max:255',
+              'business_description' => 'nullable|string',
+              'business_address' => 'required|string',
+              'phone_number' => 'required|string',
             ]
+          ],
+          2 => [
+            'label' => 'Identification',
+            'description' => 'Upload your identification document',
+            'validation_rules' => [
+              'id_type' => 'required|in:passport,national_id,nin',
+              'id_number' => 'required|string',
+              'id_document' => [
+                'required',
+                'file',
+                'max:2048',
+                'mimetypes:application/pdf,image/jpeg,image/png,image/jpg'
+              ],
+            ]
+          ],
         ]
     ]
 ];
