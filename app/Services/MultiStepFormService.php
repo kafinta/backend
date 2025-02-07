@@ -8,7 +8,6 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Config;
 
-
 class MultistepFormService
 {
     protected $sessionPrefix = 'form_data_';
@@ -29,9 +28,11 @@ class MultistepFormService
 
             $formConfig = $this->config[$formIdentifier];
             $sessionKey = $this->getSessionKey($formIdentifier);
-            $formData = cache()->get($sessionKey, []);
             
-            // Initialize new form
+            // Try to get existing session data
+            $formData = Session::get($sessionKey, []);
+            
+            // Initialize new form if no existing data
             if (empty($formData)) {
                 $formData = $this->initializeForm($formIdentifier, $request->step);
             }
@@ -56,7 +57,7 @@ class MultistepFormService
                 ];
             }
 
-            // Get current step data
+            // Get current step data, excluding session and step
             $stepData = $request->except(['session_id', 'step']);
             
             // Merge with existing data
@@ -67,12 +68,8 @@ class MultistepFormService
             
             $formData['step'] = $request->step;
             
-            // Store in cache
-            cache()->put(
-                $sessionKey, 
-                $formData, 
-                now()->addHours($formConfig['expiration_hours'])
-            );
+            // Store in session
+            Session::put($sessionKey, $formData);
             
             return [
                 'success' => true,
@@ -88,12 +85,7 @@ class MultistepFormService
                 'expires_at' => now()->addHours($formConfig['expiration_hours'])->toDateTimeString()
             ];
             
-        } catch (\Exception $e) {
-            \Log::error('Form processing error: ' . $e->getMessage(), [
-                'formIdentifier' => $formIdentifier,
-                'trace' => $e->getTraceAsString()
-            ]);
-            
+        } catch (\Exception $e) {            
             return [
                 'success' => false,
                 'error' => $e->getMessage()
@@ -129,17 +121,22 @@ class MultistepFormService
     public function getData(string $formIdentifier, string $sessionId)
     {
         $sessionKey = $this->getSessionKey($formIdentifier);
-        $data = cache()->get($sessionKey, []);
-        
+        $data = Session::get($sessionKey, []);
+
         // Verify session ID matches
-        if (!empty($data) && ($data['session_id'] ?? '') !== $sessionId) {
+        // Note the special handling for UUID object
+        $storedSessionId = $data['session_id'] instanceof \Ramsey\Uuid\Lazy\LazyUuidFromString 
+            ? (string)$data['session_id'] 
+            : ($data['session_id'] ?? null);
+
+        if (!empty($data) && $storedSessionId !== $sessionId) {
             return [];
         }
         
         // Check expiration
         if (!empty($data) && isset($data['created_at'])) {
             $created = new \DateTime($data['created_at']);
-            $expires = $created->modify("+{$this->expirationHours} hours");
+            $expires = $created->modify("+{$this->config[$formIdentifier]['expiration_hours']} hours");
             
             if ($expires < now()) {
                 $this->clear($formIdentifier, $sessionId);
@@ -147,13 +144,15 @@ class MultistepFormService
             }
         }
         
-        return $data;
+        // Return the full data, ensuring we return the actual data array
+        return $data['data'] ?? [];
     }
 
     public function clear(string $formIdentifier, string $sessionId)
     {
         $sessionKey = $this->getSessionKey($formIdentifier);
-        cache()->forget($sessionKey);
+
+        Session::forget($sessionKey);
     }
 
     protected function getSessionKey(string $formIdentifier): string
@@ -161,15 +160,15 @@ class MultistepFormService
         return $this->sessionPrefix . $formIdentifier;
     }
 
-    // Helper method to check if form has expired
-    public function hasExpired(array $data): bool
+    // Restored helper method to check if form has expired
+    public function hasExpired(array $data, string $formIdentifier): bool
     {
         if (empty($data) || !isset($data['created_at'])) {
             return true;
         }
 
         $created = new \DateTime($data['created_at']);
-        $expires = $created->modify("+{$this->expirationHours} hours");
+        $expires = $created->modify("+{$this->config[$formIdentifier]['expiration_hours']} hours");
         
         return $expires < now();
     }
