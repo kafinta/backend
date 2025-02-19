@@ -2,18 +2,15 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
-use Illuminate\Contracts\Auth\Authenticatable;
-use Illuminate\Auth\Authenticatable as AuthenticableTrait;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\NewAccessToken;
 
-class User extends Model implements Authenticatable
+class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable, AuthenticableTrait;
+    use HasApiTokens, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -21,7 +18,7 @@ class User extends Model implements Authenticatable
      * @var array<int, string>
      */
     protected $fillable = [
-        'username',
+        'name',
         'email',
         'password',
     ];
@@ -50,11 +47,6 @@ class User extends Model implements Authenticatable
         return $this->hasOne(Profile::class);
     }
 
-    public function product()
-    {
-        return $this->hasMany(Product::class);
-    }
-
     public function roles()
     {
         return $this->belongsToMany(Role::class);
@@ -63,21 +55,6 @@ class User extends Model implements Authenticatable
     public function hasRole($role)
     {
         return $this->roles()->where('slug', $role)->exists();
-    }
-
-    public function getIsSellerAttribute()
-    {
-        return $this->hasRole('seller');
-    }
-
-    public function getIsAdminAttribute()
-    {
-        return $this->hasRole('admin');
-    }
-
-    public function sellerProfile()
-    {
-        return $this->hasOne(Seller::class);
     }
 
     public function createToken(string $name, array $abilities = ['*'])
@@ -89,5 +66,25 @@ class User extends Model implements Authenticatable
         ]);
 
         return new NewAccessToken($token, $token->getKey() . '|' . $plainTextToken);
+    }
+
+    public function isSeller()
+    {
+        return $this->hasRole('seller');
+    }
+
+    public function isAdmin()
+    {
+        return $this->hasRole('seller');
+    }
+
+    public function sellerProfile()
+    {
+        return $this->hasOne(Seller::class);
+    }
+
+    public function products()
+    {
+        return $this->hasMany(Product::class);
     }
 }
