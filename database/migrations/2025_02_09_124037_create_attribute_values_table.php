@@ -11,12 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('subcategories', function (Blueprint $table) {
+        Schema::create('attribute_values', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('attribute_id')->constrained()->onDelete('cascade');
             $table->string('name');
-            $table->string('image_path')->nullable();
-            $table->foreignId('category_id')->constrained()->onDelete('cascade');
+            $table->json('representation')->nullable();
             $table->timestamps();
+
+            // Ensure unique value within an attribute
+            $table->unique(['attribute_id', 'name']);
         });
     }
 
@@ -25,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('subcategories');
+        Schema::dropIfExists('attribute_values');
     }
 };

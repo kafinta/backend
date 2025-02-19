@@ -11,11 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('subcategories', function (Blueprint $table) {
+        Schema::create('attributes', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
-            $table->string('image_path')->nullable();
-            $table->foreignId('category_id')->constrained()->onDelete('cascade');
+            $table->string('name')->unique();
+            $table->string('type')->default('select'); // select, color, radio
+            $table->boolean('is_variant_generator')->default(false);
+            $table->boolean('is_required')->default(false);
+            $table->integer('display_order')->default(0);
             $table->timestamps();
         });
     }
@@ -25,6 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('subcategories');
+        Schema::dropIfExists('attributes');
     }
 };
