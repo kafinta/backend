@@ -21,6 +21,7 @@ class UserController extends ImprovedController
     public function register(Request $request)
     {
         try {
+
             $validator = $this->validateUserInfo();
 
             if ($validator->fails()) {
