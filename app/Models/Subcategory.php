@@ -27,7 +27,6 @@ class Subcategory extends Model
   public function attributes()
   {
     return $this->belongsToMany(Attribute::class, 'subcategory_attributes')
-      ->withPivot('is_required', 'display_order')
       ->withTimestamps();
   }
 
@@ -44,24 +43,7 @@ class Subcategory extends Model
       ->withTimestamps();
   }
 
-  public function attributeGroups()
-  {
-    return $this->belongsToMany(AttributeGroup::class, 'subcategory_attribute_groups')
-      ->withPivot('is_required', 'display_order');
-  }
 
-  public function attributeGroupOptions()
-  {
-    return $this->belongsToMany(AttributeOption::class, 'subcategory_attribute_group_options')
-      ->withPivot('attribute_group_id', 'is_variant_generator');
-  }
-
-  public function getOptionsForAttributeGroup(AttributeGroup $attributeGroup)
-  {
-    return $this->attributeGroupOptions()
-      ->where('attribute_group_id', $attributeGroup->id)
-      ->get();
-  }
 
   protected $fillable = [
     'name',

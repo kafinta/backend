@@ -49,6 +49,54 @@ class Product extends Model
             ->withTimestamps();
     }
 
+    public function attributes()
+    {
+        return $this->belongsToMany(Attribute::class, 'product_attributes')
+            ->withTimestamps();
+    }
+
+    public function syncAttributesFromSubcategory()
+    {
+        $subcategoryAttributes = $this->subcategory->attributes()
+            ->with('values')
+            ->get();
+
+        $this->attributes()->sync($subcategoryAttributes->pluck('id'));
+        
+        return $this;
+    }
+
+    public function setAttributeValues(array $attributeValues)
+    {
+        foreach ($attributeValues as $attributeId => $valueId) {
+            // Verify the attribute belongs to the product's subcategory
+            $attribute = $this->subcategory->attributes()
+                ->where('attributes.id', $attributeId)
+                ->first();
+
+            if (!$attribute) {
+                throw new \InvalidArgumentException("Invalid attribute ID: {$attributeId}");
+            }
+
+            // Verify the value belongs to the attribute and is valid for the subcategory
+            $attribute->validateValuesForSubcategory($this->subcategory, [$valueId]);
+        }
+
+        // Attach the values
+        $this->attributeValues()->sync($attributeValues);
+
+        // If any variant-generating attributes were updated, regenerate variants
+        $variantAttributeIds = $this->attributes()
+            ->where('is_variant_generator', true)
+            ->pluck('attributes.id');
+
+        if (!empty(array_intersect($variantAttributeIds->toArray(), array_keys($attributeValues)))) {
+            $this->generateVariants();
+        }
+
+        return $this;
+    }
+
     public function generateVariants()
     {
         // Find variant-generating attributes for this product's subcategory
