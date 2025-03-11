@@ -1,18 +1,15 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\{
-    // ProductController,
-    UserController,
-    // SellerController,
-    ProfileController,
-    CategoryController,
-    LocationController,
-    ColorController,
-    SubcategoryController,
-    AttributeController,
-    AttributeValueController
-};
+use App\Http\Controllers\ProductController;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\SellerController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\LocationController;
+use App\Http\Controllers\SubcategoryController;
+use App\Http\Controllers\AttributeController;
+use App\Http\Controllers\AttributeValueController;
 
 /*
 |--------------------------------------------------------------------------
@@ -30,11 +27,14 @@ Route::middleware(['throttle:6,1'])->prefix('user')->group(function () {
 Route::apiResources([
     'categories' => CategoryController::class,
     'locations' => LocationController::class,
-    'colors' => ColorController::class,
     'subcategories' => SubcategoryController::class,
     'attributes' => AttributeController::class,
     'attributes.values' => AttributeValueController::class,
 ]);
+
+Route::prefix('attributes')->controller(AttributeController::class)->group(function () {
+    Route::get('/subcategory/{subcategoryId}', 'getAttributesForSubcategory');
+});
 
 Route::get('{number}/categories', [CategoryController::class, 'getSpecificNumberOfCategories']);
 Route::get('subcategories/find', [SubcategoryController::class, 'getSubcategories']);
@@ -78,4 +78,8 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/{seller}/verify', 'verify')->name('sellers.verify');
         });
     });
+
+
+    // Attribute Values Routes
+
 });

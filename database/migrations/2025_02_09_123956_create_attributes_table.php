@@ -16,8 +16,6 @@ return new class extends Migration
             $table->string('name')->unique();
             $table->string('type')->default('select'); // select, color, radio
             $table->boolean('is_variant_generator')->default(false);
-            $table->boolean('is_required')->default(false);
-            $table->integer('display_order')->default(0);
             $table->timestamps();
         });
     }
