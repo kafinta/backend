@@ -3,6 +3,7 @@
 namespace App\Exceptions;
 
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
+use Illuminate\Auth\AuthenticationException;
 use Throwable;
 
 class Handler extends ExceptionHandler
@@ -26,5 +27,35 @@ class Handler extends ExceptionHandler
         $this->reportable(function (Throwable $e) {
             //
         });
+    }
+
+    /**
+     * Render an unauthenticated response.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \Illuminate\Auth\AuthenticationException  $exception
+     * @return \Illuminate\Http\Response
+     */
+    protected function unauthenticated($request, AuthenticationException $exception)
+    {
+        return response()->json([
+            'status' => 'fail',
+            'status_code' => 401,
+            'message' => 'Unauthenticated. Please login to continue.'
+        ], 401);
+    }
+
+    public function render($request, Throwable $exception)
+    {
+        // Handle route not found exception
+        if ($exception instanceof \Symfony\Component\Routing\Exception\RouteNotFoundException) {
+            return response()->json([
+                'status' => 'fail',
+                'status_code' => 401,
+                'message' => 'Unauthenticated. Please login to continue.'
+            ], 401);
+        }
+
+        return parent::render($request, $exception);
     }
 }
