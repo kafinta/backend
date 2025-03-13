@@ -2,7 +2,7 @@
 
 return [
     'product_form' => [
-        'total_steps' => 2,
+        'total_steps' => 3,
         'expiration_hours' => 24,
         'steps' => [
             1 => [
@@ -16,6 +16,14 @@ return [
                 ]
             ],
             2 => [
+                'label' => 'Product Attributes',
+                'description' => 'Select product attributes and values',
+                'validation_rules' => [
+                    'attribute_values' => 'required|array',
+                    'attribute_values.*' => 'required|exists:attribute_values,id'
+                ]
+            ],
+            3 => [
                 'label' => 'Product Images',
                 'description' => 'Upload product images',
                 'validation_rules' => [
