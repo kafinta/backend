@@ -10,13 +10,13 @@ class LocationController extends ImprovedController
 {
     public function index() {
         $locations = Location::all();
-        return response()->json($locations);
+        return $this->respondWithSuccess("Locations Fetched Successfully", 200, $locations);
     }
 
     public function show($id)
     {
         $location = Location::findOrFail($id);
-        return response()->json([$location]);
+        return $this->respondWithSuccess("Location Fetched Successfully", 200, $location);
     }
 
     public function store(Request $request)
