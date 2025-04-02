@@ -7,6 +7,7 @@ use Illuminate\Database\Seeder;
 use App\Models\Subcategory;
 use App\Models\Attribute;
 use App\Models\AttributeValue;
+use Illuminate\Support\Facades\DB;
 
 class AttributeValueSeeder extends Seeder
 {
@@ -1120,7 +1121,24 @@ class AttributeValueSeeder extends Seeder
                     $attribute = Attribute::where('name', $attributeName)->first();
                     
                     if ($attribute) {
+                        // Attach attribute to subcategory
                         $subcategory->attributes()->syncWithoutDetaching($attribute);
+                        
+                        // Attach all values of this global attribute to the subcategory
+                        $globalAttributeValues = AttributeValue::where('attribute_id', $attribute->id)->get();
+                        foreach ($globalAttributeValues as $value) {
+                            DB::table('subcategory_attribute_values')->updateOrInsert(
+                                [
+                                    'subcategory_id' => $subcategory->id,
+                                    'attribute_id' => $attribute->id,
+                                    'attribute_value_id' => $value->id
+                                ],
+                                [
+                                    'created_at' => now(),
+                                    'updated_at' => now()
+                                ]
+                            );
+                        }
                     }
                     continue;
                 }
@@ -1137,19 +1155,30 @@ class AttributeValueSeeder extends Seeder
 
                 // Create or use values
                 if (isset($attributeConfig['values'])) {
-                    $values = collect($attributeConfig['values'])->map(function ($valueData) use ($attribute) {
-                        return AttributeValue::firstOrCreate([
-                            'attribute_id' => $attribute->id,
-                            'name' => $valueData['name']
-                        ], [
-                            'representation' => $valueData['representation'] ?? null
-                        ]);
-                    });
-
-                    // Attach values to subcategory
-                    $subcategory->attributeValues()->syncWithoutDetaching(
-                        $values->pluck('id')->mapWithKeys(fn($id) => [$id => ['attribute_id' => $attribute->id]])
-                    );
+                    foreach ($attributeConfig['values'] as $valueData) {
+                        $value = AttributeValue::firstOrCreate(
+                            [
+                                'attribute_id' => $attribute->id,
+                                'name' => $valueData['name']
+                            ],
+                            [
+                                'representation' => $valueData['representation'] ?? null
+                            ]
+                        );
+                        
+                        // Insert into the subcategory_attribute_values table directly
+                        DB::table('subcategory_attribute_values')->updateOrInsert(
+                            [
+                                'subcategory_id' => $subcategory->id,
+                                'attribute_id' => $attribute->id,
+                                'attribute_value_id' => $value->id
+                            ],
+                            [
+                                'created_at' => now(),
+                                'updated_at' => now()
+                            ]
+                        );
+                    }
                 }
             }
         }
