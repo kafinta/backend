@@ -18,6 +18,10 @@ class Attribute extends Model
         'display_order'
     ];
 
+    protected $casts = [
+        'is_variant_generator' => 'boolean'
+    ];
+
     public function values()
     {
         return $this->hasMany(AttributeValue::class);
@@ -54,8 +58,15 @@ class Attribute extends Model
         $invalidValues = collect($valueIds)->diff($validValues->pluck('id'));
         
         if ($invalidValues->isNotEmpty()) {
+            \Log::error('Invalid attribute values', [
+                'subcategory_id' => $subcategory->id,
+                'attribute_id' => $this->id,
+                'invalid_values' => $invalidValues->toArray(),
+                'valid_values' => $validValues->pluck('id')->toArray()
+            ]);
+            
             throw new \InvalidArgumentException(
-                "Invalid values for subcategory: " . $invalidValues->implode(', ')
+                "Invalid values for subcategory. Attribute: {$this->name}, Invalid values: " . $invalidValues->implode(', ')
             );
         }
 
