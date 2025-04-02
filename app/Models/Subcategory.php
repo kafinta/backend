@@ -56,4 +56,11 @@ class Subcategory extends Model
   {
     return $this->attributes()->with('values')->get();
   }
+
+  public function getAttributeValues(Attribute $attribute)
+  {
+    return $this->attributeValues()
+      ->where('attribute_id', $attribute->id)
+      ->get();
+  }
 }

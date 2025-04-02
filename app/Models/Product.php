@@ -68,6 +68,12 @@ class Product extends Model
 
     public function setAttributeValues(array $attributeValues)
     {
+        \Log::info('Setting attribute values', [
+            'product_id' => $this->id,
+            'subcategory_id' => $this->subcategory_id,
+            'attribute_values' => $attributeValues
+        ]);
+
         foreach ($attributeValues as $attributeId => $valueId) {
             // Verify the attribute belongs to the product's subcategory
             $attribute = $this->subcategory->attributes()
@@ -75,9 +81,16 @@ class Product extends Model
                 ->first();
 
             if (!$attribute) {
-                throw new \InvalidArgumentException("Invalid attribute ID: {$attributeId}");
+                throw new \InvalidArgumentException("Invalid attribute ID: {$attributeId} for subcategory {$this->subcategory_id}");
             }
 
+            // Log before validation
+            \Log::info('Validating attribute value', [
+                'attribute_id' => $attributeId,
+                'value_id' => $valueId,
+                'subcategory_id' => $this->subcategory_id
+            ]);
+  
             // Verify the value belongs to the attribute and is valid for the subcategory
             $attribute->validateValuesForSubcategory($this->subcategory, [$valueId]);
         }
