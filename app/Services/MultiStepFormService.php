@@ -5,87 +5,53 @@ namespace App\Services;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Log;
+use DateTime;
 
 class MultistepFormService
 {
-    protected $sessionPrefix = 'form_data_';
-    protected $config;
+    protected const SESSION_PREFIX = 'form_data_';
+
+    protected array $config;
 
     public function __construct()
     {
         $this->config = Config::get('forms');
     }
 
-    public function process(Request $request, string $formIdentifier)
+    public function process(Request $request, string $formIdentifier): array
     {
         try {
-            // Validate form type exists
-            if (!isset($this->config[$formIdentifier])) {
-                throw new \Exception("Invalid form type: {$formIdentifier}");
-            }
+            $this->validateFormType($formIdentifier);
+            $this->validateSessionId($request);
 
             $formConfig = $this->config[$formIdentifier];
-            $sessionKey = $this->getSessionKey($formIdentifier);
+            $sessionKey = $this->getSessionKey($formIdentifier, $request->session_id);
+            $formData = $this->getOrInitializeFormData($request, $formIdentifier, $sessionKey);
             
-            // Try to get existing session data
-            $formData = Session::get($sessionKey, []);
+            $this->validateStep($request->step, $formConfig);
             
-            // Initialize new form if no existing data
-            if (empty($formData)) {
-                $formData = $this->initializeForm($formIdentifier, $request->step);
-            }
-
-            // Validate step exists
-            if (!isset($formConfig['steps'][$request->step])) {
-                throw new \Exception("Invalid step number");
-            }
-
-            // Validate current step data
-            $stepConfig = $formConfig['steps'][$request->step];
-            $validator = Validator::make(
-                $request->all(),
-                $stepConfig['validation_rules']
-            );
-
-            if ($validator->fails()) {
+            if (!$this->validateStepData($request, $formConfig)) {
                 return [
                     'success' => false,
                     'error' => 'Validation failed',
-                    'errors' => $validator->errors()
+                    'errors' => $this->getValidationErrors($request, $formConfig)
                 ];
             }
 
-            // Get current step data, excluding session and step
-            $stepData = $request->except(['session_id', 'step']);
-            
-            // Merge with existing data
-            $formData['data'] = array_merge(
-                $formData['data'] ?? [], 
-                $stepData
-            );
-            
-            $formData['step'] = $request->step;
-            
-            // Store in session
+            $formData = $this->updateFormData($formData, $request);
             Session::put($sessionKey, $formData);
+
+            return $this->prepareSuccessResponse($request, $formConfig, $formData);
+
+        } catch (\Exception $e) {
+            Log::error('Form processing error', [
+                'error' => $e->getMessage(),
+                'formIdentifier' => $formIdentifier,
+                'session_id' => $request->session_id ?? null
+            ]);
             
-            return [
-                'success' => true,
-                'session_id' => $formData['session_id'],
-                'completed' => $request->step >= $formConfig['total_steps'],
-                'current_step' => $request->step,
-                'total_steps' => $formConfig['total_steps'],
-                'step_info' => [
-                    'label' => $stepConfig['label'],
-                    'description' => $stepConfig['description']
-                ],
-                'data' => $formData['data'],
-                'expires_at' => now()->addHours($formConfig['expiration_hours'])->toDateTimeString()
-            ];
-            
-        } catch (\Exception $e) {            
             return [
                 'success' => false,
                 'error' => $e->getMessage()
@@ -93,83 +59,159 @@ class MultistepFormService
         }
     }
 
-    protected function initializeForm(string $formIdentifier, int $step): array
+    protected function validateFormType(string $formIdentifier): void
     {
+        if (!isset($this->config[$formIdentifier])) {
+            throw new \InvalidArgumentException("Invalid form type: {$formIdentifier}");
+        }
+    }
+
+    protected function validateSessionId(Request $request): void
+    {
+        if (!$request->session_id) {
+            throw new \InvalidArgumentException("Session ID is required");
+        }
+    }
+
+    protected function validateStep(int $step, array $formConfig): void
+    {
+        if (!isset($formConfig['steps'][$step])) {
+            throw new \InvalidArgumentException("Invalid step number");
+        }
+    }
+
+    protected function getOrInitializeFormData(Request $request, string $formIdentifier, string $sessionKey): array
+    {
+        $formData = Session::get($sessionKey, []);
+        
+        if (empty($formData)) {
+            $step = (int) $request->step;
+            if ($step !== 1) {
+                throw new \InvalidArgumentException("Session expired or invalid");
+            }
+            
+            return [
+                'created_at' => now(),
+                'session_id' => $request->session_id,
+                'step' => $request->step,
+                'form_type' => $formIdentifier,
+                'data' => []
+            ];
+        }
+
+        return $formData;
+    }
+
+    protected function validateStepData(Request $request, array $formConfig): bool
+    {
+        $stepConfig = $formConfig['steps'][$request->step];
+        $validator = Validator::make(
+            $request->all(),
+            $stepConfig['validation_rules']
+        );
+
+        return !$validator->fails();
+    }
+
+    protected function getValidationErrors(Request $request, array $formConfig): array
+    {
+        $stepConfig = $formConfig['steps'][$request->step];
+        $validator = Validator::make(
+            $request->all(),
+            $stepConfig['validation_rules']
+        );
+
+        return $validator->errors()->toArray();
+    }
+
+    protected function updateFormData(array $formData, Request $request): array
+    {
+        $stepData = $request->except(['session_id', 'step']);
+        $formData['data'] = array_merge($formData['data'] ?? [], $stepData);
+        $formData['step'] = $request->step;
+        
+        return $formData;
+    }
+
+    protected function prepareSuccessResponse(Request $request, array $formConfig, array $formData): array
+    {
+        $stepConfig = $formConfig['steps'][$request->step];
+        
         return [
-            'created_at' => now(),
-            'session_id' => Str::uuid(),
-            'step' => $step,
-            'form_type' => $formIdentifier,
-            'data' => []
+            'success' => true,
+            'session_id' => $request->session_id,
+            'completed' => $request->step >= $formConfig['total_steps'],
+            'current_step' => $request->step,
+            'total_steps' => $formConfig['total_steps'],
+            'step_info' => [
+                'label' => $stepConfig['label'],
+                'description' => $stepConfig['description']
+            ],
+            'data' => $formData['data'],
+            'expires_at' => now()->addHours($formConfig['expiration_hours'])->toDateTimeString()
         ];
     }
 
-    public function getStepInfo(string $formIdentifier, int $step)
+    public function getData(string $formIdentifier, string $sessionId): array
     {
-        if (!isset($this->config[$formIdentifier]['steps'][$step])) {
-            return null;
-        }
-
-        return $this->config[$formIdentifier]['steps'][$step];
-    }
-
-    public function getFormConfig(string $formIdentifier)
-    {
-        return $this->config[$formIdentifier] ?? null;
-    }
-
-    public function getData(string $formIdentifier, string $sessionId)
-    {
-        $sessionKey = $this->getSessionKey($formIdentifier);
+        $sessionKey = $this->getSessionKey($formIdentifier, $sessionId);
         $data = Session::get($sessionKey, []);
 
-        // Verify session ID matches
-        // Note the special handling for UUID object
-        $storedSessionId = $data['session_id'] instanceof \Ramsey\Uuid\Lazy\LazyUuidFromString 
-            ? (string)$data['session_id'] 
-            : ($data['session_id'] ?? null);
+        Log::info('Getting form data', [
+            'formIdentifier' => $formIdentifier,
+            'sessionId' => $sessionId,
+            'sessionKey' => $sessionKey,
+            'data' => $data
+        ]);
 
-        if (!empty($data) && $storedSessionId !== $sessionId) {
+        if ($this->hasExpired($data, $formIdentifier)) {
+            Log::info('Form data has expired', [
+                'created_at' => $data['created_at'] ?? null,
+                'formIdentifier' => $formIdentifier
+            ]);
+            $this->clear($formIdentifier, $sessionId);
             return [];
         }
-        
-        // Check expiration
-        if (!empty($data) && isset($data['created_at'])) {
-            $created = new \DateTime($data['created_at']);
-            $expires = $created->modify("+{$this->config[$formIdentifier]['expiration_hours']} hours");
-            
-            if ($expires < now()) {
-                $this->clear($formIdentifier, $sessionId);
-                return [];
-            }
-        }
-        
-        // Return the full data, ensuring we return the actual data array
-        return $data['data'] ?? [];
+
+        return $data;
     }
 
-    public function clear(string $formIdentifier, string $sessionId)
+    public function clear(string $formType, string $sessionId): void
     {
-        $sessionKey = $this->getSessionKey($formIdentifier);
-
+        $sessionKey = $this->getSessionKey($formType, $sessionId);
         Session::forget($sessionKey);
     }
 
-    protected function getSessionKey(string $formIdentifier): string
+    public function getSessionKey(string $formType, ?string $sessionId = null): string
     {
-        return $this->sessionPrefix . $formIdentifier;
+        return $sessionId 
+            ? self::SESSION_PREFIX . "{$formType}_{$sessionId}" 
+            : self::SESSION_PREFIX . $formType;
     }
 
-    // Restored helper method to check if form has expired
     public function hasExpired(array $data, string $formIdentifier): bool
     {
         if (empty($data) || !isset($data['created_at'])) {
             return true;
         }
 
-        $created = new \DateTime($data['created_at']);
+        $created = new DateTime($data['created_at']);
         $expires = $created->modify("+{$this->config[$formIdentifier]['expiration_hours']} hours");
         
         return $expires < now();
+    }
+
+    public function getFormConfig(string $formIdentifier): ?array
+    {
+        return $this->config[$formIdentifier] ?? null;
+    }
+
+    public function clearAllSessions(?string $formType = null): void
+    {
+        $pattern = $formType 
+            ? self::SESSION_PREFIX . "{$formType}_*" 
+            : self::SESSION_PREFIX . "*";
+
+        Session::forget($pattern);
     }
 }
