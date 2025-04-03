@@ -191,25 +191,30 @@ class ProductController extends ImprovedController
 
     public function store(Request $request)
     {
+        DB::beginTransaction();
         try {
+            // Validate form data before any database operations
             $data = $this->getValidatedFormData($request);
             
-            DB::beginTransaction();
-            try {
-                $product = $this->productService->createProduct($data);
-                DB::commit();
-                $this->formService->clear(self::FORM_TYPE, $request->session_id);
-                return $this->respondWithSuccess('Product created successfully', 201, $product);
-            } catch (\Exception $e) {
-                DB::rollBack();
-                throw $e;
-            }
+            // Create product within transaction
+            $product = $this->productService->createProduct($data);
+            
+            // Only commit and clear session if everything succeeds
+            DB::commit();
+            $this->formService->clear(self::FORM_TYPE, $request->session_id);
+            
+            return $this->respondWithSuccess('Product created successfully', 201, $product);
+            
         } catch (\Exception $e) {
+            // Always rollback on any exception
+            DB::rollBack();
+            
             Log::error('Product creation error', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'session_id' => $request->session_id
             ]);
+            
             return $this->handleError($e, $request);
         }
     }
