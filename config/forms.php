@@ -9,18 +9,24 @@ return [
                 'label' => 'Basic Information',
                 'description' => 'Enter the basic product details',
                 'validation_rules' => [
-                    'name' => 'required|string|max:255',
-                    'description' => 'required|string',
-                    'price' => 'required|numeric|min:0',
-                    'subcategory_id' => 'required|exists:subcategories,id',
+                    'basic_info' => 'required|array',
+                    'basic_info.name' => 'required|string|max:255',
+                    'basic_info.description' => 'required|string',
+                    'basic_info.price' => 'required|numeric|min:0',
+                    'basic_info.subcategory_id' => 'required|exists:subcategories,id',
+                    'session_id' => 'required|string',
+                    'step' => 'required|integer|in:1'
                 ]
             ],
             2 => [
                 'label' => 'Product Attributes',
                 'description' => 'Select product attributes and values',
                 'validation_rules' => [
-                    'attribute_values' => 'required|array',
-                    'attribute_values.*' => 'required|exists:attribute_values,id'
+                    'attributes' => 'required|array',
+                    'attributes.*.attribute' => 'required|string',
+                    'attributes.*.value' => 'required|string',
+                    'session_id' => 'required|string',
+                    'step' => 'required|integer|in:2'
                 ]
             ],
             3 => [
@@ -33,7 +39,9 @@ return [
                         'file',
                         'max:2048',
                         'mimes:jpeg,png,jpg'
-                    ]
+                    ],
+                    'session_id' => 'required|string',
+                    'step' => 'required|integer|in:3'
                 ]
             ]
         ]
