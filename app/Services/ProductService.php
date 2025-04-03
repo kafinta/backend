@@ -22,61 +22,58 @@ class ProductService
         $this->attributeService = $attributeService;
     }
 
-    public function createProduct(array $data)
+    public function createProduct(array $formData): array
     {
-        return DB::transaction(function () use ($data) {
-            $formData = $data['data'] ?? $data;
-            
-            $product = $this->createBasicProduct($formData);
-            $this->attachAttributes($product, $formData);
-            $this->attachImages($product, $formData);
-
-            return $product->load(['images', 'subcategory', 'attributeValues']);
-        });
-    }
-
-    protected function createBasicProduct(array $formData): Product
-    {
-        return Product::create([
-            'name' => $formData['basic_info']['name'],
-            'description' => $formData['basic_info']['description'],
-            'price' => $formData['basic_info']['price'],
-            'subcategory_id' => $formData['basic_info']['subcategory_id'],
-            'user_id' => auth()->id()
-        ]);
-    }
-
-    protected function attachAttributes(Product $product, array $formData): void
-    {
-        if (!isset($formData['attributes']) || !is_array($formData['attributes'])) {
-            return;
-        }
-
-        foreach ($formData['attributes'] as $attributeData) {
-            $attribute = Attribute::where('name', $attributeData['attribute'])->first();
-            if (!$attribute) {
-                continue;
+        try {
+            // Extract data
+            $basicInfo = $formData['data']['basic_info'] ?? null;
+            if (!$basicInfo) {
+                throw new \InvalidArgumentException('Missing basic product information');
             }
 
-            $attributeValue = AttributeValue::where([
-                'attribute_id' => $attribute->id,
-                'name' => $attributeData['value']
-            ])->first();
+            // Create product
+            $product = Product::create([
+                'name' => $basicInfo['name'],
+                'description' => $basicInfo['description'],
+                'price' => $basicInfo['price'],
+                'subcategory_id' => $basicInfo['subcategory_id'],
+                'user_id' => auth()->id()
+            ]);
 
-            if ($attributeValue) {
-                $product->attributeValues()->attach($attributeValue->id);
+            // Handle attributes if present
+            if (isset($formData['data']['attributes'])) {
+                $this->attachAttributes($product, $formData['data']['attributes']);
             }
+
+            // Handle images if present
+            if (isset($formData['data']['images'])) {
+                $this->attachImages($product, $formData['data']['images']);
+            }
+
+            // Load relationships for response
+            $product->load(['images', 'subcategory', 'attributes', 'attributeValues']);
+
+            return $product->toArray();
+
+        } catch (\Exception $e) {
+            // Let the controller handle the rollback
+            throw $e;
         }
     }
 
-    protected function attachImages(Product $product, array $formData): void
+    protected function attachAttributes(Product $product, array $attributeData): void
     {
-        if (!isset($formData['images']) || !is_array($formData['images'])) {
-            return;
+        if (!isset($attributeData['attribute_values']) || !is_array($attributeData['attribute_values'])) {
+            throw new \InvalidArgumentException('Invalid attribute values format');
         }
 
-        foreach ($formData['images'] as $imagePath) {
-            $product->images()->create(['path' => $imagePath]);
+        $product->attributeValues()->sync($attributeData['attribute_values']);
+    }
+
+    protected function attachImages(Product $product, array $imagePaths): void
+    {
+        foreach ($imagePaths as $path) {
+            $product->images()->create(['path' => $path]);
         }
     }
 
