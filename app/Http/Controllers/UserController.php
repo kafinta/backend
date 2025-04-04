@@ -60,10 +60,11 @@ class UserController extends ImprovedController
     public function login(Request $request)
     {
         try {
-            $credentials = $request->validate([
-                'email' => ['required', 'email'],
-                'password' => ['required'],
-            ]);
+            $validator = $this->validateLoginCredentials();
+            
+            if ($validator->fails()) {
+                return $this->respondWithValidationError($validator->messages()->first(), 422);
+            }
     
             $user = User::where('email', $credentials['email'])->first();
     
@@ -102,6 +103,15 @@ class UserController extends ImprovedController
         ]);
     }
 
+    protected function validateLoginCredentials()
+    {
+        return Validator::make(request()->all(), [
+            'email' => ['required', 'email'],
+            'password' => ['required'],
+            'remember_me' => ['sometimes', 'boolean']
+        ]);
+    }
+    
     public function rotateToken(Request $request)
     {
         // Revoke current token
@@ -113,6 +123,5 @@ class UserController extends ImprovedController
             'auth_token' => $token,
             'token_type' => 'Bearer'
         ]);
-
     }
 }
