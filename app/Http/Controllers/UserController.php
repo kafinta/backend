@@ -64,9 +64,9 @@ class UserController extends ImprovedController
                 'email' => ['required', 'email'],
                 'password' => ['required'],
             ]);
-
+    
             $user = User::where('email', $credentials['email'])->first();
-
+    
             if (!$user || !Hash::check($credentials['password'], $user->password)) {
                 return $this->respondWithError("Invalid credentials", 401);
             }
@@ -75,16 +75,22 @@ class UserController extends ImprovedController
             // $user->tokens()->delete();
             
             $token = $user->createToken('auth_token')->plainTextToken;
-
+    
             return $this->respondWithSuccess("Login successful", 200, [
-                'user' => $user->load('roles'),
+                'account' => new UserAccountResource($user),
                 'auth_token' => $token,
                 'token_type' => 'Bearer'
             ]);
-
+    
         } catch (\Exception $e) {
             return $this->respondWithError($e->getMessage(), 500);
         }
+    }
+
+    public function logout(Request $request)
+    {
+        $request->user()->currentAccessToken()->delete();
+        return $this->respondWithSuccess("Logout successful", 200);
     }
 
     public function validateUserInfo()
