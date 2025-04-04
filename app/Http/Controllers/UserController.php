@@ -71,12 +71,10 @@ class UserController extends ImprovedController
             if (!$user || !Hash::check($credentials['password'], $user->password)) {
                 return $this->respondWithError("Invalid credentials", 401);
             }
-            
-            // Delete existing tokens if you want to ensure single device login
-            // $user->tokens()->delete();
-            
-            $token = $user->createToken('auth_token')->plainTextToken;
-    
+
+            $tokenExpiration = $request->remember_me ? now()->addDays(30) : now()->addDay();
+            $token = $user->createToken('auth_token', ['*'], $tokenExpiration)->plainTextToken;
+                
             return $this->respondWithSuccess("Login successful", 200, [
                 'account' => new UserAccountResource($user),
                 'auth_token' => $token,
