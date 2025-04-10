@@ -23,8 +23,8 @@ return [
                 'description' => 'Select product attributes and values',
                 'validation_rules' => [
                     'attributes' => 'required|array',
-                    'attributes.*.attribute' => 'required|string',
-                    'attributes.*.value' => 'required|string',
+                    'attributes.*.attribute_id' => 'required|integer|exists:attributes,id',
+                    'attributes.*.value_id' => 'required|integer|exists:attribute_values,id',
                     'session_id' => 'required|string',
                     'step' => 'required|integer|in:2'
                 ]
