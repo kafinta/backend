@@ -63,11 +63,8 @@ class ProductService
 
     protected function attachAttributes(Product $product, array $attributeData): void
     {
-        if (!isset($attributeData['attribute_values']) || !is_array($attributeData['attribute_values'])) {
-            throw new \InvalidArgumentException('Invalid attribute values format');
-        }
-
-        $product->attributeValues()->sync($attributeData['attribute_values']);
+        // Use the attribute service to handle all attribute operations
+        $this->attributeService->handleAttributeUpdate($product, $attributeData['attribute_values'] ?? []);
     }
 
     protected function attachImages(Product $product, array $imagePaths): void
@@ -77,55 +74,55 @@ class ProductService
         }
     }
 
-    public function updateProduct(Product $product, array $data)
+    public function updateProduct(Product $product, array $formData): array
     {
-        return DB::transaction(function () use ($product, $data) {
-            $formData = $data['data'] ?? $data;
-            
-            $this->updateBasicInfo($product, $formData);
-            $this->updateAttributes($product, $formData);
-            $this->updateImages($product, $formData);
+        try {
+            // Update basic info if provided
+            if (isset($formData['data']['basic_info'])) {
+                $basicInfo = $formData['data']['basic_info'];
+                $updateData = array_filter([
+                    'name' => $basicInfo['name'] ?? null,
+                    'description' => $basicInfo['description'] ?? null,
+                    'price' => $basicInfo['price'] ?? null,
+                    'subcategory_id' => $basicInfo['subcategory_id'] ?? null
+                ], fn($value) => !is_null($value));
 
-            return $product->load(['images', 'subcategory', 'attributeValues']);
-        });
+                if (!empty($updateData)) {
+                    $product->update($updateData);
+                }
+            }
+
+            // Update attributes if provided
+            if (isset($formData['data']['attributes'])) {
+                $this->updateAttributes($product, $formData['data']['attributes']);
+            }
+
+            // Update images if provided
+            if (isset($formData['data']['images'])) {
+                $this->updateImages($product, $formData['data']['images']);
+            }
+
+            // Refresh and load relationships
+            $product->refresh()->load(['images', 'subcategory', 'attributes', 'attributeValues']);
+            return $product->toArray();
+
+        } catch (\Exception $e) {
+            throw $e;
+        }
     }
 
-    protected function updateBasicInfo(Product $product, array $formData): void
+    protected function updateAttributes(Product $product, array $attributeData): void
     {
-        if (!isset($formData['basic_info'])) {
-            return;
-        }
-
-        $product->update([
-            'name' => $formData['basic_info']['name'],
-            'description' => $formData['basic_info']['description'],
-            'price' => $formData['basic_info']['price'],
-            'subcategory_id' => $formData['basic_info']['subcategory_id']
-        ]);
+        // Use the attribute service for updates as well
+        $this->attributeService->handleAttributeUpdate($product, $attributeData['attribute_values'] ?? []);
     }
 
-    protected function updateAttributes(Product $product, array $formData): void
+    protected function updateImages(Product $product, array $imagePaths): void
     {
-        if (!isset($formData['attributes']) || !is_array($formData['attributes'])) {
-            return;
+        // Only update images if new ones are provided
+        foreach ($imagePaths as $path) {
+            $product->images()->create(['path' => $path]);
         }
-
-        $product->attributeValues()->detach();
-        $this->attachAttributes($product, $formData);
-    }
-
-    protected function updateImages(Product $product, array $formData): void
-    {
-        if (!isset($formData['images']) || !is_array($formData['images'])) {
-            return;
-        }
-
-        foreach ($product->images as $image) {
-            Storage::disk('public')->delete($image->path);
-            $image->delete();
-        }
-
-        $this->attachImages($product, $formData);
     }
 
     public function deleteProduct(Product $product): bool
