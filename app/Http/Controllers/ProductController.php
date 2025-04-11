@@ -425,12 +425,11 @@ class ProductController extends ImprovedController
             return $this->respondWithError(['message' => 'Session ID is required'], 400);
         }
 
-        $formType = 'product_update_' . $product->id;
-        $result = $this->formService->process($request, $formType);
+        $result = $this->formService->process($request, self::FORM_TYPE);
 
         if (!$result['success']) {
             if ($this->shouldClearSession($result)) {
-                $this->formService->clear($formType, $request->session_id);
+                $this->formService->clear(self::FORM_TYPE, $request->session_id);
             }
             return $this->respondWithError($result, 400);
         }
