@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Validation\Rule;
 
 class Product extends Model
 {
@@ -17,6 +18,30 @@ class Product extends Model
         'subcategory_id',
         'user_id'
     ];
+
+    /**
+     * Get the validation rules for product creation/update
+     *
+     * @param int|null $productId ID of product being updated (null for creation)
+     * @return array
+     */
+    public static function getValidationRules(?int $productId = null): array
+    {
+        return [
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                // Unique per user, ignore current product if updating
+                Rule::unique('products')->where(function ($query) {
+                    return $query->where('user_id', auth()->id());
+                })->ignore($productId)
+            ],
+            'description' => 'required|string',
+            'price' => 'required|numeric|min:0',
+            'subcategory_id' => 'required|exists:subcategories,id'
+        ];
+    }
 
     protected $casts = [
         'price' => 'decimal:2',
