@@ -10,10 +10,10 @@ return [
                 'description' => 'Enter the basic product details',
                 'validation_rules' => [
                     'basic_info' => 'required|array',
-                    'basic_info.name' => 'required|string|max:255',
-                    'basic_info.description' => 'required|string',
-                    'basic_info.price' => 'required|numeric|min:0',
-                    'basic_info.subcategory_id' => 'required|exists:subcategories,id',
+                    'basic_info.name' => 'sometimes|required|string|max:255',
+                    'basic_info.description' => 'sometimes|required|string',
+                    'basic_info.price' => 'sometimes|required|numeric|min:0',
+                    'basic_info.subcategory_id' => 'sometimes|required|exists:subcategories,id',
                     'session_id' => 'required|string',
                     'step' => 'required|integer|in:1'
                 ]
