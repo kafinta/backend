@@ -42,7 +42,7 @@ class ProductService
 
             // Handle attributes if present
             if (isset($formData['data']['attributes'])) {
-                $this->attachAttributes($product, $formData['data']['attributes']);
+                $this->attributeService->attachAttributeValues($product, $formData['data']['attributes']);
             }
 
             // Handle images if present
@@ -51,9 +51,29 @@ class ProductService
             }
 
             // Load relationships for response
-            $product->load(['images', 'subcategory', 'attributes', 'attributeValues']);
+            $product->load(['images', 'subcategory', 'attributeValues.attribute']);
 
-            return $product->toArray();
+            // Format the response
+            $response = $product->toArray();
+            
+            // Format attributes
+            $groupedAttributes = [];
+            foreach ($product->attributeValues as $value) {
+                $groupedAttributes[] = [
+                    'id' => $value->attribute->id,
+                    'name' => $value->attribute->name,
+                    'value' => [
+                        'id' => $value->id,
+                        'name' => $value->name,
+                        'representation' => $value->representation
+                    ]
+                ];
+            }
+            
+            $response['attributes'] = $groupedAttributes;
+            unset($response['attribute_values']);
+
+            return $response;
 
         } catch (\Exception $e) {
             // Let the controller handle the rollback
@@ -61,17 +81,16 @@ class ProductService
         }
     }
 
-    protected function attachAttributes(Product $product, array $attributeData): void
+    protected function attachAttributes(Product $product, array $attributes): void
     {
         // Use the attribute service to handle all attribute operations
-        $this->attributeService->handleAttributeUpdate($product, $attributeData['attribute_values'] ?? []);
+        $this->attributeService->attachAttributeValues($product, $attributes);
     }
 
     protected function attachImages(Product $product, array $imagePaths): void
     {
-        foreach ($imagePaths as $path) {
-            $product->images()->create(['path' => $path]);
-        }
+        // Move images from temp to final location
+        $this->imageService->processProductImages($imagePaths, $product);
     }
 
     public function updateProduct(Product $product, array $formData): array
@@ -103,8 +122,29 @@ class ProductService
             }
 
             // Refresh and load relationships
-            $product->refresh()->load(['images', 'subcategory', 'attributes', 'attributeValues']);
-            return $product->toArray();
+            $product->refresh()->load(['images', 'subcategory', 'attributeValues.attribute']);
+
+            // Format the response
+            $response = $product->toArray();
+            
+            // Format attributes
+            $groupedAttributes = [];
+            foreach ($product->attributeValues as $value) {
+                $groupedAttributes[] = [
+                    'id' => $value->attribute->id,
+                    'name' => $value->attribute->name,
+                    'value' => [
+                        'id' => $value->id,
+                        'name' => $value->name,
+                        'representation' => $value->representation
+                    ]
+                ];
+            }
+            
+            $response['attributes'] = $groupedAttributes;
+            unset($response['attribute_values']);
+
+            return $response;
 
         } catch (\Exception $e) {
             throw $e;
@@ -117,11 +157,27 @@ class ProductService
         $this->attributeService->handleAttributeUpdate($product, $attributeData['attribute_values'] ?? []);
     }
 
-    protected function updateImages(Product $product, array $imagePaths): void
+    /**
+     * Handle image updates for a product
+     * 
+     * @param Product $product
+     * @param Request $request Request containing image data
+     *                        Format:
+     *                        [
+     *                            'delete' => [array of image IDs],
+     *                            'images' => [array of uploaded files]
+     *                        ]
+     */
+    protected function updateImages(Product $product, Request $request): void
     {
-        // Only update images if new ones are provided
-        foreach ($imagePaths as $path) {
-            $product->images()->create(['path' => $path]);
+        // Handle image deletions first
+        if ($request->has('delete')) {
+            $this->imageService->deleteProductImages($product, $request->input('delete'));
+        }
+        
+        // Handle new image uploads
+        if ($request->hasFile('images')) {
+            $this->imageService->handleImageUpload($request, $product);
         }
     }
 
