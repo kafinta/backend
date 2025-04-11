@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\Hash;
 use App\Traits\ReferenceGeneratorTrait;
 use Illuminate\Support\Facades\Log;
 use App\Models\Role;
+use Illuminate\Support\Str;
+use Illuminate\Cache\RateLimiter;
 
 class UserController extends ImprovedController
 {
