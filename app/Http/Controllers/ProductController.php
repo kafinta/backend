@@ -17,7 +17,6 @@ use App\Services\MultiStepFormService;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Session;
 use App\Http\Resources\AttributeResource;
-use App\Http\Requests\ProductAttributeStepRequest;
 use App\Services\ProductService;
 use App\Services\ProductImageService;
 use App\Services\ProductAttributeService;
@@ -56,12 +55,39 @@ class ProductController extends ImprovedController
     public function index()
     {
         try {
-            $products = Product::with(['images', 'subcategory', 'attributes', 'attributeValues'])
+            $products = Product::with(['images', 'subcategory', 'attributeValues.attribute'])
                 ->latest()
                 ->paginate(10);
 
+            $formattedProducts = $products->map(function ($product) {
+                $data = $product->toArray();
+                
+                // Format attributes
+                $groupedAttributes = [];
+                foreach ($product->attributeValues as $value) {
+                    $groupedAttributes[] = [
+                        'id' => $value->attribute->id,
+                        'name' => $value->attribute->name,
+                        'value' => [
+                            'id' => $value->id,
+                            'name' => $value->name,
+                            'representation' => $value->representation
+                        ]
+                    ];
+                }
+                
+                $data['attributes'] = $groupedAttributes;
+                unset($data['attribute_values']);
+                
+                return $data;
+            });
+
+            // Maintain pagination data
+            $response = $products->toArray();
+            $response['data'] = $formattedProducts;
+
             return $this->respondWithSuccess('Products retrieved successfully', 200, [
-                'products' => $products
+                'products' => $response
             ]);
         } catch (\Exception $e) {
             Log::error('Error retrieving products', ['error' => $e->getMessage()]);
@@ -72,8 +98,28 @@ class ProductController extends ImprovedController
     public function show(Product $product)
     {
         try {
-            $product->load(['images', 'subcategory', 'attributes', 'attributeValues']);
-            return $this->respondWithSuccess('Product retrieved successfully', 200, ['product' => $product]);
+            $product->load(['images', 'subcategory', 'attributeValues.attribute']);
+            
+            $response = $product->toArray();
+            
+            // Format attributes
+            $groupedAttributes = [];
+            foreach ($product->attributeValues as $value) {
+                $groupedAttributes[] = [
+                    'id' => $value->attribute->id,
+                    'name' => $value->attribute->name,
+                    'value' => [
+                        'id' => $value->id,
+                        'name' => $value->name,
+                        'representation' => $value->representation
+                    ]
+                ];
+            }
+            
+            $response['attributes'] = $groupedAttributes;
+            unset($response['attribute_values']);
+            
+            return $this->respondWithSuccess('Product retrieved successfully', 200, ['product' => $response]);
         } catch (\Exception $e) {
             Log::error('Error retrieving product', ['error' => $e->getMessage()]);
             return $this->respondWithError(['message' => 'Error retrieving product'], 500);
@@ -120,11 +166,36 @@ class ProductController extends ImprovedController
         $sessionKey = $this->formService->getSessionKey(self::FORM_TYPE, $request->session_id);
         $formData = Session::get($sessionKey);
 
-        if (!$formData || !isset($formData['data']['basic_info'])) {
+        // Validate step order
+        if (empty($formData) || !isset($formData['data']['basic_info'])) {
             return $this->respondWithError(['message' => 'Please complete step 1 first'], 400);
         }
 
-        return $this->processFormStep($request);
+        try {
+            // Validate request format first
+            $validator = Validator::make($request->all(), [
+                'session_id' => 'required|string',
+                'step' => 'required|integer|in:2',
+                'attributes' => 'required|array',
+                'attributes.*.attribute_id' => 'required|integer|exists:attributes,id',
+                'attributes.*.value_id' => 'required|integer|exists:attribute_values,id',
+            ]);
+
+            if ($validator->fails()) {
+                return $this->respondWithError(['errors' => $validator->errors()], 422);
+            }
+
+            // Process attributes
+            $result = $this->formService->process($request, self::FORM_TYPE);
+            
+            if (!$result['success']) {
+                return $this->respondWithError($result, 400);
+            }
+            
+            return $this->respondWithSuccess('Attributes saved successfully', 200, $result);
+        } catch (\Exception $e) {
+            return $this->handleStepError($e, $request);
+        }
     }
 
     protected function handleImageStep(Request $request)
@@ -155,7 +226,42 @@ class ProductController extends ImprovedController
             return $this->respondWithError($result, 400);
         }
 
+        // If this is the basic info step, validate product name uniqueness
+        if ($request->step === 1 && isset($result['data']['basic_info'])) {
+            $validationResult = $this->validateBasicInfo($result['data']['basic_info']);
+            if (!$validationResult['success']) {
+                return $this->respondWithError($validationResult, 422);
+            }
+        }
+
         return $this->respondWithSuccess('Step saved successfully', 200, $result);
+    }
+
+    protected function validateBasicInfo(array $basicInfo, ?Product $product = null): array
+    {
+        $validator = Validator::make($basicInfo, [
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('products')->where(function ($query) {
+                    return $query->where('user_id', auth()->id());
+                })->ignore($product?->id)
+            ],
+            'description' => 'required|string',
+            'price' => 'required|numeric|min:0',
+            'subcategory_id' => 'required|exists:subcategories,id'
+        ]);
+
+        if ($validator->fails()) {
+            return [
+                'success' => false,
+                'error' => 'Validation failed',
+                'errors' => $validator->errors()->toArray()
+            ];
+        }
+
+        return ['success' => true];
     }
 
     protected function shouldClearSession(array $result): bool
@@ -175,14 +281,14 @@ class ProductController extends ImprovedController
     {
         try {
             $config = $this->formService->getFormConfig(self::FORM_TYPE);
-            return $this->respondWithSuccess('Form metadata retrieved', 200, [
+        return $this->respondWithSuccess('Form metadata retrieved', 200, [
                 'session_id' => (string) Str::uuid(),
-                'total_steps' => $config['total_steps'],
+            'total_steps' => $config['total_steps'],
                 'steps' => collect($config['steps'])->map(fn($step) => [
                     'label' => $step['label'],
                     'description' => $step['description']
                 ])
-            ]);
+        ]);
         } catch (\Exception $e) {
             Log::error('Error retrieving form metadata', ['error' => $e->getMessage()]);
             return $this->respondWithError(['message' => 'Error retrieving form metadata'], 500);
@@ -228,7 +334,7 @@ class ProductController extends ImprovedController
         $sessionKey = $this->formService->getSessionKey(self::FORM_TYPE, $request->session_id);
         $data = Session::get($sessionKey);
         
-        if (empty($data)) {
+            if (empty($data)) {
             throw new \InvalidArgumentException('No form data found or form has expired');
         }
 
@@ -254,10 +360,36 @@ class ProductController extends ImprovedController
                 return $this->respondWithError(['errors' => $validator->errors()], 422);
             }
 
-            $subcategory = Subcategory::with(['attributes.values'])->findOrFail($request->subcategory_id);
+            $subcategory = Subcategory::with([
+                'attributes' => function($query) {
+                    $query->orderBy('display_order');
+                },
+                'attributes.values'
+            ])->findOrFail($request->subcategory_id);
             
+            // Format the response to be more frontend-friendly
+            $attributes = $subcategory->attributes->map(function($attribute) {
+                return [
+                    'id' => $attribute->id,
+                    'name' => $attribute->name,
+                    'type' => $attribute->type,
+                    'is_required' => $attribute->pivot->is_required,
+                    'display_order' => $attribute->pivot->display_order,
+                    'values' => $attribute->values->map(function($value) {
+                        return [
+                            'id' => $value->id,
+                            'name' => $value->name,
+                            'representation' => $value->representation
+                        ];
+                    })
+                ];
+            });
+
             return $this->respondWithSuccess('Attributes retrieved successfully', 200, [
-                'attributes' => $subcategory->attributes
+                'attributes' => $attributes,
+                'required_attributes' => $subcategory->attributes
+                    ->where('pivot.is_required', true)
+                    ->pluck('name')
             ]);
 
         } catch (\Exception $e) {
@@ -271,44 +403,121 @@ class ProductController extends ImprovedController
     public function updateStep(Request $request, Product $product)
     {
         try {
-            if (!auth()->user()->hasRole('seller') && auth()->id() !== $product->user_id ) {
+            if (!auth()->user()->hasRole('seller') && auth()->id() !== $product->user_id) {
                 return $this->respondWithError('Unauthorized', 403);
             }
 
-            $rules = $this->getValidationRules($request->step);
-            $formType = 'product_form';
-            $result = $this->formService->process($request, $formType, $rules);
+            $formType = 'product_update_' . $product->id;
 
-            return $this->respondWithSuccess('Step saved successfully', 200, $result);
+            return match ((int)$request->step) {
+                2 => $this->handleUpdateAttributeStep($request, $product),
+                3 => $this->handleUpdateImageStep($request, $product),
+                default => $this->handleUpdateDefaultStep($request, $product),
+            };
+        } catch (\Exception $e) {
+            return $this->handleStepError($e, $request);
+        }
+    }
+
+    protected function handleUpdateDefaultStep(Request $request, Product $product)
+    {
+        if (!$request->session_id) {
+            return $this->respondWithError(['message' => 'Session ID is required'], 400);
+        }
+
+        $formType = 'product_update_' . $product->id;
+        $result = $this->formService->process($request, $formType);
+
+        if (!$result['success']) {
+            if ($this->shouldClearSession($result)) {
+                $this->formService->clear($formType, $request->session_id);
+            }
+            return $this->respondWithError($result, 400);
+        }
+
+        // If this is the basic info step, validate product name uniqueness
+        if ($request->step === 1 && isset($result['data']['basic_info'])) {
+            $validationResult = $this->validateBasicInfo($result['data']['basic_info'], $product);
+            if (!$validationResult['success']) {
+                return $this->respondWithError($validationResult, 422);
+            }
+        }
+
+        return $this->respondWithSuccess('Basic info updated successfully', 200, $result);
+    }
+
+    protected function handleUpdateAttributeStep(Request $request, Product $product)
+    {
+        if (!$request->session_id) {
+            return $this->respondWithError(['message' => 'Session ID is required'], 400);
+        }
+
+        try {
+            $result = $this->attributeService->handleAttributeStep([
+                'session_id' => $request->session_id,
+                'attributes' => $request->input('attributes', []),
+                'product_id' => $product->id
+            ]);
+
+            return $this->respondWithSuccess('Attributes updated successfully', 200, [
+                'session_id' => $request->session_id,
+                'attributes' => AttributeResource::collection($product->subcategory->attributes),
+                'saved_values' => $result['saved_values'] ?? []
+            ]);
 
         } catch (\Exception $e) {
-            return $this->respondWithError(['message' => 'Error saving step',  $e->getMessage()], 500,);
+            Log::error('Error updating attribute step', [
+                'error' => $e->getMessage(),
+                'product_id' => $product->id,
+                'session_id' => $request->session_id
+            ]);
+            return $this->respondWithError(['message' => $e->getMessage()], 400);
         }
+    }
+
+    protected function handleUpdateImageStep(Request $request, Product $product)
+    {
+        if (!$request->hasFile('images')) {
+            return $this->respondWithError(['message' => 'No images provided'], 400);
+        }
+
+        $paths = $this->imageService->handleImageStep($request);
+        $this->updateSessionWithImages($request->session_id, $paths, 'product_update_' . $product->id);
+
+        return $this->respondWithSuccess('Images updated successfully', 200, ['paths' => $paths]);
     }
 
     public function update(Request $request, Product $product)
     {
+        DB::beginTransaction();
         try {
-            if (!auth()->user()->hasRole('seller') && auth()->id() !== $product->user_id ) {
+            if (!auth()->user()->hasRole('seller') && auth()->id() !== $product->user_id) {
                 return $this->respondWithError('Unauthorized', 403);
             }
 
-            $data = $this->formService->getData('product_update_' . $product->id, $request->session_id);
-            
+            $formType = 'product_update_' . $product->id;
+            $data = $this->formService->getData($formType, $request->session_id);
+
             if (empty($data)) {
                 return $this->respondWithError(['message' => 'No form data found or form has expired'], 400);
             }
 
             $updatedProduct = $this->productService->updateProduct($product, $data);
-            $this->formService->clear('product_update_' . $product->id, $request->session_id);
+            
+            DB::commit();
+            $this->formService->clear($formType, $request->session_id);
 
             return $this->respondWithSuccess('Product updated successfully', 200, $updatedProduct);
 
         } catch (\Exception $e) {
-            return $this->respondWithError([
-                'message' => 'Error updating product', 
-                'error' => $e->getMessage()
-            ], 500);
+            DB::rollBack();
+            Log::error('Product update error', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'product_id' => $product->id,
+                'session_id' => $request->session_id
+            ]);
+            return $this->handleError($e, $request);
         }
     }
 
@@ -400,3 +609,4 @@ class ProductController extends ImprovedController
         ]);
     }
 }
+
