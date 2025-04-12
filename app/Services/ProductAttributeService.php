@@ -216,14 +216,22 @@ class ProductAttributeService
             }
 
             // Get the form data
-            $formData = $this->formService->getData('product_form', $validatedData['session_id']);
+            $formType = 'product_form';
+            $formData = $this->formService->getData($formType, $validatedData['session_id']);
             
             if (!$formData || !isset($formData['data']['basic_info'])) {
                 throw new \InvalidArgumentException('Please complete step 1 first');
             }
 
-            // Get the subcategory with its attributes
-            $subcategory = Subcategory::with('attributes')->findOrFail($formData['data']['basic_info']['subcategory_id']);
+            // For updates, get the subcategory from the product
+            if (isset($validatedData['product_id'])) {
+                $product = Product::findOrFail($validatedData['product_id']);
+                $subcategory = $product->subcategory;
+            } else {
+                // For new products, get the subcategory from form data
+                $subcategory = Subcategory::with('attributes')
+                    ->findOrFail($formData['data']['basic_info']['subcategory_id']);
+            }
 
             // Validate attribute values
             $rawAttributes = $this->validateAttributeValues(
@@ -266,7 +274,8 @@ class ProductAttributeService
             ];
 
             // Save updated form data
-            $this->formService->save('product_form', $validatedData['session_id'], $formData);
+            $sessionKey = $this->formService->getSessionKey($formType, $validatedData['session_id']);
+            Session::put($sessionKey, $formData);
 
             return [
                 'success' => true,

@@ -15,6 +15,7 @@ class ProductImageService
     protected $tempPath = 'temp-product-images';
     protected $finalPath = 'product-images';
     protected $maxImagesPerProduct = 10; // Configurable maximum images per product
+    protected $formService;
 
     /**
      * Handle initial image upload in multi-step form
@@ -22,17 +23,17 @@ class ProductImageService
      * @param Request $request
      * @return array Array of temporary image paths
      */
+    public function __construct(MultiStepFormService $formService)
+    {
+        $this->formService = $formService;
+    }
+
     public function handleImageStep(Request $request): array
     {
-        $validator = Validator::make($request->all(), [
-            'images' => 'required|array',
-            'images.*' => 'required|image|mimes:jpeg,png,jpg|max:2048'
-        ]);
+        $formType = 'product_form';
+        $sessionKey = $this->formService->getSessionKey($formType, $request->session_id);
 
-        if ($validator->fails()) {
-            throw new \Exception($validator->errors()->first());
-        }
-
+        // First validate and upload images before form processing
         $tempPaths = [];
         
         if ($request->hasFile('images')) {
@@ -46,7 +47,25 @@ class ProductImageService
                 $tempPaths[] = $path;
             }
         }
+
+        // Create a clean request with just the paths
+        $cleanRequest = new Request([
+            'image_paths' => $tempPaths,
+            'session_id' => $request->session_id,
+            'step' => 3
+        ]);
+
+        // Process the form with the clean request
+        $result = $this->formService->process($cleanRequest, $formType);
         
+        if (!$result['success']) {
+            // Clean up uploaded files if form validation fails
+            foreach ($tempPaths as $path) {
+                Storage::disk($this->tempDisk)->delete($path);
+            }
+            throw new \Exception($result['error']);
+        }
+
         return $tempPaths;
     }
 
