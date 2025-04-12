@@ -20,7 +20,7 @@ use App\Http\Controllers\AttributeValueController;
 // Public Routes
 Route::middleware(['throttle:6,1'])->prefix('user')->group(function () {
     Route::post('/login', [UserController::class, 'login']);
-    Route::post('/register', [UserController::class, 'register']);
+    Route::post('/signup', [UserController::class, 'register']);
 });
 
 // Public Resource Routes
@@ -32,14 +32,13 @@ Route::apiResources([
     'attributes.values' => AttributeValueController::class,
 ]);
 
+// Additional Public Routes
 Route::prefix('attributes')->controller(AttributeController::class)->group(function () {
     Route::get('/subcategory/{subcategoryId}', 'getAttributesForSubcategory');
 });
 
-Route::get('{number}/categories', [CategoryController::class, 'getSpecificNumberOfCategories']);
-Route::get('subcategories/find', [SubcategoryController::class, 'getSubcategories']);
-Route::get('products', [ProductController::class, 'index']);
-Route::get('products/{id}', [ProductController::class, 'show']);
+Route::get('/products', [ProductController::class, 'index']);
+Route::get('/products/{product}', [ProductController::class, 'show']);
 
 // Protected Routes
 Route::middleware('auth:sanctum')->group(function () {
@@ -52,34 +51,25 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Product Management Routes
     Route::prefix('products')->controller(ProductController::class)->group(function () {
-        Route::get('/', 'index');
-        Route::get('/{product}', 'show');
+        Route::get('/form/metadata', [ProductController::class, 'getFormMetadata']);
+        Route::get('/form/{sessionId}', [ProductController::class, 'getFormData']);
+        Route::get('/subcategory/attributes', [ProductController::class, 'getSubcategoryAttributes']);
         
-        // Product Form Routes
-        Route::post('/step', 'saveStep')->name('products.create.step');
-        Route::post('/submit', 'store')->name('products.create.submit');
-        Route::post('/{product}/step', 'updateStep');
-        Route::put('/{product}', 'update');
-        Route::delete('/{product}', 'destroy');
+        Route::post('/steps', [ProductController::class, 'saveStep']);
+        Route::post('/', [ProductController::class, 'store']);
+        Route::put('/{product}', [ProductController::class, 'update']);
+        Route::delete('/{product}', [ProductController::class, 'destroy']);
     });
 
     // Seller Routes
     Route::prefix('sellers')->controller(SellerController::class)->group(function () {
-        // Application Routes
-        Route::post('/apply/step', 'saveStep')->name('sellers.apply.step');
-        Route::post('/apply/submit', 'submit')->name('sellers.apply.submit');
+        Route::post('apply/step', 'saveStep')->name('sellers.apply.step');
+        Route::post('apply/submit', 'submit')->name('sellers.apply.submit');
+        Route::get('{seller}', 'show')->name('sellers.show');
+        Route::get('{seller}/document', 'downloadDocument')->name('sellers.document.download');
         
-        // Seller Profile Routes
-        Route::get('/{seller}', 'show')->name('sellers.show');
-        Route::get('/{seller}/document', 'downloadDocument')->name('sellers.document.download');
-        
-        // Admin Only Routes
         Route::middleware('role:admin')->group(function() {
-            Route::post('/{seller}/verify', 'verify')->name('sellers.verify');
+            Route::post('{seller}/verify', 'verify')->name('sellers.verify');
         });
     });
-
-
-    // Attribute Values Routes
-
 });
