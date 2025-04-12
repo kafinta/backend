@@ -8,6 +8,7 @@ use App\Models\AttributeValue;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\Request;
 
 class ProductService
 {
@@ -93,7 +94,7 @@ class ProductService
         $this->imageService->processProductImages($imagePaths, $product);
     }
 
-    public function updateProduct(Product $product, array $formData): array
+    public function updateProduct(Product $product, array $formData, Request $request = null): array
     {
         try {
             // Update basic info if provided
@@ -119,6 +120,11 @@ class ProductService
             // Update images if provided
             if (isset($formData['data']['images'])) {
                 $this->updateImages($product, $formData['data']['images']);
+            }
+
+            // If request object is provided, handle any additional image uploads
+            if ($request && $request->hasFile('images')) {
+                $this->updateImages($product, $request);
             }
 
             // Refresh and load relationships
@@ -161,23 +167,35 @@ class ProductService
      * Handle image updates for a product
      * 
      * @param Product $product
-     * @param Request $request Request containing image data
+     * @param mixed $input Request or array containing image data
      *                        Format:
      *                        [
      *                            'delete' => [array of image IDs],
      *                            'images' => [array of uploaded files]
      *                        ]
      */
-    protected function updateImages(Product $product, Request $request): void
+    protected function updateImages(Product $product, $input): void
     {
         // Handle image deletions first
-        if ($request->has('delete')) {
-            $this->imageService->deleteProductImages($product, $request->input('delete'));
-        }
-        
-        // Handle new image uploads
-        if ($request->hasFile('images')) {
-            $this->imageService->handleImageUpload($request, $product);
+        if (is_array($input)) {
+            // Handle array input format
+            if (isset($input['delete'])) {
+                $this->imageService->deleteProductImages($product, $input['delete']);
+            }
+            
+            // Handle new image uploads
+            if (isset($input['images']) && is_array($input['images'])) {
+                $this->imageService->handleImageUpload($input['images'], $product);
+            }
+        } else {
+            // Handle Request object
+            if ($input->has('delete')) {
+                $this->imageService->deleteProductImages($product, $input->input('delete'));
+            }
+            
+            if ($input->hasFile('images')) {
+                $this->imageService->handleImageUpload($input, $product);
+            }
         }
     }
 
