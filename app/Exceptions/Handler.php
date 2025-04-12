@@ -56,6 +56,16 @@ class Handler extends ExceptionHandler
             ], 401);
         }
 
+        // Handle model not found exception
+        if ($exception instanceof \Illuminate\Database\Eloquent\ModelNotFoundException) {
+            $modelName = strtolower(class_basename($exception->getModel()));
+            return response()->json([
+                'status' => 'fail',
+                'status_code' => 404,
+                'message' => "The requested {$modelName} was not found."
+            ], 404);
+        }
+
         return parent::render($request, $exception);
     }
 }
