@@ -4,6 +4,7 @@ namespace App\Exceptions;
 
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Illuminate\Auth\AuthenticationException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Throwable;
 
 class Handler extends ExceptionHandler
@@ -63,6 +64,15 @@ class Handler extends ExceptionHandler
                 'status' => 'fail',
                 'status_code' => 404,
                 'message' => "The requested {$modelName} was not found."
+            ], 404);
+        }
+
+        // Handle non-existent routes
+        if ($exception instanceof NotFoundHttpException) {
+            return response()->json([
+                'status' => 'fail',
+                'status_code' => 404,
+                'message' => 'The requested route does not exist.'
             ], 404);
         }
 
