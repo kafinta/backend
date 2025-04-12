@@ -33,13 +33,8 @@ return [
                 'label' => 'Product Images',
                 'description' => 'Upload product images',
                 'validation_rules' => [
-                    'images' => 'required|array|min:1',
-                    'images.*' => [
-                        'required',
-                        'file',
-                        'max:2048',
-                        'mimes:jpeg,png,jpg'
-                    ],
+                    'image_paths' => 'required|array|min:1',
+                    'image_paths.*' => 'required|string',
                     'session_id' => 'required|string',
                     'step' => 'required|integer|in:3'
                 ]
