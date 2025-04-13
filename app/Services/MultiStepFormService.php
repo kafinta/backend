@@ -30,12 +30,12 @@ class MultistepFormService
             $sessionKey = $this->getSessionKey($formIdentifier, $request->session_id);
             $formData = $this->getOrInitializeFormData($request, $formIdentifier, $sessionKey);
             
-            $this->validateStep($request->step, $formConfig);
+            $this->validateStep($request->step, $formConfig, $formData);
             
             if (!$this->validateStepData($request, $formConfig)) {
                 return [
                     'success' => false,
-                    'error' => 'Validation failed',
+                    'error' => 'Validation failed',                    
                     'errors' => $this->getValidationErrors($request, $formConfig)
                 ];
             }
@@ -43,7 +43,14 @@ class MultistepFormService
             $formData = $this->updateFormData($formData, $request);
             Session::put($sessionKey, $formData);
 
-            return $this->prepareSuccessResponse($request, $formConfig, $formData);
+            $response = $this->prepareSuccessResponse($request, $formConfig, $formData);
+
+            // If form is completed, clear the session
+            if ($response['completed']) {
+                $this->clear($formIdentifier, $request->session_id);
+            }
+
+            return $response;
 
         } catch (\Exception $e) {
             Log::error('Form processing error', [
@@ -73,10 +80,25 @@ class MultistepFormService
         }
     }
 
-    protected function validateStep(int $step, array $formConfig): void
+    protected function validateStep(int $step, array $formConfig, array $formData): void
     {
+        // Check if step exists in config
         if (!isset($formConfig['steps'][$step])) {
             throw new \InvalidArgumentException("Invalid step number");
+        }
+
+        // For step 1, no validation needed as it's the starting point
+        if ($step === 1) {
+            return;
+        }
+
+        // For other steps, check if the previous step was completed
+        $currentStep = $formData['step'] ?? 0;
+        $previousStep = $step - 1;
+
+        if ($currentStep < $previousStep) {
+            $stepName = $formConfig['steps'][$previousStep]['label'] ?? "Step {$previousStep}";
+            throw new \InvalidArgumentException("Please complete {$stepName} first");
         }
     }
 
@@ -87,7 +109,7 @@ class MultistepFormService
         if (empty($formData)) {
             $step = (int) $request->step;
             if ($step !== 1) {
-                throw new \InvalidArgumentException("Session expired or invalid");
+                throw new \InvalidArgumentException("Session expired or invalid. Please start from step 1");
             }
             
             return [
@@ -180,6 +202,9 @@ class MultistepFormService
     {
         $sessionKey = $this->getSessionKey($formType, $sessionId);
         Session::forget($sessionKey);
+        
+        // Remove the session ID from the session
+        Session::forget('session_id_' . $sessionId);
     }
 
     public function getSessionKey(string $formType, ?string $sessionId = null): string
@@ -212,6 +237,11 @@ class MultistepFormService
             ? self::SESSION_PREFIX . "{$formType}_*" 
             : self::SESSION_PREFIX . "*";
 
+        // Clear all form data sessions
         Session::forget($pattern);
+        
+        // Clear all session IDs
+        $sessionIdsPattern = 'session_id_*';
+        Session::forget($sessionIdsPattern);
     }
 }
