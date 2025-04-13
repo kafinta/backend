@@ -48,7 +48,14 @@ class SubcategoryController extends ImprovedController
                 return [
                     'id' => $subcategory->id,
                     'name' => $subcategory->name,
-                    'has_colors' => $subcategory->has_colors,
+                    'image_path' => $subcategory->image_path,
+                    'category' => $subcategory->category->name,
+                    'locations' => $subcategory->locations->map(function ($location) {
+                        return [
+                            'id' => $location->id,
+                            'name' => $location->name
+                        ];
+                    })
                 ];
             })
         ];
@@ -184,7 +191,6 @@ class SubcategoryController extends ImprovedController
                 $values = AttributeValue::where('attribute_id', $attribute->id)
                     ->pluck('value')
                     ->toArray();
-                
                 return [
                     'id' => $attribute->id,
                     'name' => $attribute->name,
