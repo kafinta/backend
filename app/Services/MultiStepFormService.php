@@ -78,6 +78,16 @@ class MultistepFormService
         if (!$request->session_id) {
             throw new \InvalidArgumentException("Session ID is required");
         }
+        
+        // Check if session_id is a placeholder like "{session_id}"
+        if (preg_match('/^\{.*\}$/', $request->session_id)) {
+            throw new \InvalidArgumentException("Invalid session ID format");
+        }
+        
+        // Validate that the session_id is a valid UUID
+        if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $request->session_id)) {
+            throw new \InvalidArgumentException("Session ID must be a valid UUID");
+        }
     }
 
     protected function validateStep(int $step, array $formConfig, array $formData): void
