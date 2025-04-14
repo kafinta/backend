@@ -22,7 +22,7 @@ return [
                 'label' => 'Product Attributes',
                 'description' => 'Select product attributes and values',
                 'validation_rules' => [
-                    'attributes' => 'required|array',
+                    'attributes' => 'sometimes|array',
                     'attributes.*.attribute_id' => 'required|integer|exists:attributes,id',
                     'attributes.*.value_id' => 'required|integer|exists:attribute_values,id',
                     'session_id' => 'required|string',
@@ -35,8 +35,8 @@ return [
                 'validation_rules' => [
                     'session_id' => 'required|string',
                     'step' => 'required|integer|in:3',
-                    'images' => 'required|array|min:1',
-                    'images.*' => 'required|file|image|mimes:jpeg,png,jpg,gif|max:2048',
+                    'images' => 'sometimes|array|min:1',
+                    'images.*' => 'sometimes|file|image|mimes:jpeg,png,jpg,gif|max:2048',
                 ]
             ]
         ]
