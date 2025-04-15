@@ -55,8 +55,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/form/{sessionId}', [ProductController::class, 'getFormData']);
         Route::get('/subcategory/attributes', [ProductController::class, 'getSubcategoryAttributes']);
         
-        Route::post('/steps', [ProductController::class, 'saveStep']);
+        Route::post('/steps', [ProductController::class, 'createStep']);
         Route::post('/', [ProductController::class, 'store']);
+        
+        Route::post('/{product}/steps', [ProductController::class, 'updateStep']);
         Route::put('/{product}', [ProductController::class, 'update']);
         Route::delete('/{product}', [ProductController::class, 'destroy']);
     });
