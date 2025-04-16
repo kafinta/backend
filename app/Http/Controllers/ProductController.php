@@ -6,9 +6,11 @@ use App\Http\Controllers\ImprovedController;
 use Illuminate\Http\Request;
 use App\Models\Product;
 use App\Models\Subcategory;
+use App\Models\Attribute;
+use App\Models\AttributeValue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
-use App\Http\Controllers\ImageController;   
+use App\Http\Controllers\ImageController;
 use Illuminate\Support\Facades\Log;
 use App\Traits\MultiStepFormTrait;
 use Illuminate\Support\Facades\Validator;
@@ -62,26 +64,45 @@ class ProductController extends ImprovedController
                 ->paginate(10);
 
             $formattedProducts = $products->map(function ($product) {
-                $data = $product->toArray();
-                
+                // Make a copy of the attributeValues for our custom formatting
+                $attributeValues = $product->attributeValues;
+
+                // Remove the attributeValues relation to prevent it from being serialized
+                $product->unsetRelation('attributeValues');
+
+                $productData = $product->toArray();
+
                 // Format attributes
-                $groupedAttributes = [];
-                foreach ($product->attributeValues as $value) {
-                    $groupedAttributes[] = [
-                        'id' => $value->attribute->id,
-                        'name' => $value->attribute->name,
-                        'value' => [
-                            'id' => $value->id,
-                            'name' => $value->name,
-                            'representation' => $value->representation
-                        ]
-                    ];
+                $formattedAttributes = [];
+                foreach ($attributeValues as $value) {
+                    if ($value->attribute) {
+                        $formattedAttributes[] = [
+                            'id' => $value->attribute->id,
+                            'name' => $value->attribute->name,
+                            'value' => [
+                                'id' => $value->id,
+                                'name' => $value->name,
+                                'representation' => $value->representation
+                            ]
+                        ];
+                    }
                 }
-                
-                $data['attributes'] = $groupedAttributes;
-                unset($data['attribute_values']);
-                
-                return $data;
+
+                // Create a clean product object without attribute_values
+                return [
+                    'id' => $productData['id'],
+                    'name' => $productData['name'],
+                    'description' => $productData['description'],
+                    'price' => $productData['price'],
+                    'subcategory_id' => $productData['subcategory_id'],
+                    'user_id' => $productData['user_id'],
+                    'is_active' => $productData['is_active'],
+                    'created_at' => $productData['created_at'],
+                    'updated_at' => $productData['updated_at'],
+                    'subcategory' => $productData['subcategory'] ?? null,
+                    'images' => $productData['images'] ?? [],
+                    'attributes' => $formattedAttributes
+                ];
             });
 
             // Maintain pagination data
@@ -101,26 +122,47 @@ class ProductController extends ImprovedController
     {
         try {
             $product->load(['images', 'subcategory', 'attributeValues.attribute']);
-            
-            $response = $product->toArray();
-            
+
+            // Make a copy of the attributeValues for our custom formatting
+            $attributeValues = $product->attributeValues;
+
+            // Remove the attributeValues relation to prevent it from being serialized
+            $product->unsetRelation('attributeValues');
+
+            $productData = $product->toArray();
+
             // Format attributes
-            $groupedAttributes = [];
-            foreach ($product->attributeValues as $value) {
-                $groupedAttributes[] = [
-                    'id' => $value->attribute->id,
-                    'name' => $value->attribute->name,
-                    'value' => [
-                        'id' => $value->id,
-                        'name' => $value->name,
-                        'representation' => $value->representation
-                    ]
-                ];
+            $formattedAttributes = [];
+            foreach ($attributeValues as $value) {
+                if ($value->attribute) {
+                    $formattedAttributes[] = [
+                        'id' => $value->attribute->id,
+                        'name' => $value->attribute->name,
+                        'value' => [
+                            'id' => $value->id,
+                            'name' => $value->name,
+                            'representation' => $value->representation
+                        ]
+                    ];
+                }
             }
-            
-            $response['attributes'] = $groupedAttributes;
-            unset($response['attribute_values']);
-            
+
+            // Create a clean response without attribute_values
+            $response = [
+                'id' => $productData['id'],
+                'name' => $productData['name'],
+                'description' => $productData['description'],
+                'price' => $productData['price'],
+                'subcategory_id' => $productData['subcategory_id'],
+                'user_id' => $productData['user_id'],
+                'is_active' => $productData['is_active'],
+                'created_at' => $productData['created_at'],
+                'updated_at' => $productData['updated_at'],
+                'subcategory' => $productData['subcategory'] ?? null,
+                'images' => $productData['images'] ?? [],
+                'attributes' => $formattedAttributes
+            ];
+
             return $this->respondWithSuccess('Product retrieved successfully', 200, ['product' => $response]);
         } catch (\Exception $e) {
             Log::error('Error retrieving product', ['error' => $e->getMessage()]);
@@ -146,21 +188,37 @@ class ProductController extends ImprovedController
         }
     }
 
-    public function saveStep(Request $request)
+    public function createStep(Request $request)
     {
         try {
-            // Determine which form type to use based on the context
+            // Determine which form type to use
             $formType = self::FORM_TYPE;
-            
-            // If we're updating a product, include product_id in the session key
-            if ($request->has('product_id') && $request->product_id) {
-                $request->merge(['context' => 'update']);
-            }
-            
+
             return match ((int)$request->step) {
                 2 => $this->handleAttributeStep($request),
                 3 => $this->handleImageStep($request),
                 default => $this->handleDefaultStep($request),
+            };
+        } catch (\Exception $e) {
+            return $this->handleStepError($e, $request);
+        }
+    }
+
+    public function updateStep(Request $request, Product $product)
+    {
+        try {
+            // Validate that the user owns this product
+            if (!auth()->user()->hasRole('seller') && auth()->id() !== $product->user_id) {
+                return $this->respondWithError('Unauthorized', 403);
+            }
+
+            // Add product ID to the request
+            $request->merge(['product_id' => $product->id]);
+
+            return match ((int)$request->step) {
+                2 => $this->handleUpdateAttributeStep($request, $product),
+                3 => $this->handleUpdateImageStep($request, $product),
+                default => $this->handleUpdateDefaultStep($request, $product),
             };
         } catch (\Exception $e) {
             return $this->handleStepError($e, $request);
@@ -183,9 +241,8 @@ class ProductController extends ImprovedController
         }
 
         try {
-            // Store context information in the form data
-            if ($request->has('context') && $request->context === 'update') {
-                $formData['context'] = 'update';
+            // Store product_id in the form data if it exists
+            if ($request->has('product_id')) {
                 $formData['product_id'] = $request->product_id;
                 Session::put($sessionKey, $formData);
             }
@@ -203,13 +260,79 @@ class ProductController extends ImprovedController
                 return $this->respondWithError(['errors' => $validator->errors()], 422);
             }
 
-            // Process attributes
+            // Format the raw attributes for storage
+            $rawAttributes = [];
+
+            // Check if we have attributes in the request
+            if ($request->has('attributes') && !empty($request->input('attributes'))) {
+                // Get attributes from the request input
+                $requestAttributes = $request->input('attributes');
+                foreach ($requestAttributes as $attribute) {
+                    $rawAttributes[] = [
+                        'attribute_id' => $attribute['attribute_id'],
+                        'value_id' => $attribute['value_id']
+                    ];
+                }
+            }
+
+            // Get the subcategory from form data
+            $subcategoryId = $formData['data']['basic_info']['subcategory_id'];
+            $subcategory = Subcategory::with(['attributes.values'])->findOrFail($subcategoryId);
+
+            // Format the attributes for the response
+            $attributesForResponse = [];
+
+            // Get attribute and value details for each attribute in the request
+            if (!empty($rawAttributes)) {
+                foreach ($rawAttributes as $attribute) {
+                    // Find the attribute in the subcategory
+                    $attributeModel = $subcategory->attributes
+                        ->where('id', $attribute['attribute_id'])
+                        ->first();
+
+                    if ($attributeModel) {
+                        // Find the attribute value
+                        $attributeValue = $attributeModel->values()
+                            ->where('id', $attribute['value_id'])
+                            ->first();
+
+                        if ($attributeValue) {
+                            $attributesForResponse[] = [
+                                'id' => $attributeModel->id,
+                                'name' => $attributeModel->name,
+                                'value' => [
+                                    'id' => $attributeValue->id,
+                                    'name' => $attributeValue->name,
+                                    'representation' => $attributeValue->representation
+                                ]
+                            ];
+                        }
+                    }
+                }
+            }
+
+            // Process attributes with the original request
             $result = $this->formService->process($request, self::FORM_TYPE);
-            
+
             if (!$result['success']) {
                 return $this->respondWithError($result, 400);
             }
-            
+
+            // Update the form data with both raw and formatted attributes
+            $formData = Session::get($sessionKey);
+            $formData['data']['attributes'] = $attributesForResponse;
+            $formData['data']['raw_attributes'] = $rawAttributes;
+            Session::put($sessionKey, $formData);
+
+            // Create a result structure with the formatted attributes
+            $result['data']['attributes'] = $attributesForResponse;
+
+            // Log the result for debugging
+            Log::info('Attribute step result', [
+                'attribute_count' => count($attributesForResponse),
+                'raw_attribute_count' => count($rawAttributes)
+            ]);
+
             return $this->respondWithSuccess('Attributes saved successfully', 200, $result);
         } catch (\Exception $e) {
             return $this->handleStepError($e, $request);
@@ -232,9 +355,8 @@ class ProductController extends ImprovedController
         }
 
         try {
-            // Store context information in the form data
-            if ($request->has('context') && $request->context === 'update') {
-                $formData['context'] = 'update';
+            // Store product_id in the form data if it exists
+            if ($request->has('product_id')) {
                 $formData['product_id'] = $request->product_id;
                 Session::put($sessionKey, $formData);
             }
@@ -262,12 +384,25 @@ class ProductController extends ImprovedController
             $formData['data']['images'] = $imagePaths;
             Session::put($sessionKey, $formData);
 
-            return $this->respondWithSuccess('Images saved successfully', 200, [
+            // Create a clean response without raw_attributes
+            $responseData = [
                 'session_id' => $session_id,
                 'step' => 3,
-                'data' => $formData['data'],
+                'data' => [
+                    'basic_info' => $formData['data']['basic_info'] ?? [],
+                    'attributes' => $formData['data']['attributes'] ?? [],
+                    'images' => $imagePaths
+                ],
                 'expires_at' => now()->addHours(24)->toDateTimeString()
+            ];
+
+            // Log the response data for debugging
+            Log::info('Image step response data', [
+                'has_attributes' => !empty($responseData['data']['attributes']),
+                'image_count' => count($responseData['data']['images'] ?? [])
             ]);
+
+            return $this->respondWithSuccess('Images saved successfully', 200, $responseData);
 
         } catch (\Exception $e) {
             return $this->handleStepError($e, $request);
@@ -290,15 +425,14 @@ class ProductController extends ImprovedController
         $sessionKey = $this->formService->getSessionKey(self::FORM_TYPE, $session_id);
         $formData = Session::get($sessionKey);
 
-        // Store context information if it's an update
-        if ($request->has('context') && $request->context === 'update') {
-            $formData['context'] = 'update';
+        // Store product_id in the form data if it exists
+        if ($request->has('product_id')) {
             $formData['product_id'] = $request->product_id;
             Session::put($sessionKey, $formData);
         }
 
         $result = $this->formService->process($request, self::FORM_TYPE);
-        
+
         if (!$result['success']) {
             if ($this->shouldClearSession($result)) {
                 $this->formService->clear(self::FORM_TYPE, $session_id);
@@ -310,10 +444,10 @@ class ProductController extends ImprovedController
         if ($request->step === 1 && isset($result['data']['basic_info'])) {
             // For updates, pass the product_id to be ignored in uniqueness check
             $product = null;
-            if (isset($formData['context']) && $formData['context'] === 'update' && isset($formData['product_id'])) {
+            if (isset($formData['product_id'])) {
                 $product = Product::find($formData['product_id']);
             }
-            
+
             $validationResult = $this->validateBasicInfo($result['data']['basic_info'], $product);
             if (!$validationResult['success']) {
                 return $this->respondWithError($validationResult, 422);
@@ -327,7 +461,7 @@ class ProductController extends ImprovedController
     {
         // Build validation rules based on what fields are present
         $rules = [];
-        
+
         if (isset($basicInfo['name'])) {
             $rules['name'] = [
                 'required',
@@ -338,19 +472,19 @@ class ProductController extends ImprovedController
                 })->ignore($product?->id)
             ];
         }
-        
+
         if (isset($basicInfo['description'])) {
             $rules['description'] = 'required|string';
         }
-        
+
         if (isset($basicInfo['price'])) {
             $rules['price'] = 'required|numeric|min:0';
         }
-        
+
         if (isset($basicInfo['subcategory_id'])) {
             $rules['subcategory_id'] = 'required|exists:subcategories,id';
         }
-        
+
         $validator = Validator::make($basicInfo, $rules);
 
         if ($validator->fails()) {
@@ -381,14 +515,14 @@ class ProductController extends ImprovedController
     {
         try {
             $config = $this->formService->getFormConfig(self::FORM_TYPE);
-        return $this->respondWithSuccess('Form metadata retrieved', 200, [
+            return $this->respondWithSuccess('Form metadata retrieved', 200, [
                 'session_id' => (string) Str::uuid(),
-            'total_steps' => $config['total_steps'],
+                'total_steps' => $config['total_steps'],
                 'steps' => collect($config['steps'])->map(fn($step) => [
                     'label' => $step['label'],
                     'description' => $step['description']
                 ])
-        ]);
+            ]);
         } catch (\Exception $e) {
             Log::error('Error retrieving form metadata', ['error' => $e->getMessage()]);
             return $this->respondWithError(['message' => 'Error retrieving form metadata'], 500);
@@ -406,32 +540,30 @@ class ProductController extends ImprovedController
 
             // Validate form data before any database operations
             $data = $this->getValidatedFormData($request);
-            
-            // Check if this is actually an update operation
-            if (isset($data['context']) && $data['context'] === 'update' && isset($data['product_id'])) {
-                // If we have product_id and update context, redirect to update
-                $product = Product::findOrFail($data['product_id']);
-                return $this->update($request, $product);
+
+            // This method is only for creating new products
+            if (isset($data['product_id'])) {
+                return $this->respondWithError(['message' => 'Use the update endpoint for existing products'], 400);
             }
-            
+
             // Create product within transaction
             $product = $this->productService->createProduct($data);
-            
+
             // Only commit and clear session if everything succeeds
             DB::commit();
             $this->formService->clear(self::FORM_TYPE, $session_id);
-            
+
             return $this->respondWithSuccess('Product created successfully', 201, $product);
-            
+
         } catch (\Exception $e) {
             DB::rollBack();
-            
+
             Log::error('Product creation error', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'session_id' => $session_id
             ]);
-            
+
             return $this->handleError($e, $request);
         }
     }
@@ -445,7 +577,7 @@ class ProductController extends ImprovedController
 
         $sessionKey = $this->formService->getSessionKey(self::FORM_TYPE, $session_id);
         $data = Session::get($sessionKey);
-        
+
         if (empty($data)) {
             throw new \InvalidArgumentException('No form data found or form has expired');
         }
@@ -465,7 +597,7 @@ class ProductController extends ImprovedController
     {
         $sessionKey = $this->formService->getSessionKey(self::FORM_TYPE, $sessionId);
         $formData = Session::get($sessionKey);
-        
+
         return $this->respondWithSuccess('Form data retrieved', 200, [
             'session_id' => $sessionId,
             'data' => $formData
@@ -489,7 +621,7 @@ class ProductController extends ImprovedController
                 },
                 'attributes.values'
             ])->findOrFail($request->subcategory_id);
-            
+
             // Format the response to be more frontend-friendly
             $attributes = $subcategory->attributes->map(function($attribute) {
                 return [
@@ -538,17 +670,27 @@ class ProductController extends ImprovedController
 
             // Get form data using the same form type as in the steps
             $data = $this->getValidatedFormData($request);
-            
+
             // Add product ID to the data if not already present
             $data['product_id'] = $product->id;
 
-            // Pass both form data and request object for image handling
-            $updatedProduct = $this->productService->updateProduct($product, $data, $request);
-            
+            // Use the dedicated update method
+            $productData = $this->productService->updateProduct($product, $data);
+
+            // The ProductService already formats the data correctly, so we can use it directly
+            $responseData = $productData;
+
+            // Log the response data for debugging
+            Log::info('Product update response data', [
+                'product_id' => $product->id,
+                'attribute_count' => count($responseData['attributes'] ?? []),
+                'has_images' => !empty($responseData['images'])
+            ]);
+
             DB::commit();
             $this->formService->clear(self::FORM_TYPE, $session_id);
 
-            return $this->respondWithSuccess('Product updated successfully', 200, $updatedProduct);
+            return $this->respondWithSuccess('Product updated successfully', 200, $responseData);
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -562,6 +704,318 @@ class ProductController extends ImprovedController
         }
     }
 
+    protected function handleUpdateAttributeStep(Request $request, Product $product)
+    {
+        $session_id = $request->session_id;
+        if (!$session_id) {
+            return $this->respondWithError(['message' => 'Session ID is required'], 400);
+        }
+
+        $sessionKey = $this->formService->getSessionKey(self::FORM_TYPE, $session_id);
+        $formData = Session::get($sessionKey);
+
+        // Validate step order
+        if (empty($formData) || !isset($formData['data']['basic_info'])) {
+            return $this->respondWithError(['message' => 'Please complete step 1 first'], 400);
+        }
+
+        try {
+            // Store product_id in the form data
+            $formData['product_id'] = $product->id;
+            Session::put($sessionKey, $formData);
+
+            // Validate request format first
+            $validator = Validator::make($request->all(), [
+                'session_id' => 'required|string',
+                'step' => 'required|integer|in:2',
+                'attributes' => 'required|array',
+                'attributes.*.attribute_id' => 'required|integer|exists:attributes,id',
+                'attributes.*.value_id' => 'required|integer|exists:attribute_values,id',
+            ]);
+
+            if ($validator->fails()) {
+                return $this->respondWithError(['errors' => $validator->errors()], 422);
+            }
+
+            // Format the raw attributes for storage
+            $rawAttributes = [];
+
+            // Check if we have attributes in the request
+            if ($request->has('attributes') && !empty($request->input('attributes'))) {
+                // Get attributes from the request input
+                $requestAttributes = $request->input('attributes');
+
+                // Log the request attributes for debugging
+                Log::info('Attributes from request', [
+                    'product_id' => $product->id,
+                    'attributes' => $requestAttributes
+                ]);
+
+                foreach ($requestAttributes as $attribute) {
+                    if (isset($attribute['attribute_id']) && isset($attribute['value_id'])) {
+                        $rawAttributes[] = [
+                            'attribute_id' => $attribute['attribute_id'],
+                            'value_id' => $attribute['value_id']
+                        ];
+                    } else {
+                        Log::warning('Invalid attribute format in request', [
+                            'product_id' => $product->id,
+                            'attribute' => $attribute
+                        ]);
+                    }
+                }
+            } else {
+                // If no attributes in request, log this
+                Log::warning('No attributes found in request', [
+                    'product_id' => $product->id,
+                    'request_data' => $request->all()
+                ]);
+            }
+
+            // Load the product with its subcategory to get attribute information
+            $product->load(['subcategory.attributes', 'attributeValues.attribute']);
+
+            // Format the attributes for the response
+            $attributesForResponse = [];
+
+            // Get attribute and value details for each attribute in the request
+            if (!empty($rawAttributes)) {
+                // Log the raw attributes for debugging
+                Log::info('Processing raw attributes', [
+                    'product_id' => $product->id,
+                    'raw_attributes' => $rawAttributes
+                ]);
+
+                foreach ($rawAttributes as $attribute) {
+                    // Find the attribute in the subcategory
+                    $attributeModel = Attribute::find($attribute['attribute_id']);
+
+                    if ($attributeModel) {
+                        // Find the attribute value
+                        $attributeValue = AttributeValue::find($attribute['value_id']);
+
+                        if ($attributeValue) {
+                            $attributesForResponse[] = [
+                                'id' => $attributeModel->id,
+                                'name' => $attributeModel->name,
+                                'value' => [
+                                    'id' => $attributeValue->id,
+                                    'name' => $attributeValue->name,
+                                    'representation' => $attributeValue->representation
+                                ]
+                            ];
+                        } else {
+                            Log::warning('Attribute value not found', [
+                                'product_id' => $product->id,
+                                'attribute_id' => $attribute['attribute_id'],
+                                'value_id' => $attribute['value_id']
+                            ]);
+                        }
+                    } else {
+                        Log::warning('Attribute not found', [
+                            'product_id' => $product->id,
+                            'attribute_id' => $attribute['attribute_id']
+                        ]);
+                    }
+                }
+            } else {
+                // If no attributes in request, use existing product attributes
+                // Make sure to load the product with its attribute values and their attributes
+                $product->load(['attributeValues.attribute']);
+
+                if ($product->attributeValues->count() > 0) {
+                    foreach ($product->attributeValues as $attributeValue) {
+                        if ($attributeValue->attribute) {
+                            $attributesForResponse[] = [
+                                'id' => $attributeValue->attribute->id,
+                                'name' => $attributeValue->attribute->name,
+                                'value' => [
+                                    'id' => $attributeValue->id,
+                                    'name' => $attributeValue->name,
+                                    'representation' => $attributeValue->representation ?? ''
+                                ]
+                            ];
+
+                            // Also add to raw attributes
+                            $rawAttributes[] = [
+                                'attribute_id' => $attributeValue->attribute->id,
+                                'value_id' => $attributeValue->id
+                            ];
+                        }
+                    }
+
+                    Log::info('Using existing product attributes', [
+                        'product_id' => $product->id,
+                        'attribute_count' => $product->attributeValues->count(),
+                        'formatted_attributes' => $attributesForResponse
+                    ]);
+                } else {
+                    Log::info('No existing product attributes found', [
+                        'product_id' => $product->id
+                    ]);
+                }
+            }
+
+            // Update the form data with both raw and formatted attributes
+            $formData['data']['attributes'] = $attributesForResponse;
+            $formData['data']['raw_attributes'] = $rawAttributes;
+
+            // Save the updated form data to the session
+            Session::put($sessionKey, $formData);
+
+            // Log the attribute data for debugging
+            Log::info('Attribute update step data', [
+                'product_id' => $product->id,
+                'request_attributes' => $request->has('attributes') ? $request->input('attributes') : [],
+                'raw_attributes' => $rawAttributes,
+                'formatted_attributes' => $attributesForResponse
+            ]);
+
+            // Create a result structure similar to what the form service would return
+            $result = [
+                'success' => true,
+                'session_id' => $session_id,
+                'step' => 2,
+                'data' => [
+                    'basic_info' => $formData['data']['basic_info'] ?? [],
+                    'attributes' => $attributesForResponse
+                ],
+                'expires_at' => now()->addHours(24)->toDateTimeString()
+            ];
+
+            // Store raw_attributes in the session but don't include in the response
+            $formData['data']['raw_attributes'] = $rawAttributes;
+
+            // Log the result for debugging
+            Log::info('Attribute step result', [
+                'product_id' => $product->id,
+                'attribute_count' => count($attributesForResponse),
+                'raw_attribute_count' => count($rawAttributes)
+            ]);
+
+            return $this->respondWithSuccess('Attributes saved successfully', 200, $result);
+        } catch (\Exception $e) {
+            return $this->handleStepError($e, $request);
+        }
+    }
+
+    protected function handleUpdateImageStep(Request $request, Product $product)
+    {
+        $session_id = $request->session_id;
+        if (!$session_id) {
+            return $this->respondWithError(['message' => 'Session ID is required'], 400);
+        }
+
+        $sessionKey = $this->formService->getSessionKey(self::FORM_TYPE, $session_id);
+        $formData = Session::get($sessionKey);
+
+        // Validate step order
+        if (empty($formData) || !isset($formData['data']['basic_info'])) {
+            return $this->respondWithError(['message' => 'Please complete step 1 first'], 400);
+        }
+
+        try {
+            // Store product_id in the form data
+            $formData['product_id'] = $product->id;
+            Session::put($sessionKey, $formData);
+
+            // Validate request format first
+            $validator = Validator::make($request->all(), [
+                'session_id' => 'required|string',
+                'step' => 'required|integer|in:3',
+                'images' => 'required|array|min:1',
+                'images.*' => 'required|file|image|mimes:jpeg,png,jpg,gif|max:2048',
+            ]);
+
+            if ($validator->fails()) {
+                return $this->respondWithError(['errors' => $validator->errors()], 422);
+            }
+
+            // Handle image uploads
+            $imagePaths = [];
+            foreach ($request->file('images') as $image) {
+                $path = $image->store('products', 'public');
+                $imagePaths[] = $path;
+            }
+
+            // Store images in the correct format for ProductService
+            $formData['data']['images'] = $imagePaths;
+
+            // Create a clean data structure without raw_attributes
+            $cleanData = [
+                'basic_info' => $formData['data']['basic_info'] ?? [],
+                'attributes' => $formData['data']['attributes'] ?? [],
+                'images' => $imagePaths
+            ];
+
+            // Preserve raw_attributes in the session but not in the response
+            // We don't need to do anything special here, just make sure not to include it in cleanData
+
+            // Update the form data with the clean data structure
+            $formData['data'] = array_merge($formData['data'], $cleanData);
+            Session::put($sessionKey, $formData);
+
+            // Create the response without raw_attributes
+            $responseData = [
+                'session_id' => $session_id,
+                'step' => 3,
+                'data' => $cleanData,
+                'expires_at' => now()->addHours(24)->toDateTimeString()
+            ];
+
+            // Log the response data for debugging
+            Log::info('Image step response data', [
+                'has_raw_attributes' => isset($responseData['data']['raw_attributes']),
+                'has_attributes' => !empty($responseData['data']['attributes']),
+                'image_count' => count($responseData['data']['images'] ?? [])
+            ]);
+
+            return $this->respondWithSuccess('Images saved successfully', 200, $responseData);
+
+        } catch (\Exception $e) {
+            return $this->handleStepError($e, $request);
+        }
+    }
+
+    protected function handleUpdateDefaultStep(Request $request, Product $product)
+    {
+        $session_id = $request->session_id;
+        if (!$session_id) {
+            return $this->respondWithError(['message' => 'Session ID is required'], 400);
+        }
+
+        $sessionKey = $this->formService->getSessionKey(self::FORM_TYPE, $session_id);
+        $formData = Session::get($sessionKey);
+
+        // Store product_id in the form data
+        $formData['product_id'] = $product->id;
+        Session::put($sessionKey, $formData);
+
+        $result = $this->formService->process($request, self::FORM_TYPE);
+
+        if (!$result['success']) {
+            if ($this->shouldClearSession($result)) {
+                $this->formService->clear(self::FORM_TYPE, $session_id);
+            }
+            return $this->respondWithError($result, 400);
+        }
+
+        // If this is the basic info step, validate product name uniqueness
+        if ($request->step === 1 && isset($result['data']['basic_info'])) {
+            $validationResult = $this->validateBasicInfo($result['data']['basic_info'], $product);
+            if (!$validationResult['success']) {
+                return $this->respondWithError($validationResult, 422);
+            }
+        }
+
+        // Make sure the response doesn't include raw_attributes
+        if (isset($result['data']) && isset($result['data']['raw_attributes'])) {
+            unset($result['data']['raw_attributes']);
+        }
+
+        return $this->respondWithSuccess('Step saved successfully', 200, $result);
+    }
+
     protected function handleStepError(\Exception $e, Request $request)
     {
         Log::error('Step processing error', [
@@ -572,7 +1026,7 @@ class ProductController extends ImprovedController
 
         // Only clear session for truly critical errors
         $shouldClearSession = false; // Default to not clearing
-        
+
         // List of errors that should NOT clear the session
         $preserveSessionErrors = [
             'ValidationException',
@@ -584,7 +1038,7 @@ class ProductController extends ImprovedController
 
         // Check if this is an error that should preserve the session
         foreach ($preserveSessionErrors as $errorType) {
-            if ($e instanceof ValidationException || 
+            if ($e instanceof ValidationException ||
                 str_contains($e->getMessage(), $errorType)) {
                 $shouldClearSession = false;
                 break;
@@ -619,10 +1073,10 @@ class ProductController extends ImprovedController
         ];
 
         $shouldClearSession = true; // Default to clearing
-        
+
         // Check if this is an error that should preserve the session
         foreach ($preserveSessionErrors as $errorType) {
-            if ($e instanceof ValidationException || 
+            if ($e instanceof ValidationException ||
                 str_contains($e->getMessage(), $errorType)) {
                 $shouldClearSession = false;
                 break;

@@ -35,7 +35,7 @@ class ProductImageService
 
         // First validate and upload images before form processing
         $tempPaths = [];
-        
+
         if ($request->hasFile('images')) {
             foreach ($request->file('images') as $image) {
                 if (!$this->validateImage($image)) {
@@ -57,7 +57,7 @@ class ProductImageService
 
         // Process the form with the clean request
         $result = $this->formService->process($cleanRequest, $formType);
-        
+
         if (!$result['success']) {
             // Clean up uploaded files if form validation fails
             foreach ($tempPaths as $path) {
@@ -110,6 +110,31 @@ class ProductImageService
 
 
     /**
+     * Handle image update for a product
+     *
+     * @param Product $product The product to update
+     * @param array $imagePaths Array of image paths to add
+     * @param array $imageIdsToDelete Array of image IDs to delete
+     * @return array Array of image IDs
+     */
+    public function handleImageUpdate(Product $product, array $imagePaths, array $imageIdsToDelete = []): array
+    {
+        // Delete specified images if any
+        if (!empty($imageIdsToDelete)) {
+            $this->deleteProductImages($product, $imageIdsToDelete);
+        }
+
+        // Add new images if any
+        $imageIds = [];
+        foreach ($imagePaths as $path) {
+            $newImage = $product->images()->create(['path' => $path]);
+            $imageIds[] = $newImage->id;
+        }
+
+        return $imageIds;
+    }
+
+    /**
      * Delete specific images from a product
      *
      * @param Product $product
@@ -118,15 +143,15 @@ class ProductImageService
     public function deleteProductImages(Product $product, array $imageIds = [])
     {
         $query = $product->images();
-        
+
         if (!empty($imageIds)) {
             $query->whereIn('id', $imageIds);
         }
-        
+
         $images = $query->get();
-        
+
         foreach ($images as $image) {
-            Storage::disk($this->storageDisk)->delete($image->path);
+            Storage::disk('public')->delete($image->path);
             $image->delete();
         }
     }
