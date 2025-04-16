@@ -24,7 +24,7 @@ class ProductAttributeService
      */
     /**
      * Handle attribute updates for a product
-     * 
+     *
      * @param Product $product
      * @param array $changes Array containing attribute changes
      *                      Format:
@@ -44,31 +44,50 @@ class ProductAttributeService
     {
         try {
             DB::beginTransaction();
-            
+
             // First handle updates to existing attributes
             if (isset($changes['update'])) {
+                // Log the update operation
+                Log::info('Updating product attributes with update operation', [
+                    'product_id' => $product->id,
+                    'update_count' => count($changes['update'])
+                ]);
+
+                // Validate all the values first
+                $this->validateAttributeValues($changes['update'], $product->subcategory);
+
+                // Get existing attribute IDs for logging
+                $existingAttributeIds = $product->attributeValues()
+                    ->pluck('attribute_id')
+                    ->toArray();
+
+                // Process each update
                 foreach ($changes['update'] as $update) {
-                    // Validate the new value
-                    $this->validateAttributeValues([$update], $product->subcategory);
-                    
                     // Update the value
                     $product->attributeValues()
                         ->where('attribute_id', $update['attribute_id'])
                         ->delete();
                     $product->attributeValues()->attach($update['value_id']);
                 }
+
+                // Log the updated attributes
+                Log::info('Updated product attributes', [
+                    'product_id' => $product->id,
+                    'old_attribute_ids' => $existingAttributeIds,
+                    'updated_attribute_ids' => collect($changes['update'])->pluck('attribute_id')->toArray()
+                ]);
             }
-            
+
             // Handle new attributes
             if (isset($changes['add'])) {
                 // Validate all new values
                 $this->validateAttributeValues($changes['add'], $product->subcategory);
-                
+
                 // Check for duplicates
                 $existingAttributeIds = $product->attributeValues()
                     ->pluck('attribute_id')
                     ->toArray();
-                    
+
                 foreach ($changes['add'] as $add) {
                     if (in_array($add['attribute_id'], $existingAttributeIds)) {
                         throw new \InvalidArgumentException(
@@ -76,13 +95,13 @@ class ProductAttributeService
                         );
                     }
                 }
-                
+
                 // Attach new values
                 foreach ($changes['add'] as $add) {
                     $product->attributeValues()->attach($add['value_id']);
                 }
             }
-            
+
             // Handle attribute removals (if allowed by business rules)
             if (isset($changes['remove'])) {
                 foreach ($changes['remove'] as $remove) {
@@ -91,13 +110,13 @@ class ProductAttributeService
                         ->where('attributes.id', $remove['attribute_id'])
                         ->wherePivot('is_required', true)
                         ->first();
-                        
+
                     if ($attribute) {
                         throw new \InvalidArgumentException(
                             "Cannot remove required attribute: {$attribute->name}"
                         );
                     }
-                    
+
                     // Remove the attribute value
                     $product->attributeValues()
                         ->where('attribute_id', $remove['attribute_id'])
@@ -105,12 +124,37 @@ class ProductAttributeService
                 }
             }
 
+            // Handle complete replacement of attributes
+            if (isset($changes['replace'])) {
+                // First validate all the new values
+                $this->validateAttributeValues($changes['replace'], $product->subcategory);
+
+                // Get all existing attribute IDs
+                $existingAttributeIds = $product->attributeValues()
+                    ->pluck('attribute_id')
+                    ->toArray();
+
+                // Detach all existing attribute values
+                $product->attributeValues()->detach();
+
+                // Attach the new values
+                foreach ($changes['replace'] as $replace) {
+                    $product->attributeValues()->attach($replace['value_id']);
+                }
+
+                Log::info('Replaced all product attributes', [
+                    'product_id' => $product->id,
+                    'old_attribute_ids' => $existingAttributeIds,
+                    'new_attributes' => $changes['replace']
+                ]);
+            }
+
             // Validate that all required attributes are still present
             $this->validateRequiredAttributes($product);
-            
+
             // Handle variant generation if needed
             $this->handleVariantGeneration($product);
-            
+
             DB::commit();
         } catch (\Exception $e) {
             DB::rollBack();
@@ -140,7 +184,7 @@ class ProductAttributeService
 
         if ($missingAttributes->isNotEmpty()) {
             throw new \InvalidArgumentException(
-                'Missing required attributes: ' . 
+                'Missing required attributes: ' .
                 $missingAttributes->pluck('name')->implode(', ')
             );
         }
@@ -181,7 +225,7 @@ class ProductAttributeService
     protected function generateAttributeCombinations($groupedAttributes): array
     {
         $result = [[]];
-        
+
         foreach ($groupedAttributes as $attributeId => $values) {
             $temp = [];
             foreach ($result as $existing) {
@@ -206,7 +250,7 @@ class ProductAttributeService
     }
 
     /**
-     * Handle the attribute step in product creation/update
+     * Handle the attribute step in product creation
      */
     public function handleAttributeStep(array $validatedData)
     {
@@ -218,71 +262,16 @@ class ProductAttributeService
             // Get the form data
             $formType = 'product_form';
             $formData = $this->formService->getData($formType, $validatedData['session_id']);
-            
+
             if (!$formData || !isset($formData['data']['basic_info'])) {
                 throw new \InvalidArgumentException('Please complete step 1 first');
             }
 
-            // For updates, get the subcategory from the product
-            if (isset($validatedData['product_id'])) {
-                $product = Product::findOrFail($validatedData['product_id']);
-                $subcategory = $product->subcategory;
-            } else {
-                // For new products, get the subcategory from form data
-                $subcategory = Subcategory::with('attributes')
-                    ->findOrFail($formData['data']['basic_info']['subcategory_id']);
-            }
+            // Get the subcategory from form data
+            $subcategory = Subcategory::with('attributes')
+                ->findOrFail($formData['data']['basic_info']['subcategory_id']);
 
-            // Validate attribute values
-            $rawAttributes = $this->validateAttributeValues(
-                $validatedData['attributes'],
-                $subcategory
-            );
-
-            // Group values by attribute
-            $groupedAttributes = [];
-            foreach ($subcategory->attributes as $attribute) {
-                // Find the value for this attribute
-                $attributeValue = collect($rawAttributes)
-                    ->where('attribute_id', $attribute->id)
-                    ->first();
-                
-                if ($attributeValue) {
-                    // Load the value details
-                    $value = $attribute->values()
-                        ->where('id', $attributeValue['value_id'])
-                        ->first();
-                    
-                    if ($value) {
-                        $groupedAttributes[] = [
-                            'id' => $attribute->id,
-                            'name' => $attribute->name,
-                            'value' => [
-                                'id' => $value->id,
-                                'name' => $value->name,
-                                'representation' => $value->representation
-                            ]
-                        ];
-                    }
-                }
-            }
-
-            // Update form data with both raw and grouped formats
-            $formData['data']['attributes'] = [
-                'raw' => $rawAttributes,
-                'grouped' => $groupedAttributes
-            ];
-
-            // Save updated form data
-            $sessionKey = $this->formService->getSessionKey($formType, $validatedData['session_id']);
-            Session::put($sessionKey, $formData);
-
-            return [
-                'success' => true,
-                'session_id' => $validatedData['session_id'],
-                'attributes' => $groupedAttributes
-            ];
-
+            return $this->processAttributeStep($validatedData, $formData, $subcategory);
         } catch (\Exception $e) {
             Log::error('Error in handleAttributeStep', [
                 'error' => $e->getMessage(),
@@ -292,6 +281,97 @@ class ProductAttributeService
             ]);
             throw $e;
         }
+    }
+
+    /**
+     * Handle the attribute step in product update
+     */
+    public function handleUpdateAttributeStep(array $validatedData, Product $product)
+    {
+        try {
+            if (!isset($validatedData['session_id'])) {
+                throw new \InvalidArgumentException('Session ID is required');
+            }
+
+            // Get the form data
+            $formType = 'product_form';
+            $formData = $this->formService->getData($formType, $validatedData['session_id']);
+
+            if (!$formData || !isset($formData['data']['basic_info'])) {
+                throw new \InvalidArgumentException('Please complete step 1 first');
+            }
+
+            // Get the subcategory from the product
+            $subcategory = $product->subcategory;
+
+            // Add product ID to the validated data
+            $validatedData['product_id'] = $product->id;
+
+            return $this->processAttributeStep($validatedData, $formData, $subcategory);
+        } catch (\Exception $e) {
+            Log::error('Error in handleUpdateAttributeStep', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'product_id' => $product->id,
+                'session_id' => $validatedData['session_id'] ?? null,
+                'attributes' => $validatedData['attributes'] ?? []
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * Process attribute step data for both creation and update
+     */
+    protected function processAttributeStep(array $validatedData, array $formData, Subcategory $subcategory)
+    {
+        // Validate attribute values
+        $rawAttributes = $this->validateAttributeValues(
+            $validatedData['attributes'],
+            $subcategory
+        );
+
+        // Group values by attribute
+        $groupedAttributes = [];
+        foreach ($subcategory->attributes as $attribute) {
+            // Find the value for this attribute
+            $attributeValue = collect($rawAttributes)
+                ->where('attribute_id', $attribute->id)
+                ->first();
+
+            if ($attributeValue) {
+                // Load the value details
+                $value = $attribute->values()
+                    ->where('id', $attributeValue['value_id'])
+                    ->first();
+
+                if ($value) {
+                    $groupedAttributes[] = [
+                        'id' => $attribute->id,
+                        'name' => $attribute->name,
+                        'value' => [
+                            'id' => $value->id,
+                            'name' => $value->name,
+                            'representation' => $value->representation
+                        ]
+                    ];
+                }
+            }
+        }
+
+        // Update form data with attributes and raw_attributes
+        $formData['data']['attributes'] = $groupedAttributes;
+        $formData['data']['raw_attributes'] = $rawAttributes;
+
+        // Save updated form data
+        $sessionKey = $this->formService->getSessionKey('product_form', $validatedData['session_id']);
+        Session::put($sessionKey, $formData);
+
+        return [
+            'success' => true,
+            'session_id' => $validatedData['session_id'],
+            'attributes' => $groupedAttributes
+        ];
     }
 
     /**
@@ -308,39 +388,39 @@ class ProductAttributeService
                 return $values->pluck('id')->toArray();
             })
             ->toArray();
-        
+
         if (empty($allowedValues)) {
             throw new \InvalidArgumentException('No allowed values found for this subcategory');
         }
-        
+
         // Track used attributes to ensure no duplicates
         $usedAttributes = [];
-        
+
         // Validate each attribute value
         foreach ($attributes as $attributeData) {
             if (!isset($attributeData['attribute_id'], $attributeData['value_id'])) {
                 throw new \InvalidArgumentException('Each attribute must contain attribute_id and value_id');
             }
-            
+
             $attributeId = $attributeData['attribute_id'];
             $valueId = $attributeData['value_id'];
-            
+
             // Check for duplicate attributes
             if (in_array($attributeId, $usedAttributes)) {
                 throw new \InvalidArgumentException('Duplicate attribute ID: ' . $attributeId . '. Only one value per attribute is allowed.');
             }
-            
+
             // Check if attribute exists in subcategory
             $attribute = $this->findAttributeById($attributeId, $subcategory);
-            
+
             // Check if value is allowed for this attribute
             if (!isset($allowedValues[$attributeId]) || !in_array($valueId, $allowedValues[$attributeId])) {
                 throw new \InvalidArgumentException('Invalid value ID: ' . $valueId . ' for attribute: ' . $attribute->name);
             }
-            
+
             $usedAttributes[] = $attributeId;
         }
-        
+
         return $attributes;
     }
 
@@ -369,11 +449,11 @@ class ProductAttributeService
         $attribute = $subcategory->attributes()
             ->where('attributes.id', $attributeId)
             ->first();
-            
+
         if (!$attribute) {
             throw new \InvalidArgumentException("Invalid attribute ID: {$attributeId}");
         }
-        
+
         return $attribute;
     }
 
@@ -385,13 +465,13 @@ class ProductAttributeService
             })
             ->where('id', $valueId)
             ->first();
-            
+
         if (!$value) {
             throw new \InvalidArgumentException(
                 "Invalid value ID '{$valueId}' for attribute {$attribute->name}"
             );
         }
-        
+
         return $value;
     }
 
@@ -399,21 +479,21 @@ class ProductAttributeService
     {
         try {
             DB::beginTransaction();
-            
+
             // Validate and transform the attributes
             $validatedAttributes = $this->validateAttributeValues($attributes, $product->subcategory);
-            
+
             // Attach each attribute value
             foreach ($validatedAttributes as $attribute) {
                 $product->attributeValues()->attach($attribute['value_id']);
             }
-            
+
             // Check required attributes after changes
             $this->validateRequiredAttributes($product);
-            
+
             // Handle variant generation if needed
             $this->handleVariantGeneration($product);
-            
+
             DB::commit();
         } catch (\Exception $e) {
             DB::rollBack();
