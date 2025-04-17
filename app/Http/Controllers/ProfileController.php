@@ -13,53 +13,75 @@ use Illuminate\Support\Facades\Hash;
 class ProfileController extends ImprovedController
 {
     public function createProfile(Request $request){
+        try {
+            $user = auth()->user();
 
-        // $user = auth()->user();
+            $validatedData = $request->validate([
+                'first_name' => 'required|string|max:255',
+                'last_name' => 'required|string|max:255',
+                'biography' => 'nullable|string',
+                'profile_picture' => 'nullable|string'
+            ]);
 
-        return $user;
-        $validatedData = $request->validate([
-            'first_name' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
-            'biography' => 'nullable|string',
-            'is_seller' => 'nullable|boolean',
-            'profile_picture' => 'nullable|string'
-        ]);
+            // Check if profile already exists
+            if ($user->profile) {
+                return $this->respondWithError('Profile already exists. Use updateProfile instead.', 400);
+            }
 
-        $profile = $user->profile()->create($validatedData);
-        $profile->save();
+            $profile = $user->profile()->create($validatedData);
 
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Profile created successfully',
-        ], 200);
+            return $this->respondWithSuccess('Profile created successfully', 201, $profile);
+        } catch (\Exception $e) {
+            return $this->respondWithError('Error creating profile: ' . $e->getMessage(), 500);
+        }
     }
 
     public function getProfile(){
-        $user = auth()->user();
-        $data = [$user->profile, 'username'=>$user->username];
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Profile fetched successfully',
-            'data' => $data
-        ], 200);
+        try {
+            $user = auth()->user();
+
+            // Check if profile exists
+            if (!$user->profile) {
+                return $this->respondWithError('Profile not found. Please create a profile first.', 404);
+            }
+
+            $data = [
+                'profile' => $user->profile,
+                'username' => $user->username,
+                'email' => $user->email
+            ];
+
+            return $this->respondWithSuccess('Profile fetched successfully', 200, $data);
+        } catch (\Exception $e) {
+            return $this->respondWithError('Error fetching profile: ' . $e->getMessage(), 500);
+        }
     }
 
     public function updateProfile(Request $request)
     {
-        $user = auth()->user();
-    
-        $validatedData = $request->validate([
-            'first_name' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
-            'biography' => 'nullable|string',
-            'is_seller' => 'nullable|boolean',
-        ]);
-    
-        $user->profile->update([$validatedData, 'is_seller'=> 'true']);
-    
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Profile updated successfully',
-        ]);
+        try {
+            $user = auth()->user();
+
+            $validatedData = $request->validate([
+                'first_name' => 'required|string|max:255',
+                'last_name' => 'required|string|max:255',
+                'biography' => 'nullable|string',
+                'profile_picture' => 'nullable|string',
+            ]);
+
+            // Check if profile exists
+            if (!$user->profile) {
+                // Create profile if it doesn't exist
+                $profile = $user->profile()->create($validatedData);
+                return $this->respondWithSuccess('Profile created successfully', 201, $profile);
+            }
+
+            // Update existing profile
+            $user->profile->update($validatedData);
+
+            return $this->respondWithSuccess('Profile updated successfully', 200, $user->profile);
+        } catch (\Exception $e) {
+            return $this->respondWithError('Error updating profile: ' . $e->getMessage(), 500);
+        }
     }
 }
