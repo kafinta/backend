@@ -33,8 +33,8 @@ Route::apiResources([
 ]);
 
 // Additional Public Routes
-Route::prefix('attributes')->controller(AttributeController::class)->group(function () {
-    Route::get('/subcategory/{subcategoryId}', 'getAttributesForSubcategory');
+Route::prefix('attributes')->group(function () {
+    Route::get('/subcategory/{subcategoryId}', [AttributeController::class, 'getAttributesForSubcategory']);
 });
 
 Route::get('/products', [ProductController::class, 'index']);
@@ -43,15 +43,14 @@ Route::get('/products/{product}', [ProductController::class, 'show']);
 // Protected Routes
 Route::middleware('auth:sanctum')->group(function () {
     // User Profile Routes
-    Route::prefix('user/profile')->controller(ProfileController::class)->group(function() {
-        Route::post('/', 'createProfile');
-        Route::get('/', 'getProfile');
-        Route::post('/update', 'updateProfile');
-        Route::post('/upload-picture', 'uploadProfilePicture');
+    Route::prefix('user/profile')->group(function() {
+        Route::get('/', [ProfileController::class, 'getProfile']);
+        Route::put('/', [ProfileController::class, 'updateProfile']);
+        Route::post('/upload-picture', [ProfileController::class, 'uploadProfilePicture']);
     });
 
     // Product Management Routes
-    Route::prefix('products')->controller(ProductController::class)->group(function () {
+    Route::prefix('products')->group(function () {
         Route::get('/form/metadata', [ProductController::class, 'getFormMetadata']);
         Route::get('/form/{sessionId}', [ProductController::class, 'getFormData']);
         Route::get('/subcategory/attributes', [ProductController::class, 'getSubcategoryAttributes']);
@@ -65,7 +64,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // Seller Routes
-    Route::prefix('sellers')->controller(SellerController::class)->group(function () {
+    Route::prefix('sellers')->group(function () {
         // Routes for becoming a seller - available to all authenticated users
         Route::get('/form/metadata', [SellerController::class, 'getFormMetadata']);
         Route::get('/form/{sessionId}', [SellerController::class, 'getFormData']);
@@ -74,8 +73,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Routes that require seller or admin role
         Route::middleware('role:seller|admin')->group(function() {
-            Route::get('{seller}', 'show')->name('sellers.show');
-            Route::get('{seller}/document', 'downloadDocument')->name('sellers.document.download');
+            Route::get('{seller}', [SellerController::class, 'show'])->name('sellers.show');
+            Route::get('{seller}/document', [SellerController::class, 'downloadDocument'])->name('sellers.document.download');
         });
     });
 });
