@@ -47,6 +47,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/', 'createProfile');
         Route::get('/', 'getProfile');
         Route::post('/update', 'updateProfile');
+        Route::post('/upload-picture', 'uploadProfilePicture');
     });
 
     // Product Management Routes
@@ -54,10 +55,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/form/metadata', [ProductController::class, 'getFormMetadata']);
         Route::get('/form/{sessionId}', [ProductController::class, 'getFormData']);
         Route::get('/subcategory/attributes', [ProductController::class, 'getSubcategoryAttributes']);
-        
+
         Route::post('/steps', [ProductController::class, 'createStep']);
         Route::post('/', [ProductController::class, 'store']);
-        
+
         Route::post('/{product}/steps', [ProductController::class, 'updateStep']);
         Route::put('/{product}', [ProductController::class, 'update']);
         Route::delete('/{product}', [ProductController::class, 'destroy']);
@@ -65,13 +66,16 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Seller Routes
     Route::prefix('sellers')->controller(SellerController::class)->group(function () {
-        Route::post('apply/step', 'saveStep')->name('sellers.apply.step');
-        Route::post('apply/submit', 'submit')->name('sellers.apply.submit');
-        Route::get('{seller}', 'show')->name('sellers.show');
-        Route::get('{seller}/document', 'downloadDocument')->name('sellers.document.download');
-        
-        Route::middleware('role:admin')->group(function() {
-            Route::post('{seller}/verify', 'verify')->name('sellers.verify');
+        // Routes for becoming a seller - available to all authenticated users
+        Route::get('/form/metadata', [SellerController::class, 'getFormMetadata']);
+        Route::get('/form/{sessionId}', [SellerController::class, 'getFormData']);
+        Route::post('/steps', [SellerController::class, 'createStep'])->name('sellers.steps');
+        Route::post('/submit', [SellerController::class, 'submit'])->name('sellers.submit');
+
+        // Routes that require seller or admin role
+        Route::middleware('role:seller|admin')->group(function() {
+            Route::get('{seller}', 'show')->name('sellers.show');
+            Route::get('{seller}/document', 'downloadDocument')->name('sellers.document.download');
         });
     });
 });
