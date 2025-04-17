@@ -7,6 +7,19 @@ use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Event;
 
+// Product Events
+use App\Events\Product\ProductCreated;
+use App\Events\Product\ProductUpdated;
+use App\Events\Product\AttributeAdded;
+use App\Events\Product\AttributeUpdated;
+use App\Events\Product\AttributeRemoved;
+use App\Events\Product\SubcategoryChanged;
+use App\Events\Product\ValidationFailed;
+
+// Product Listeners
+use App\Listeners\Product\UpdateProductCache;
+use App\Listeners\Product\HandleAttributesForSubcategoryChange;
+
 class EventServiceProvider extends ServiceProvider
 {
     /**
@@ -18,6 +31,34 @@ class EventServiceProvider extends ServiceProvider
         Registered::class => [
             SendEmailVerificationNotification::class,
         ],
+
+        // Product Events
+        ProductCreated::class => [
+            UpdateProductCache::class,
+        ],
+
+        ProductUpdated::class => [
+            UpdateProductCache::class,
+        ],
+
+        AttributeAdded::class => [
+            UpdateProductCache::class,
+        ],
+
+        AttributeUpdated::class => [
+            UpdateProductCache::class,
+        ],
+
+        AttributeRemoved::class => [
+            UpdateProductCache::class,
+        ],
+
+        SubcategoryChanged::class => [
+            HandleAttributesForSubcategoryChange::class,
+            UpdateProductCache::class,
+        ],
+
+        ValidationFailed::class => [],
     ];
 
     /**
