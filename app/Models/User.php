@@ -68,21 +68,41 @@ class User extends Authenticatable
         return new NewAccessToken($token, $token->getKey() . '|' . $plainTextToken);
     }
 
+    /**
+     * Check if the user is a seller
+     *
+     * @return bool
+     */
     public function isSeller()
     {
         return $this->hasRole('seller');
     }
 
+    /**
+     * Check if the user is an admin
+     *
+     * @return bool
+     */
     public function isAdmin()
     {
         return $this->hasRole('admin');
     }
 
+    /**
+     * Get the seller profile associated with the user
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasOne
+     */
     public function seller()
     {
         return $this->hasOne(Seller::class);
     }
 
+    /**
+     * Get the products that belong to the user
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
     public function products()
     {
         return $this->hasMany(Product::class);
