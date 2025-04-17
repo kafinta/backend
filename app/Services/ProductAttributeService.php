@@ -45,60 +45,161 @@ class ProductAttributeService
         try {
             DB::beginTransaction();
 
-            // First handle updates to existing attributes
-            if (isset($changes['update'])) {
-                // Log the update operation
-                Log::info('Updating product attributes with update operation', [
+            // Check if the product's subcategory has changed recently
+            $subcategoryChanged = $product->wasChanged('subcategory_id');
+
+            // If subcategory has changed, we need to handle attributes differently
+            if ($subcategoryChanged) {
+                Log::info('Subcategory changed, handling attributes accordingly', [
                     'product_id' => $product->id,
-                    'update_count' => count($changes['update'])
+                    'old_subcategory_id' => $product->getOriginal('subcategory_id'),
+                    'new_subcategory_id' => $product->subcategory_id
                 ]);
 
-                // Validate all the values first
-                $this->validateAttributeValues($changes['update'], $product->subcategory);
+                // Get all existing attribute values
+                $existingAttributeValues = $product->attributeValues()
+                    ->with('attribute')
+                    ->get();
 
-                // Get existing attribute IDs for logging
-                $existingAttributeIds = $product->attributeValues()
-                    ->pluck('attribute_id')
-                    ->toArray();
+                // Get all attributes for the new subcategory
+                $newSubcategoryAttributes = $product->subcategory->attributes()
+                    ->select('attributes.*')
+                    ->with(['values' => function($query) {
+                        $query->select('attribute_values.*');
+                    }])
+                    ->get();
 
-                // Process each update
-                foreach ($changes['update'] as $update) {
-                    // Update the value
-                    $product->attributeValues()
-                        ->where('attribute_id', $update['attribute_id'])
-                        ->delete();
-                    $product->attributeValues()->attach($update['value_id']);
+                // Get attribute IDs that are valid for the new subcategory
+                $validAttributeIds = $newSubcategoryAttributes->pluck('id')->toArray();
+
+                // Identify attributes to keep (those that belong to both the old and new subcategory)
+                $attributesToKeep = $existingAttributeValues->filter(function($value) use ($validAttributeIds) {
+                    return in_array($value->attribute_id, $validAttributeIds);
+                });
+
+                // Remove all attribute values
+                $product->attributeValues()->detach();
+
+                // Re-attach the valid ones
+                foreach ($attributesToKeep as $value) {
+                    $product->attributeValues()->attach($value->id);
+
+                    Log::info('Kept existing attribute after subcategory change', [
+                        'product_id' => $product->id,
+                        'attribute_id' => $value->attribute_id,
+                        'value_id' => $value->id,
+                        'attribute_name' => $value->attribute->name ?? 'Unknown'
+                    ]);
                 }
 
-                // Log the updated attributes
-                Log::info('Updated product attributes', [
-                    'product_id' => $product->id,
-                    'old_attribute_ids' => $existingAttributeIds,
-                    'updated_attribute_ids' => collect($changes['update'])->pluck('attribute_id')->toArray()
-                ]);
-            }
+                // If we have new attributes to add, validate them against the new subcategory
+                if (isset($changes['add'])) {
+                    // Validate all new values against the new subcategory
+                    $this->validateAttributeValues($changes['add'], $product->subcategory);
 
-            // Handle new attributes
-            if (isset($changes['add'])) {
-                // Validate all new values
-                $this->validateAttributeValues($changes['add'], $product->subcategory);
+                    // Get existing attribute IDs after re-attaching valid ones
+                    $existingAttributeIds = $product->attributeValues()
+                        ->pluck('attribute_id')
+                        ->toArray();
 
-                // Check for duplicates
-                $existingAttributeIds = $product->attributeValues()
-                    ->pluck('attribute_id')
-                    ->toArray();
+                    // Process each new attribute
+                    foreach ($changes['add'] as $add) {
+                        $attributeId = $add['attribute_id'];
+                        $valueId = $add['value_id'];
 
-                foreach ($changes['add'] as $add) {
-                    if (in_array($add['attribute_id'], $existingAttributeIds)) {
-                        throw new \InvalidArgumentException(
-                            "Attribute ID {$add['attribute_id']} already exists. Use 'update' instead."
-                        );
+                        // Check if this attribute already exists for the product
+                        if (in_array($attributeId, $existingAttributeIds)) {
+                            // Update the existing attribute value
+                            $product->attributeValues()
+                                ->where('attribute_id', $attributeId)
+                                ->delete();
+                            $product->attributeValues()->attach($valueId);
+
+                            Log::info('Updated existing attribute after subcategory change', [
+                                'product_id' => $product->id,
+                                'attribute_id' => $attributeId,
+                                'value_id' => $valueId
+                            ]);
+                        } else {
+                            // Add new attribute value
+                            $product->attributeValues()->attach($valueId);
+
+                            Log::info('Added new attribute after subcategory change', [
+                                'product_id' => $product->id,
+                                'attribute_id' => $attributeId,
+                                'value_id' => $valueId
+                            ]);
+                        }
                     }
                 }
+            } else {
+                // Normal attribute update flow (no subcategory change)
 
-                // Attach new values
-                foreach ($changes['add'] as $add) {
-                    $product->attributeValues()->attach($add['value_id']);
+                // Get existing attribute values with their attribute info
+                $existingAttributeValues = $product->attributeValues()
+                    ->with('attribute')
+                    ->get();
+
+                // Create a map of attribute_id => value_id for easier lookup
+                $existingAttributeMap = $existingAttributeValues->pluck('id', 'attribute_id')->toArray();
+
+                // Get existing attribute IDs for checking duplicates
+                $existingAttributeIds = array_keys($existingAttributeMap);
+
+                // Combine update and add operations for simpler processing
+                $attributesToProcess = [];
+
+                if (isset($changes['update'])) {
+                    $attributesToProcess = array_merge($attributesToProcess, $changes['update']);
+                }
+
+                if (isset($changes['add'])) {
+                    $attributesToProcess = array_merge($attributesToProcess, $changes['add']);
+                }
+
+                // Validate all attributes against the subcategory
+                $this->validateAttributeValues($attributesToProcess, $product->subcategory);
+
+                // Process each attribute
+                foreach ($attributesToProcess as $attribute) {
+                    $attributeId = $attribute['attribute_id'];
+                    $valueId = $attribute['value_id'];
+
+                    // Check if this attribute already exists for the product
+                    if (in_array($attributeId, $existingAttributeIds)) {
+                        // Update the existing attribute value only if it's different
+                        $currentValueId = $existingAttributeMap[$attributeId];
+
+                        if ($currentValueId != $valueId) {
+                            // Update the existing attribute value
+                            $product->attributeValues()
+                                ->where('attribute_id', $attributeId)
+                                ->delete();
+                            $product->attributeValues()->attach($valueId);
+
+                            Log::info('Updated existing attribute', [
+                                'product_id' => $product->id,
+                                'attribute_id' => $attributeId,
+                                'old_value_id' => $currentValueId,
+                                'new_value_id' => $valueId
+                            ]);
+                        } else {
+                            Log::info('Attribute value unchanged, skipping update', [
+                                'product_id' => $product->id,
+                                'attribute_id' => $attributeId,
+                                'value_id' => $valueId
+                            ]);
+                        }
+                    } else {
+                        // Add new attribute value
+                        $product->attributeValues()->attach($valueId);
+
+                        Log::info('Added new attribute', [
+                            'product_id' => $product->id,
+                            'attribute_id' => $attributeId,
+                            'value_id' => $valueId
+                        ]);
+                    }
                 }
             }
 
@@ -379,18 +480,27 @@ class ProductAttributeService
      */
     protected function validateAttributeValues(array $attributes, Subcategory $subcategory): array
     {
+        // Get all attributes that belong to this subcategory
+        $subcategoryAttributes = $subcategory->attributes()->pluck('attributes.id')->toArray();
+
+        if (empty($subcategoryAttributes)) {
+            throw new \InvalidArgumentException('No attributes found for subcategory ID: ' . $subcategory->id);
+        }
+
         // Get all allowed values for this subcategory with their attributes
-        $allowedValues = $subcategory->attributeValues()
-            ->with('attribute')
+        $allowedValues = $subcategory->attributes()
+            ->select('attributes.*') // Explicitly select all columns from attributes table
+            ->with(['values' => function($query) {
+                $query->select('attribute_values.*'); // Explicitly select all columns from attribute_values table
+            }])
             ->get()
-            ->groupBy('attribute_id')
-            ->map(function($values) {
-                return $values->pluck('id')->toArray();
+            ->mapWithKeys(function($attribute) {
+                return [$attribute->id => $attribute->values->pluck('id')->toArray()];
             })
             ->toArray();
 
         if (empty($allowedValues)) {
-            throw new \InvalidArgumentException('No allowed values found for this subcategory');
+            throw new \InvalidArgumentException('No allowed values found for subcategory ID: ' . $subcategory->id);
         }
 
         // Track used attributes to ensure no duplicates
@@ -411,14 +521,37 @@ class ProductAttributeService
             }
 
             // Check if attribute exists in subcategory
-            $attribute = $this->findAttributeById($attributeId, $subcategory);
+            if (!in_array($attributeId, $subcategoryAttributes)) {
+                throw new \InvalidArgumentException('Attribute ID: ' . $attributeId . ' does not belong to subcategory ID: ' . $subcategory->id);
+            }
+
+            // Get the attribute details
+            try {
+                $attribute = $this->findAttributeById($attributeId, $subcategory);
+            } catch (\Exception $e) {
+                Log::error('Error finding attribute', [
+                    'attribute_id' => $attributeId,
+                    'subcategory_id' => $subcategory->id,
+                    'error' => $e->getMessage()
+                ]);
+                throw new \InvalidArgumentException('Error finding attribute ID: ' . $attributeId . ' - ' . $e->getMessage());
+            }
 
             // Check if value is allowed for this attribute
             if (!isset($allowedValues[$attributeId]) || !in_array($valueId, $allowedValues[$attributeId])) {
-                throw new \InvalidArgumentException('Invalid value ID: ' . $valueId . ' for attribute: ' . $attribute->name);
+                throw new \InvalidArgumentException('Invalid value ID: ' . $valueId . ' for attribute: ' . $attribute->name . ' in subcategory: ' . $subcategory->name);
             }
 
             $usedAttributes[] = $attributeId;
+
+            // Log successful validation
+            Log::info('Validated attribute value', [
+                'subcategory_id' => $subcategory->id,
+                'subcategory_name' => $subcategory->name,
+                'attribute_id' => $attributeId,
+                'attribute_name' => $attribute->name,
+                'value_id' => $valueId
+            ]);
         }
 
         return $attributes;
@@ -448,6 +581,7 @@ class ProductAttributeService
     {
         $attribute = $subcategory->attributes()
             ->where('attributes.id', $attributeId)
+            ->select('attributes.*') // Explicitly select all columns from attributes table
             ->first();
 
         if (!$attribute) {
@@ -483,9 +617,54 @@ class ProductAttributeService
             // Validate and transform the attributes
             $validatedAttributes = $this->validateAttributeValues($attributes, $product->subcategory);
 
-            // Attach each attribute value
+            // Get existing attribute IDs for this product
+            $existingAttributeMap = $product->attributeValues()
+                ->get()
+                ->mapWithKeys(function($value) {
+                    return [$value->attribute_id => $value->id];
+                })
+                ->toArray();
+
+            // Process each attribute value
             foreach ($validatedAttributes as $attribute) {
-                $product->attributeValues()->attach($attribute['value_id']);
+                $attributeId = $attribute['attribute_id'];
+                $valueId = $attribute['value_id'];
+
+                // Check if this attribute already exists for the product
+                if (isset($existingAttributeMap[$attributeId])) {
+                    $currentValueId = $existingAttributeMap[$attributeId];
+
+                    // Only update if the value is different
+                    if ($currentValueId != $valueId) {
+                        // Update the existing attribute value
+                        $product->attributeValues()
+                            ->where('attribute_id', $attributeId)
+                            ->delete();
+                        $product->attributeValues()->attach($valueId);
+
+                        Log::info('Updated existing attribute value', [
+                            'product_id' => $product->id,
+                            'attribute_id' => $attributeId,
+                            'old_value_id' => $currentValueId,
+                            'new_value_id' => $valueId
+                        ]);
+                    } else {
+                        Log::info('Attribute value unchanged, skipping update', [
+                            'product_id' => $product->id,
+                            'attribute_id' => $attributeId,
+                            'value_id' => $valueId
+                        ]);
+                    }
+                } else {
+                    // Add new attribute value
+                    $product->attributeValues()->attach($valueId);
+
+                    Log::info('Attached new attribute value', [
+                        'product_id' => $product->id,
+                        'attribute_id' => $attributeId,
+                        'value_id' => $valueId
+                    ]);
+                }
             }
 
             // Check required attributes after changes

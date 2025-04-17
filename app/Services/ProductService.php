@@ -310,6 +310,20 @@ class ProductService
      */
     public function updateBasicInfo(Product $product, array $basicInfo): Product
     {
+        $subcategoryChanged = false;
+        $oldSubcategoryId = $product->subcategory_id;
+
+        // Check if subcategory is changing
+        if (isset($basicInfo['subcategory_id']) && $basicInfo['subcategory_id'] != $product->subcategory_id) {
+            $subcategoryChanged = true;
+
+            Log::info('Subcategory change detected', [
+                'product_id' => $product->id,
+                'old_subcategory_id' => $oldSubcategoryId,
+                'new_subcategory_id' => $basicInfo['subcategory_id']
+            ]);
+        }
+
         $updateData = array_filter([
             'name' => $basicInfo['name'] ?? null,
             'description' => $basicInfo['description'] ?? null,
