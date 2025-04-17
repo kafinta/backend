@@ -38,14 +38,14 @@ class UserController extends ImprovedController
                 'password' => Hash::make($request->password),
             ]);
 
-            // Assign default customer role
-            $customerRole = Role::where('slug', 'customer')->first();
-            if ($customerRole) {
-                $user->roles()->attach($customerRole->id);
+            // Assign default role to user (customer by default)
+            $defaultRole = Role::where('slug', 'customer')->first();
+            if ($defaultRole) {
+                $user->roles()->attach($defaultRole->id);
             }
 
             DB::commit();
-            
+
             $token = $user->createToken('auth_token')->plainTextToken;
             return $this->respondWithSuccess("Account Created Successfully", 200, [
                 'account' => new UserAccountResource($user),
@@ -63,17 +63,17 @@ class UserController extends ImprovedController
     {
         try {
             $validator = $this->validateLoginCredentials();
-            
+
             if ($validator->fails()) {
                 return $this->respondWithValidationError($validator->messages()->first(), 422);
             }
 
             $throttleKey = Str::lower($request->email) . '|' . $request->ip();
-            
+
             if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
                 $seconds = RateLimiter::availableIn($throttleKey);
                 return $this->respondWithError(
-                    "Too many login attempts. Please try again in {$seconds} seconds.", 
+                    "Too many login attempts. Please try again in {$seconds} seconds.",
                     429
                 );
             }
@@ -85,20 +85,20 @@ class UserController extends ImprovedController
                 RateLimiter::hit($throttleKey, 60); // Add to rate limiter
                 return $this->respondWithError("Invalid credentials", 401);
             }
-            
+
             // Reset rate limiter on successful login
             RateLimiter::clear($throttleKey);
-    
+
 
             $tokenExpiration = $request->remember_me ? now()->addDays(30) : now()->addDay();
             $token = $user->createToken('auth_token', ['*'], $tokenExpiration)->plainTextToken;
-                
+
             return $this->respondWithSuccess("Login successful", 200, [
                 'account' => new UserAccountResource($user),
                 'auth_token' => $token,
                 'token_type' => 'Bearer'
             ]);
-    
+
         } catch (\Exception $e) {
             return $this->respondWithError($e->getMessage(), 500);
         }
@@ -127,12 +127,12 @@ class UserController extends ImprovedController
             'remember_me' => ['sometimes', 'boolean']
         ]);
     }
-    
+
     public function rotateToken(Request $request)
     {
         // Revoke current token
         $request->user()->currentAccessToken()->delete();
-        
+
         // Create new token
         $token = $request->user()->createToken('auth_token', ['*'])->plainTextToken;
         return $this->respondWithSuccess('Token rotated successfully', 200, [
