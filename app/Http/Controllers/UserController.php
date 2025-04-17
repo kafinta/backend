@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Hash;
 use App\Traits\ReferenceGeneratorTrait;
 use Illuminate\Support\Facades\Log;
 use App\Models\Role;
+use App\Models\Profile;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\RateLimiter;
 
@@ -43,6 +44,18 @@ class UserController extends ImprovedController
             if ($defaultRole) {
                 $user->roles()->attach($defaultRole->id);
             }
+
+            // Create an empty profile for the user
+            $user->profile()->create([
+                'first_name' => '',
+                'last_name' => ''
+            ]);
+
+            // Log profile creation
+            Log::info('Empty profile created for new user', [
+                'user_id' => $user->id,
+                'email' => $user->email
+            ]);
 
             DB::commit();
 
