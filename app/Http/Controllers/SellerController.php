@@ -23,7 +23,7 @@ class SellerController extends ImprovedController
         $this->formService = $formService;
     }
 
-    public function saveStep(Request $request)
+    public function createStep(Request $request)
     {
         try {
             // Process form step first
@@ -76,6 +76,30 @@ class SellerController extends ImprovedController
                 ];
             })
         ]);
+    }
+
+    /**
+     * Get saved form data for a specific session
+     *
+     * @param string $sessionId
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getFormData($sessionId)
+    {
+        try {
+            $data = $this->formService->getData('seller_form', $sessionId);
+
+            if (empty($data)) {
+                return $this->respondWithError('No form data found for this session', 404);
+            }
+
+            return $this->respondWithSuccess('Form data retrieved', 200, [
+                'session_id' => $sessionId,
+                'data' => $data
+            ]);
+        } catch (\Exception $e) {
+            return $this->respondWithError('Error retrieving form data: ' . $e->getMessage(), 500);
+        }
     }
 
     public function submit(Request $request)
