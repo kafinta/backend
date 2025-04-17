@@ -75,10 +75,10 @@ class User extends Authenticatable
 
     public function isAdmin()
     {
-        return $this->hasRole('seller');
+        return $this->hasRole('admin');
     }
 
-    public function sellerProfile()
+    public function seller()
     {
         return $this->hasOne(Seller::class);
     }
