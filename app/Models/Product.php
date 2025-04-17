@@ -9,7 +9,7 @@ use Illuminate\Validation\Rule;
 class Product extends Model
 {
     use HasFactory;
-    
+
     protected $fillable = [
         'name',
         'slug',
@@ -63,7 +63,7 @@ class Product extends Model
         return $this->morphMany(Image::class, 'imageable');
     }
 
-    public function variants() 
+    public function variants()
     {
         return $this->hasMany(Variant::class);
     }
@@ -83,11 +83,14 @@ class Product extends Model
     public function syncAttributesFromSubcategory()
     {
         $subcategoryAttributes = $this->subcategory->attributes()
-            ->with('values')
+            ->select('attributes.*')
+            ->with(['values' => function($query) {
+                $query->select('attribute_values.*');
+            }])
             ->get();
 
         $this->attributes()->sync($subcategoryAttributes->pluck('id'));
-        
+
         return $this;
     }
 
@@ -102,6 +105,7 @@ class Product extends Model
         foreach ($attributeValues as $attributeId => $valueId) {
             // Verify the attribute belongs to the product's subcategory
             $attribute = $this->subcategory->attributes()
+                ->select('attributes.*')
                 ->where('attributes.id', $attributeId)
                 ->first();
 
@@ -115,7 +119,7 @@ class Product extends Model
                 'value_id' => $valueId,
                 'subcategory_id' => $this->subcategory_id
             ]);
-  
+
             // Verify the value belongs to the attribute and is valid for the subcategory
             $attribute->validateValuesForSubcategory($this->subcategory, [$valueId]);
         }
@@ -164,17 +168,17 @@ class Product extends Model
 
         // Start with first attribute's values
         $combinations = $variantAttributes->first()->values;
-        
+
         // Progressively combine with other attributes
         $variantAttributes->slice(1)->each(function ($attribute) use (&$combinations) {
             $newCombinations = collect();
-            
+
             $combinations->each(function ($existingCombination) use ($attribute, &$newCombinations) {
                 $attribute->values->each(function ($value) use ($existingCombination, &$newCombinations) {
-                    $newCombination = is_array($existingCombination) 
-                        ? array_merge($existingCombination, [$value]) 
+                    $newCombination = is_array($existingCombination)
+                        ? array_merge($existingCombination, [$value])
                         : [$existingCombination, $value];
-                    
+
                     $newCombinations->push($newCombination);
                 });
             });
@@ -196,7 +200,7 @@ class Product extends Model
         $skuModifiers = collect($combination)
             ->map(fn($value) => $value->sku_modifier ?? $value->value)
             ->implode('-');
-        
+
         $sku = "{$this->id}-{$skuModifiers}";
 
         // Create variant
