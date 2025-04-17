@@ -17,7 +17,6 @@ return new class extends Migration
             $table->string('last_name')->nullable();
             $table->string('profile_picture')->nullable();
             $table->string('biography')->nullable();
-            $table->boolean('is_seller')->nullable()->default(false);
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->timestamps();
         });
