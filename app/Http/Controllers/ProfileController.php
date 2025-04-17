@@ -48,13 +48,22 @@ class ProfileController extends ImprovedController
                 return $this->respondWithError('Profile not found. Please create a profile first.', 404);
             }
 
+            // Check if this is an empty profile (automatically created during registration)
+            $isEmptyProfile = empty($user->profile->first_name) && empty($user->profile->last_name);
+            $profileStatus = $isEmptyProfile ? 'empty' : 'complete';
+
             $data = [
                 'profile' => $user->profile,
                 'username' => $user->username,
-                'email' => $user->email
+                'email' => $user->email,
+                'profile_status' => $profileStatus
             ];
 
-            return $this->respondWithSuccess('Profile fetched successfully', 200, $data);
+            $message = $isEmptyProfile ?
+                'Profile exists but is empty. Please complete your profile.' :
+                'Profile fetched successfully';
+
+            return $this->respondWithSuccess($message, 200, $data);
         } catch (\Exception $e) {
             return $this->respondWithError('Error fetching profile: ' . $e->getMessage(), 500);
         }
@@ -78,10 +87,17 @@ class ProfileController extends ImprovedController
                 return $this->respondWithSuccess('Profile created successfully', 201, $profile);
             }
 
+            // Check if this is an empty profile being completed for the first time
+            $isEmptyProfile = empty($user->profile->first_name) && empty($user->profile->last_name);
+
             // Update existing profile
             $user->profile->update($validatedData);
 
-            return $this->respondWithSuccess('Profile updated successfully', 200, $user->profile);
+            $message = $isEmptyProfile ?
+                'Profile completed successfully' :
+                'Profile updated successfully';
+
+            return $this->respondWithSuccess($message, 200, $user->profile);
         } catch (\Exception $e) {
             return $this->respondWithError('Error updating profile: ' . $e->getMessage(), 500);
         }
