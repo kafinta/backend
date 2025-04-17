@@ -28,7 +28,7 @@ class SellerController extends ImprovedController
         try {
             // Process form step first
             $result = $this->formService->process($request, 'seller_form');
-            
+
             if (!$result['success']) {
                 return $this->respondWithError($result, 400);
             }
@@ -38,26 +38,26 @@ class SellerController extends ImprovedController
                 $file = $request->file('id_document');
                 $fileName = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
                 $path = $file->storeAs('seller-documents', $fileName, 'public');
-                
+
                 // Update session data with file path
                 $sessionKey = 'form_data_seller_form';
                 $formData = Session::get($sessionKey, []);
-                
+
                 // Ensure data exists and update id_document with full path
                 $formData['data'] = $formData['data'] ?? [];
                 $formData['data']['id_document'] = '/storage/' . $path;
-                
+
                 Session::put($sessionKey, $formData);
 
                 // Update the result data to reflect the file path
                 $result['data']['data']['id_document'] = '/storage/' . $path;
             }
-            
+
             return $this->respondWithSuccess('Step saved successfully', 200, $result);
 
         } catch (\Exception $e) {
             return $this->respondWithError([
-                'message'=> 'Error saving step', 
+                'message'=> 'Error saving step',
                 'error' => $e->getMessage()
             ], 500);
         }
@@ -66,7 +66,7 @@ class SellerController extends ImprovedController
     public function getFormMetadata()
     {
         $config = $this->formService->getFormConfig('seller_form');
-        
+
         return $this->respondWithSuccess('Form metadata retrieved', 200, [
             'total_steps' => $config['total_steps'],
             'steps' => collect($config['steps'])->map(function($step) {
@@ -101,7 +101,7 @@ class SellerController extends ImprovedController
                 // Log session contents for debugging
                 $sessionKey = 'form_data_seller_form';
                 $fullSessionData = Session::get($sessionKey, []);
-                
+
                 \Log::info('Full Session Data', [
                     'session_key' => $sessionKey,
                     'full_session_data' => $fullSessionData
@@ -153,16 +153,26 @@ class SellerController extends ImprovedController
                     'id_type' => $completeData['id_type'],
                     'id_number' => $completeData['id_number'],
                     'id_document' => $completeData['id_document'],
+                    'is_verified' => true, // Auto-verify sellers for now
                 ]);
 
                 // Automatically assign seller role
                 $sellerRole = Role::where('slug', 'seller')->first();
-                auth()->user()->roles()->syncWithoutDetaching([$sellerRole->id]);
+                if ($sellerRole) {
+                    auth()->user()->roles()->syncWithoutDetaching([$sellerRole->id]);
+                }
 
                 // Clear temporary form data
                 $this->formService->clear('seller_form', $request->session_id);
 
-                return $this->respondWithSuccess('Seller application submitted and approved', 201, $seller);
+                // Log the application submission
+                Log::info('Seller application submitted and approved', [
+                    'user_id' => auth()->id(),
+                    'seller_id' => $seller->id,
+                    'business_name' => $seller->business_name
+                ]);
+
+                return $this->respondWithSuccess('Seller application submitted and approved. You can now start selling!', 201, $seller);
             });
 
         } catch (\Exception $e) {
@@ -216,7 +226,7 @@ class SellerController extends ImprovedController
 
             // Get file mime type
             $mimeType = Storage::disk('public')->mimeType($path);
-            
+
             // Generate a clean filename for download
             $filename = sprintf(
                 '%s_ID_%s.%s',
@@ -240,7 +250,7 @@ class SellerController extends ImprovedController
     protected function getFileType($file)
     {
         $mimeType = $file->getMimeType();
-        
+
         return match($mimeType) {
             'application/pdf' => 'pdf',
             'image/jpeg', 'image/jpg' => 'jpg',
