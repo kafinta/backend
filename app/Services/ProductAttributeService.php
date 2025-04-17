@@ -5,10 +5,17 @@ namespace App\Services;
 use App\Models\Product;
 use App\Models\Attribute;
 use App\Models\Subcategory;
+use App\Models\AttributeValue;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
 use App\Http\Resources\AttributeResource;
 use Illuminate\Support\Facades\Log;
+
+// Events
+use App\Events\Product\AttributeAdded;
+use App\Events\Product\AttributeUpdated;
+use App\Events\Product\AttributeRemoved;
+use App\Events\Product\ValidationFailed;
 
 class ProductAttributeService
 {
@@ -124,6 +131,19 @@ class ProductAttributeService
                             // Add new attribute value
                             $product->attributeValues()->attach($valueId);
 
+                            // Get attribute and value details for the event
+                            $attribute = Attribute::find($attributeId);
+                            $attributeValue = AttributeValue::find($valueId);
+
+                            // Dispatch event
+                            event(new AttributeAdded(
+                                $product,
+                                $attributeId,
+                                $valueId,
+                                $attribute ? $attribute->name : null,
+                                $attributeValue ? $attributeValue->name : null
+                            ));
+
                             Log::info('Added new attribute after subcategory change', [
                                 'product_id' => $product->id,
                                 'attribute_id' => $attributeId,
@@ -177,6 +197,22 @@ class ProductAttributeService
                                 ->delete();
                             $product->attributeValues()->attach($valueId);
 
+                            // Get attribute and value details for the event
+                            $attribute = Attribute::find($attributeId);
+                            $oldValue = AttributeValue::find($currentValueId);
+                            $newValue = AttributeValue::find($valueId);
+
+                            // Dispatch event
+                            event(new AttributeUpdated(
+                                $product,
+                                $attributeId,
+                                $currentValueId,
+                                $valueId,
+                                $attribute ? $attribute->name : null,
+                                $oldValue ? $oldValue->name : null,
+                                $newValue ? $newValue->name : null
+                            ));
+
                             Log::info('Updated existing attribute', [
                                 'product_id' => $product->id,
                                 'attribute_id' => $attributeId,
@@ -193,6 +229,19 @@ class ProductAttributeService
                     } else {
                         // Add new attribute value
                         $product->attributeValues()->attach($valueId);
+
+                        // Get attribute and value details for the event
+                        $attribute = Attribute::find($attributeId);
+                        $attributeValue = AttributeValue::find($valueId);
+
+                        // Dispatch event
+                        event(new AttributeAdded(
+                            $product,
+                            $attributeId,
+                            $valueId,
+                            $attribute ? $attribute->name : null,
+                            $attributeValue ? $attributeValue->name : null
+                        ));
 
                         Log::info('Added new attribute', [
                             'product_id' => $product->id,
@@ -218,10 +267,28 @@ class ProductAttributeService
                         );
                     }
 
+                    // Get the attribute and value details before removal
+                    $attributeId = $remove['attribute_id'];
+                    $attribute = Attribute::find($attributeId);
+
+                    // Find the current value for this attribute
+                    $currentValue = $product->attributeValues()
+                        ->where('attribute_id', $attributeId)
+                        ->first();
+
                     // Remove the attribute value
                     $product->attributeValues()
-                        ->where('attribute_id', $remove['attribute_id'])
+                        ->where('attribute_id', $attributeId)
                         ->delete();
+
+                    // Dispatch event
+                    event(new AttributeRemoved(
+                        $product,
+                        $attributeId,
+                        $currentValue ? $currentValue->id : null,
+                        $attribute ? $attribute->name : null,
+                        $currentValue ? $currentValue->name : null
+                    ));
                 }
             }
 
@@ -484,7 +551,17 @@ class ProductAttributeService
         $subcategoryAttributes = $subcategory->attributes()->pluck('attributes.id')->toArray();
 
         if (empty($subcategoryAttributes)) {
-            throw new \InvalidArgumentException('No attributes found for subcategory ID: ' . $subcategory->id);
+            $error = 'No attributes found for subcategory ID: ' . $subcategory->id;
+
+            // Dispatch validation failed event
+            event(new ValidationFailed(
+                null, // No product context available
+                'attribute_validation',
+                ['message' => $error],
+                ['subcategory_id' => $subcategory->id]
+            ));
+
+            throw new \InvalidArgumentException($error);
         }
 
         // Get all allowed values for this subcategory with their attributes
@@ -522,7 +599,20 @@ class ProductAttributeService
 
             // Check if attribute exists in subcategory
             if (!in_array($attributeId, $subcategoryAttributes)) {
-                throw new \InvalidArgumentException('Attribute ID: ' . $attributeId . ' does not belong to subcategory ID: ' . $subcategory->id);
+                $error = 'Attribute ID: ' . $attributeId . ' does not belong to subcategory ID: ' . $subcategory->id;
+
+                // Dispatch validation failed event
+                event(new ValidationFailed(
+                    isset($product) ? $product : null,
+                    'attribute_validation',
+                    ['message' => $error],
+                    [
+                        'subcategory_id' => $subcategory->id,
+                        'attribute_id' => $attributeId
+                    ]
+                ));
+
+                throw new \InvalidArgumentException($error);
             }
 
             // Get the attribute details

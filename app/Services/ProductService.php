@@ -9,6 +9,13 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
+// Events
+use App\Events\Product\ProductCreated;
+use App\Events\Product\ProductUpdated;
+use App\Events\Product\AttributeAdded;
+use App\Events\Product\AttributeUpdated;
+use App\Events\Product\SubcategoryChanged;
+
 class ProductService
 {
     protected $imageService;
@@ -92,6 +99,13 @@ class ProductService
 
             // Add the formatted attributes
             $productData['attributes'] = $formattedAttributes;
+
+            // Get the raw attributes and images for the event
+            $rawAttributes = isset($formData['data']['raw_attributes']) ? $formData['data']['raw_attributes'] : [];
+            $imagePaths = isset($formData['data']['images']) ? $formData['data']['images'] : [];
+
+            // Dispatch event
+            event(new ProductCreated($product, $rawAttributes, $imagePaths));
 
             return $productData;
 
@@ -276,18 +290,22 @@ class ProductService
             // Remove the attributeValues relation to prevent it from being serialized
             $product->unsetRelation('attributeValues');
 
-            // Log the updated product data
-            Log::info('Product updated successfully', [
-                'product_id' => $product->id,
-                'attribute_count' => count($formattedAttributes),
-                'image_count' => $product->images->count()
-            ]);
+            // Product update is complete
 
             // Get the base product data
             $productData = $product->toArray();
 
             // Add the formatted attributes
             $productData['attributes'] = $formattedAttributes;
+
+            // Track which fields were updated
+            $changedFields = [];
+            if (isset($formData['data']['basic_info'])) $changedFields[] = 'basic_info';
+            if (isset($formData['data']['attributes']) || isset($formData['data']['raw_attributes'])) $changedFields[] = 'attributes';
+            if (isset($formData['data']['images'])) $changedFields[] = 'images';
+
+            // Dispatch event
+            event(new ProductUpdated($product, $changedFields));
 
             return $productData;
 
@@ -333,6 +351,22 @@ class ProductService
 
         if (!empty($updateData)) {
             $product->update($updateData);
+
+            // If subcategory changed, dispatch event
+            if ($subcategoryChanged) {
+                // Get attribute IDs that were kept and removed
+                $keptAttributeIds = [];
+                $removedAttributeIds = [];
+
+                // Dispatch the subcategory changed event
+                event(new SubcategoryChanged(
+                    $product,
+                    $oldSubcategoryId,
+                    $product->subcategory_id,
+                    $keptAttributeIds,
+                    $removedAttributeIds
+                ));
+            }
         }
 
         return $product;
