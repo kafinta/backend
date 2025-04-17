@@ -15,31 +15,13 @@ use Illuminate\Support\Str;
 
 class ProfileController extends ImprovedController
 {
-    public function createProfile(Request $request){
-        try {
-            $user = auth()->user();
-
-            $validatedData = $request->validate([
-                'first_name' => 'required|string|max:255',
-                'last_name' => 'required|string|max:255',
-                'biography' => 'nullable|string',
-                'profile_picture' => 'nullable|string'
-            ]);
-
-            // Check if profile already exists
-            if ($user->profile) {
-                return $this->respondWithError('Profile already exists. Use updateProfile instead.', 400);
-            }
-
-            $profile = $user->profile()->create($validatedData);
-
-            return $this->respondWithSuccess('Profile created successfully', 201, $profile);
-        } catch (\Exception $e) {
-            return $this->respondWithError('Error creating profile: ' . $e->getMessage(), 500);
-        }
-    }
-
-    public function getProfile(){
+    /**
+     * Get the authenticated user's profile
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getProfile()
+    {
         try {
             $user = auth()->user();
 
@@ -69,6 +51,12 @@ class ProfileController extends ImprovedController
         }
     }
 
+    /**
+     * Update the authenticated user's profile
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function updateProfile(Request $request)
     {
         try {
