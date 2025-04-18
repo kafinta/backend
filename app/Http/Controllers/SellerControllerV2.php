@@ -6,6 +6,7 @@ use App\Http\Controllers\ImprovedController;
 use App\Models\Role;
 use App\Models\Seller;
 use App\Services\MultistepFormServiceV2;
+use App\Services\FileService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -24,11 +25,13 @@ use Illuminate\Support\Facades\Log;
 class SellerControllerV2 extends ImprovedController
 {
     protected $formService;
+    protected $fileService;
 
-    public function __construct(MultistepFormServiceV2 $formService)
+    public function __construct(MultistepFormServiceV2 $formService, FileService $fileService)
     {
         $this->middleware(['auth:sanctum']);
         $this->formService = $formService;
+        $this->fileService = $fileService;
     }
 
     /**
@@ -40,6 +43,7 @@ class SellerControllerV2 extends ImprovedController
     {
         try {
             // Generate a session ID and initialize the form
+            // This will also register the session with the current user
             $sessionId = $this->formService->generateSessionId('seller_form');
 
             // Initialize the form with this session ID
@@ -105,23 +109,14 @@ class SellerControllerV2 extends ImprovedController
                     ], 422);
                 }
 
-                // Handle file upload
-                try {
-                    $file = $request->file('id_document');
+                // Handle file upload using the FileService
+                $fullPath = $this->fileService->uploadFile(
+                    $request->file('id_document'),
+                    'seller-documents'
+                );
 
-                    // Generate a secure filename
-                    $fileName = time() . '_' . Str::uuid() . '.' . $file->getClientOriginalExtension();
-
-                    // Store the file in public storage
-                    $path = $file->storeAs('seller-documents', $fileName, 'public');
-
-                    // Construct the full path with /storage/ prefix
-                    $fullPath = '/storage/' . $path;
-
-                    Log::info('File uploaded successfully', ['path' => $fullPath]);
-                } catch (\Exception $e) {
-                    Log::error('File upload failed', ['error' => $e->getMessage()]);
-                    return $this->respondWithError('File upload failed: ' . $e->getMessage(), 500);
+                if (!$fullPath) {
+                    return $this->respondWithError('File upload failed', 500);
                 }
 
                 // Add the path to the request so it's included in form processing
@@ -442,7 +437,15 @@ class SellerControllerV2 extends ImprovedController
                 // Automatically assign seller role
                 $sellerRole = Role::where('slug', 'seller')->first();
                 if ($sellerRole) {
+                    // Assign seller role
                     auth()->user()->roles()->syncWithoutDetaching([$sellerRole->id]);
+
+                    Log::info('Seller role assigned', [
+                        'user_id' => auth()->id(),
+                        'seller_role_id' => $sellerRole->id
+                    ]);
+                } else {
+                    Log::error('Seller role not found in database');
                 }
 
                 // Clear form data
@@ -499,16 +502,18 @@ class SellerControllerV2 extends ImprovedController
                 return $this->respondWithError('No document found', 404);
             }
 
-            // If the path starts with /storage/, remove it for proper file access
-            $path = str_replace('/storage/', '', $seller->id_document);
+            // Get file info using the FileService
+            $fileInfo = $this->fileService->getFileInfo($seller->id_document);
 
-            // Check if file exists in storage
-            if (!Storage::disk('public')->exists($path)) {
+            if (!$fileInfo) {
                 return $this->respondWithError('Document file not found', 404);
             }
 
-            // Get file mime type
-            $mimeType = Storage::disk('public')->mimeType($path);
+            // Get the path without /storage/ prefix for proper file access
+            $path = str_replace('/storage/', '', $seller->id_document);
+
+            // Get file mime type from file info
+            $mimeType = $fileInfo['mime_type'];
 
             // Generate a clean filename for download
             $filename = sprintf(
