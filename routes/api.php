@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\SellerController;
+use App\Http\Controllers\SellerControllerV2;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\LocationController;
@@ -75,6 +76,23 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::middleware('role:seller|admin')->group(function() {
             Route::get('{seller}', [SellerController::class, 'show'])->name('sellers.show');
             Route::get('{seller}/document', [SellerController::class, 'downloadDocument'])->name('sellers.document.download');
+        });
+    });
+
+    // Seller Routes V2 (Improved Implementation)
+    // These routes provide endpoints for the enhanced seller registration process
+    // with improved file handling and session management
+    Route::prefix('v2/sellers')->group(function () {
+        // Routes for becoming a seller - available to all authenticated users
+        Route::get('/session', [SellerControllerV2::class, 'generateSessionId'])->name('sellers.v2.session');
+        Route::get('/form/{sessionId}', [SellerControllerV2::class, 'getFormData']);
+        Route::post('/steps', [SellerControllerV2::class, 'createStep'])->name('sellers.v2.steps');
+        Route::post('/submit', [SellerControllerV2::class, 'submit'])->name('sellers.v2.submit');
+
+        // Routes that require seller or admin role
+        Route::middleware('role:seller|admin')->group(function() {
+            Route::get('{seller}', [SellerControllerV2::class, 'show'])->name('sellers.v2.show');
+            Route::get('{seller}/document', [SellerControllerV2::class, 'downloadDocument'])->name('sellers.v2.document.download');
         });
     });
 });
