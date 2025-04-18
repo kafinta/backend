@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use App\Services\FileService;
 
 class MultistepFormServiceV2
 {
@@ -21,13 +22,17 @@ class MultistepFormServiceV2
      * Form configuration
      */
     protected array $config;
+    protected FileService $fileService;
 
     /**
      * Constructor
+     *
+     * @param FileService|null $fileService The file service (optional)
      */
-    public function __construct()
+    public function __construct(?FileService $fileService = null)
     {
         $this->config = config('forms');
+        $this->fileService = $fileService ?? app(FileService::class);
     }
 
     /**
@@ -140,7 +145,7 @@ class MultistepFormServiceV2
             ]);
 
             $this->validateFormType($formIdentifier);
-            $this->validateSessionId($request);
+            $this->validateSessionId($request, $formIdentifier);
 
             $formConfig = $this->config[$formIdentifier];
             $sessionKey = $this->getSessionKey($formIdentifier, $request->session_id);
@@ -335,41 +340,12 @@ class MultistepFormServiceV2
             throw new \RuntimeException("Invalid file upload");
         }
 
-        // Log file details
-        $this->logFormActivity('file_upload_details', [
-            'field_name' => $fieldName,
-            'original_name' => $file->getClientOriginalName(),
-            'mime_type' => $file->getMimeType(),
-            'size' => $file->getSize()
-        ]);
+        // Use the FileService to upload the file
+        $fullPath = $this->fileService->uploadFile($file, $directory);
 
-        // Generate secure filename
-        $extension = $file->getClientOriginalExtension();
-        $filename = time() . '_' . Str::uuid() . '.' . $extension;
-
-        // Store file
-        $path = $file->storeAs($directory, $filename, 'public');
-
-        // Verify file was stored successfully
-        if (!$path) {
-            $this->logFormActivity('file_upload_failed', [
-                'field_name' => $fieldName,
-                'directory' => $directory,
-                'filename' => $filename
-            ]);
+        if (!$fullPath) {
             throw new \RuntimeException("Failed to store file");
         }
-
-        // Verify file exists in storage
-        if (!Storage::disk('public')->exists($path)) {
-            $this->logFormActivity('file_not_found_after_upload', [
-                'path' => $path
-            ]);
-            throw new \RuntimeException("File not found after upload");
-        }
-
-        // Return standardized path
-        $fullPath = '/storage/' . $path;
 
         $this->logFormActivity('file_upload_success', [
             'field_name' => $fieldName,
@@ -391,25 +367,17 @@ class MultistepFormServiceV2
         $finalPaths = [];
 
         foreach ($tempPaths as $tempPath) {
-            // Remove /storage/ prefix if present
-            $actualPath = str_replace('/storage/', '', $tempPath);
+            // Use the FileService to move the file
+            $newPath = $this->fileService->moveFile($tempPath, $finalDirectory);
 
-            // Generate new filename
-            $extension = pathinfo($actualPath, PATHINFO_EXTENSION);
-            $newFilename = time() . '_' . Str::uuid() . '.' . $extension;
-
-            // Move file
-            $finalPath = Storage::disk('public')->putFileAs(
-                $finalDirectory,
-                Storage::disk('public')->path($actualPath),
-                $newFilename
-            );
-
-            // Add to final paths with standardized format
-            $finalPaths[] = '/storage/' . $finalPath;
-
-            // Delete temporary file
-            Storage::disk('public')->delete($actualPath);
+            if ($newPath) {
+                $finalPaths[] = $newPath;
+            } else {
+                $this->logFormActivity('file_move_failed', [
+                    'from' => $tempPath,
+                    'to' => $finalDirectory
+                ]);
+            }
         }
 
         return $finalPaths;
@@ -658,13 +626,14 @@ class MultistepFormServiceV2
     }
 
     /**
-     * Validate session ID in request
+     * Validate the session ID in the request
      *
-     * @param Request $request The request
+     * @param Request $request The request containing the session ID
+     * @param string|null $formType The form type to validate against
+     * @throws \InvalidArgumentException If the session ID is invalid
      * @return void
-     * @throws \InvalidArgumentException If session ID is invalid
      */
-    protected function validateSessionId(Request $request): void
+    protected function validateSessionId(Request $request, ?string $formType = null): void
     {
         if (!$request->session_id) {
             throw new \InvalidArgumentException("Session ID is required");
@@ -678,6 +647,27 @@ class MultistepFormServiceV2
         // Validate that the session_id is a valid UUID
         if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $request->session_id)) {
             throw new \InvalidArgumentException("Session ID must be a valid UUID");
+        }
+
+        // If form type is provided, perform additional validations
+        if ($formType) {
+            // Check if the session has been used
+            if ($this->isSessionUsed($formType, $request->session_id)) {
+                throw new \InvalidArgumentException("This session has already been used");
+            }
+
+            // Check if the session exists for this form type
+            $sessionKey = $this->getSessionKey($formType, $request->session_id);
+            $formData = Session::get($sessionKey);
+
+            if (empty($formData)) {
+                throw new \InvalidArgumentException("Invalid session ID for form type: {$formType}");
+            }
+
+            // Check if the form type matches
+            if (isset($formData['form_type']) && $formData['form_type'] !== $formType) {
+                throw new \InvalidArgumentException("Session ID was created for a different form type");
+            }
         }
     }
 
