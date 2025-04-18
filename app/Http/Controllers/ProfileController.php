@@ -12,9 +12,16 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use App\Services\FileService;
 
 class ProfileController extends ImprovedController
 {
+    protected $fileService;
+
+    public function __construct(FileService $fileService)
+    {
+        $this->fileService = $fileService;
+    }
     /**
      * Get the authenticated user's profile
      *
@@ -153,34 +160,32 @@ class ProfileController extends ImprovedController
                 ]);
             }
 
-            // Get the image file
-            $image = $request->file('profile_picture');
+            // Use the FileService to upload the profile picture
+            $filePath = $this->fileService->uploadFile(
+                $request->file('profile_picture'),
+                'profile-pictures'
+            );
 
-            // Generate a unique filename
-            $filename = 'profile_' . $user->id . '_' . time() . '_' . Str::random(10) . '.' . $image->getClientOriginalExtension();
-
-            // Store the image
-            $path = $image->storeAs('profile-pictures', $filename, 'public');
+            if (!$filePath) {
+                return $this->respondWithError('Failed to upload profile picture', 500);
+            }
 
             // Delete old profile picture if it exists
             if ($user->profile->profile_picture) {
-                $oldPath = str_replace('/storage/', '', $user->profile->profile_picture);
-                if (Storage::disk('public')->exists($oldPath)) {
-                    Storage::disk('public')->delete($oldPath);
-                    Log::info('Deleted old profile picture', [
-                        'user_id' => $user->id,
-                        'old_path' => $oldPath
-                    ]);
-                }
+                $this->fileService->deleteFile($user->profile->profile_picture);
+                Log::info('Deleted old profile picture', [
+                    'user_id' => $user->id,
+                    'old_path' => $user->profile->profile_picture
+                ]);
             }
 
             // Update the profile with the new image path
             $user->profile->update([
-                'profile_picture' => '/storage/' . $path
+                'profile_picture' => $filePath
             ]);
 
             return $this->respondWithSuccess('Profile picture uploaded successfully', 200, [
-                'profile_picture' => '/storage/' . $path
+                'profile_picture' => $filePath
             ]);
 
         } catch (\Exception $e) {
