@@ -1,6 +1,8 @@
 <?php
 
 return [
+    // Global configuration options
+    'bypass_expiration' => env('FORM_BYPASS_EXPIRATION', false),
     'product_form' => [
         'total_steps' => 3,
         'expiration_hours' => 24,
@@ -54,6 +56,8 @@ return [
               'business_description' => 'nullable|string',
               'business_address' => 'required|string',
               'phone_number' => 'required|string',
+              'session_id' => 'required|string',
+              'step' => 'required|integer|in:1'
             ]
           ],
           2 => [
@@ -68,6 +72,8 @@ return [
                 'max:2048',
                 'mimetypes:application/pdf,image/jpeg,image/png,image/jpg'
               ],
+              'session_id' => 'required|string',
+              'step' => 'required|integer|in:2'
             ]
           ],
         ]
