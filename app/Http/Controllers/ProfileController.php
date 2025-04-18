@@ -54,6 +54,11 @@ class ProfileController extends ImprovedController
     /**
      * Update the authenticated user's profile
      *
+     * This endpoint expects a PUT request with JSON data containing:
+     * - first_name (required): The user's first name
+     * - last_name (required): The user's last name
+     * - biography (optional): The user's biography
+     *
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
@@ -62,11 +67,26 @@ class ProfileController extends ImprovedController
         try {
             $user = auth()->user();
 
-            $validatedData = $request->validate([
+            // Log the request for debugging
+            Log::info('Profile update request', [
+                'content_type' => $request->header('Content-Type'),
+                'has_first_name' => $request->has('first_name'),
+                'has_last_name' => $request->has('last_name'),
+                'all_data' => $request->all()
+            ]);
+
+            // Create validator manually to get more control
+            $validator = Validator::make($request->all(), [
                 'first_name' => 'required|string|max:255',
                 'last_name' => 'required|string|max:255',
                 'biography' => 'nullable|string',
             ]);
+
+            if ($validator->fails()) {
+                return $this->respondWithError('Validation failed: ' . $validator->errors()->first(), 422);
+            }
+
+            $validatedData = $validator->validated();
 
             // Check if profile exists
             if (!$user->profile) {
@@ -94,6 +114,9 @@ class ProfileController extends ImprovedController
     /**
      * Upload a profile picture
      *
+     * This endpoint expects a POST request with multipart/form-data containing:
+     * - profile_picture (required): An image file (jpeg, png, jpg, gif) max 2MB
+     *
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
@@ -102,10 +125,20 @@ class ProfileController extends ImprovedController
         try {
             $user = auth()->user();
 
+            // Log the request for debugging
+            Log::info('Profile picture upload request', [
+                'content_type' => $request->header('Content-Type'),
+                'has_file' => $request->hasFile('profile_picture')
+            ]);
+
             // Validate the request
-            $request->validate([
+            $validator = Validator::make($request->all(), [
                 'profile_picture' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
             ]);
+
+            if ($validator->fails()) {
+                return $this->respondWithError('Validation failed: ' . $validator->errors()->first(), 422);
+            }
 
             // Check if profile exists
             if (!$user->profile) {
