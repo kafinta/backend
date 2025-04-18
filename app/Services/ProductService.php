@@ -201,7 +201,9 @@ class ProductService
     protected function attachImages(Product $product, array $imagePaths): void
     {
         foreach ($imagePaths as $path) {
-            $product->images()->create(['path' => $path]);
+            // Standardize path to include /storage/ prefix
+            $standardizedPath = $this->imageService->standardizeImagePath($path);
+            $product->images()->create(['path' => $standardizedPath]);
         }
     }
 
@@ -531,7 +533,9 @@ class ProductService
     {
         return DB::transaction(function () use ($product) {
             foreach ($product->images as $image) {
-                Storage::disk('public')->delete($image->path);
+                // Remove /storage/ prefix if present for proper deletion
+                $storagePath = $this->imageService->getStoragePath($image->path);
+                Storage::disk('public')->delete($storagePath);
                 $image->delete();
             }
 
