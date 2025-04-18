@@ -14,10 +14,10 @@ class RoleMiddleware
      *
      * @param  \Illuminate\Http\Request  $request
      * @param  \Closure  $next
-     * @param  string  $role
+     * @param  string  $roles  Pipe-separated list of roles (e.g. 'seller|admin')
      * @return mixed
      */
-    public function handle(Request $request, Closure $next, string $role): Response
+    public function handle(Request $request, Closure $next, string $roles): Response
     {
         if (!$request->user()) {
             return response()->json([
@@ -26,10 +26,23 @@ class RoleMiddleware
             ], 401);
         }
 
-        if (!$request->user()->hasRole($role)) {
+        // Split the roles string by | to handle multiple roles
+        $roleArray = explode('|', $roles);
+
+        // Check if the user has any of the required roles
+        $hasRole = false;
+
+        foreach ($roleArray as $role) {
+            if ($request->user()->hasRole($role)) {
+                $hasRole = true;
+                break;
+            }
+        }
+
+        if (!$hasRole) {
             Log::warning('Role authorization failed', [
                 'user_id' => $request->user()->id,
-                'required_role' => $role,
+                'required_roles' => $roleArray,
                 'user_roles' => $request->user()->roles()->pluck('slug')->toArray(),
                 'endpoint' => $request->path()
             ]);
