@@ -374,10 +374,14 @@ class ProductController extends ImprovedController
             }
 
             // Handle image uploads
+            // Note: Images are stored directly in their final location rather than using a temporary folder
+            // This simplifies the process and ensures consistent paths throughout the application
+            // A scheduled cleanup task can be implemented if orphaned images become a concern
             $imagePaths = [];
             foreach ($request->file('images') as $image) {
                 $path = $image->store('products', 'public');
-                $imagePaths[] = $path;
+                // Standardize path to include /storage/ prefix
+                $imagePaths[] = '/storage/' . $path;
             }
 
             // Store images in the correct format for ProductService
@@ -932,10 +936,14 @@ class ProductController extends ImprovedController
             }
 
             // Handle image uploads
+            // Note: Images are stored directly in their final location rather than using a temporary folder
+            // This simplifies the process and ensures consistent paths throughout the application
+            // A scheduled cleanup task can be implemented if orphaned images become a concern
             $imagePaths = [];
             foreach ($request->file('images') as $image) {
                 $path = $image->store('products', 'public');
-                $imagePaths[] = $path;
+                // Standardize path to include /storage/ prefix
+                $imagePaths[] = '/storage/' . $path;
             }
 
             // Store images in the correct format for ProductService
