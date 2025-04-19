@@ -8,6 +8,7 @@ use App\Models\AttributeValue;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use App\Services\FileService;
 
 // Events
 use App\Events\Product\ProductCreated;
@@ -20,18 +21,26 @@ class ProductService
 {
     protected $imageService;
     protected $attributeService;
+    protected $fileService;
 
     public function __construct(
         ProductImageService $imageService,
-        ProductAttributeService $attributeService
+        ProductAttributeService $attributeService,
+        FileService $fileService
     ) {
         $this->imageService = $imageService;
         $this->attributeService = $attributeService;
+        $this->fileService = $fileService;
     }
 
     public function createProduct(array $formData): array
     {
         try {
+            // Check if we have the expected data structure
+            if (!isset($formData['data'])) {
+                throw new \InvalidArgumentException('Invalid form data structure: missing data key');
+            }
+
             // Log the incoming form data for debugging
             Log::info('Creating product with form data', [
                 'has_basic_info' => isset($formData['data']['basic_info']),
@@ -62,6 +71,13 @@ class ProductService
             } else if (isset($formData['data']['attributes']) && !empty($formData['data']['attributes'])) {
                 // Otherwise use the formatted attributes
                 $this->attachAttributes($product, $formData['data']['attributes']);
+
+                // Log the attributes for debugging
+                Log::info('Attaching attributes to product', [
+                    'product_id' => $product->id,
+                    'attributes_count' => count($formData['data']['attributes']),
+                    'attributes' => $formData['data']['attributes']
+                ]);
             }
 
             // Handle images if present
@@ -79,12 +95,40 @@ class ProductService
             $formattedAttributes = [];
             foreach ($attributeValues as $value) {
                 if ($value->attribute) {
+                    // Log the attribute value for debugging
+                    Log::info('Formatting attribute value', [
+                        'attribute_id' => $value->attribute->id,
+                        'attribute_name' => $value->attribute->name,
+                        'value_id' => $value->id,
+                        'value_name' => $value->name,
+                        'value_representation' => $value->representation
+                    ]);
+
+                    // If name is null, use the value from the representation or a default
+                    $valueName = $value->name;
+                    if ($valueName === null) {
+                        // Try to get the name from the representation
+                        if (is_array($value->representation) && isset($value->representation['value'])) {
+                            $valueName = $value->representation['value'];
+                        } else {
+                            // Use a default value
+                            $valueName = 'Unknown';
+                        }
+
+                        Log::warning('Attribute value has null name, using fallback', [
+                            'attribute_id' => $value->attribute->id,
+                            'attribute_name' => $value->attribute->name,
+                            'value_id' => $value->id,
+                            'fallback_name' => $valueName
+                        ]);
+                    }
+
                     $formattedAttributes[] = [
                         'id' => $value->attribute->id,
                         'name' => $value->attribute->name,
                         'value' => [
                             'id' => $value->id,
-                            'name' => $value->name,
+                            'name' => $valueName,
                             'representation' => $value->representation
                         ]
                     ];
@@ -200,9 +244,29 @@ class ProductService
 
     protected function attachImages(Product $product, array $imagePaths): void
     {
+        // Log the image paths for debugging
+        Log::info('Attaching images to product', [
+            'product_id' => $product->id,
+            'image_count' => count($imagePaths),
+            'image_paths' => $imagePaths
+        ]);
+
         foreach ($imagePaths as $path) {
+            // Skip null or empty paths
+            if (empty($path)) {
+                continue;
+            }
+
             // Standardize path to include /storage/ prefix
             $standardizedPath = $this->imageService->standardizeImagePath($path);
+
+            // Log the standardized path for debugging
+            Log::info('Creating image for product', [
+                'product_id' => $product->id,
+                'original_path' => $path,
+                'standardized_path' => $standardizedPath
+            ]);
+
             $product->images()->create(['path' => $standardizedPath]);
         }
     }
@@ -210,6 +274,11 @@ class ProductService
     public function updateProduct(Product $product, array $formData): array
     {
         try {
+            // Check if we have the expected data structure
+            if (!isset($formData['data'])) {
+                throw new \InvalidArgumentException('Invalid form data structure: missing data key');
+            }
+
             // Log the incoming form data for debugging
             Log::info('Updating product with form data', [
                 'product_id' => $product->id,
@@ -277,12 +346,40 @@ class ProductService
             $formattedAttributes = [];
             foreach ($attributeValues as $value) {
                 if ($value->attribute) {
+                    // Log the attribute value for debugging
+                    Log::info('Formatting attribute value', [
+                        'attribute_id' => $value->attribute->id,
+                        'attribute_name' => $value->attribute->name,
+                        'value_id' => $value->id,
+                        'value_name' => $value->name,
+                        'value_representation' => $value->representation
+                    ]);
+
+                    // If name is null, use the value from the representation or a default
+                    $valueName = $value->name;
+                    if ($valueName === null) {
+                        // Try to get the name from the representation
+                        if (is_array($value->representation) && isset($value->representation['value'])) {
+                            $valueName = $value->representation['value'];
+                        } else {
+                            // Use a default value
+                            $valueName = 'Unknown';
+                        }
+
+                        Log::warning('Attribute value has null name, using fallback', [
+                            'attribute_id' => $value->attribute->id,
+                            'attribute_name' => $value->attribute->name,
+                            'value_id' => $value->id,
+                            'fallback_name' => $valueName
+                        ]);
+                    }
+
                     $formattedAttributes[] = [
                         'id' => $value->attribute->id,
                         'name' => $value->attribute->name,
                         'value' => [
                             'id' => $value->id,
-                            'name' => $value->name,
+                            'name' => $valueName,
                             'representation' => $value->representation
                         ]
                     ];
@@ -533,9 +630,8 @@ class ProductService
     {
         return DB::transaction(function () use ($product) {
             foreach ($product->images as $image) {
-                // Remove /storage/ prefix if present for proper deletion
-                $storagePath = $this->imageService->getStoragePath($image->path);
-                Storage::disk('public')->delete($storagePath);
+                // Delete the file using FileService
+                $this->fileService->deleteFile($image->path);
                 $image->delete();
             }
 
