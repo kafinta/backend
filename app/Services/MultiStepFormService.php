@@ -29,13 +29,13 @@ class MultistepFormService
             $formConfig = $this->config[$formIdentifier];
             $sessionKey = $this->getSessionKey($formIdentifier, $request->session_id);
             $formData = $this->getOrInitializeFormData($request, $formIdentifier, $sessionKey);
-            
+
             $this->validateStep($request->step, $formConfig, $formData);
-            
+
             if (!$this->validateStepData($request, $formConfig)) {
                 return [
                     'success' => false,
-                    'error' => 'Validation failed',                    
+                    'error' => 'Validation failed',
                     'errors' => $this->getValidationErrors($request, $formConfig)
                 ];
             }
@@ -58,7 +58,7 @@ class MultistepFormService
                 'formIdentifier' => $formIdentifier,
                 'session_id' => $request->session_id ?? null
             ]);
-            
+
             return [
                 'success' => false,
                 'error' => $e->getMessage()
@@ -78,12 +78,12 @@ class MultistepFormService
         if (!$request->session_id) {
             throw new \InvalidArgumentException("Session ID is required");
         }
-        
+
         // Check if session_id is a placeholder like "{session_id}"
         if (preg_match('/^\{.*\}$/', $request->session_id)) {
             throw new \InvalidArgumentException("Invalid session ID format");
         }
-        
+
         // Validate that the session_id is a valid UUID
         if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $request->session_id)) {
             throw new \InvalidArgumentException("Session ID must be a valid UUID");
@@ -115,13 +115,13 @@ class MultistepFormService
     protected function getOrInitializeFormData(Request $request, string $formIdentifier, string $sessionKey): array
     {
         $formData = Session::get($sessionKey, []);
-        
+
         if (empty($formData)) {
             $step = (int) $request->step;
             if ($step !== 1) {
                 throw new \InvalidArgumentException("Session expired or invalid. Please start from step 1");
             }
-            
+
             return [
                 'created_at' => now(),
                 'session_id' => $request->session_id,
@@ -159,16 +159,27 @@ class MultistepFormService
     protected function updateFormData(array $formData, Request $request): array
     {
         $stepData = $request->except(['session_id', 'step']);
+
+        // Log the step data for debugging
+        Log::info('Updating form data', [
+            'step' => $request->step,
+            'step_data' => $stepData
+        ]);
+
+        // Merge with existing data
         $formData['data'] = array_merge($formData['data'] ?? [], $stepData);
         $formData['step'] = $request->step;
-        
+
+        // Add updated_at timestamp
+        $formData['updated_at'] = now();
+
         return $formData;
     }
 
     protected function prepareSuccessResponse(Request $request, array $formConfig, array $formData): array
     {
         $stepConfig = $formConfig['steps'][$request->step];
-        
+
         return [
             'success' => true,
             'session_id' => $request->session_id,
@@ -212,15 +223,15 @@ class MultistepFormService
     {
         $sessionKey = $this->getSessionKey($formType, $sessionId);
         Session::forget($sessionKey);
-        
+
         // Remove the session ID from the session
         Session::forget('session_id_' . $sessionId);
     }
 
     public function getSessionKey(string $formType, ?string $sessionId = null): string
     {
-        return $sessionId 
-            ? self::SESSION_PREFIX . "{$formType}_{$sessionId}" 
+        return $sessionId
+            ? self::SESSION_PREFIX . "{$formType}_{$sessionId}"
             : self::SESSION_PREFIX . $formType;
     }
 
@@ -232,7 +243,7 @@ class MultistepFormService
 
         $created = new DateTime($data['created_at']);
         $expires = $created->modify("+{$this->config[$formIdentifier]['expiration_hours']} hours");
-        
+
         return $expires < now();
     }
 
@@ -243,13 +254,13 @@ class MultistepFormService
 
     public function clearAllSessions(?string $formType = null): void
     {
-        $pattern = $formType 
-            ? self::SESSION_PREFIX . "{$formType}_*" 
+        $pattern = $formType
+            ? self::SESSION_PREFIX . "{$formType}_*"
             : self::SESSION_PREFIX . "*";
 
         // Clear all form data sessions
         Session::forget($pattern);
-        
+
         // Clear all session IDs
         $sessionIdsPattern = 'session_id_*';
         Session::forget($sessionIdsPattern);
