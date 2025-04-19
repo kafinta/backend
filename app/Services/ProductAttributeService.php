@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
 use App\Http\Resources\AttributeResource;
 use Illuminate\Support\Facades\Log;
+use App\Services\MultistepFormServiceV2;
 
 // Events
 use App\Events\Product\AttributeAdded;
@@ -21,9 +22,9 @@ class ProductAttributeService
 {
     protected $formService;
 
-    public function __construct(MultiStepFormService $formService)
+    public function __construct(MultistepFormServiceV2 $formService = null)
     {
-        $this->formService = $formService;
+        $this->formService = $formService ?? app(MultistepFormServiceV2::class);
     }
 
     /**
@@ -428,8 +429,7 @@ class ProductAttributeService
             }
 
             // Get the form data
-            $formType = 'product_form';
-            $formData = $this->formService->getData($formType, $validatedData['session_id']);
+            $formData = $this->formService->getFormData($validatedData['session_id']);
 
             if (!$formData || !isset($formData['data']['basic_info'])) {
                 throw new \InvalidArgumentException('Please complete step 1 first');
@@ -462,8 +462,7 @@ class ProductAttributeService
             }
 
             // Get the form data
-            $formType = 'product_form';
-            $formData = $this->formService->getData($formType, $validatedData['session_id']);
+            $formData = $this->formService->getFormData($validatedData['session_id']);
 
             if (!$formData || !isset($formData['data']['basic_info'])) {
                 throw new \InvalidArgumentException('Please complete step 1 first');
@@ -532,8 +531,7 @@ class ProductAttributeService
         $formData['data']['raw_attributes'] = $rawAttributes;
 
         // Save updated form data
-        $sessionKey = $this->formService->getSessionKey('product_form', $validatedData['session_id']);
-        Session::put($sessionKey, $formData);
+        $this->formService->saveFormData($validatedData['session_id'], $formData);
 
         return [
             'success' => true,
