@@ -392,8 +392,41 @@ class MultistepFormServiceV2
      */
     public function getData(string $formIdentifier, string $sessionId): array
     {
+        return $this->getFormData($sessionId, $formIdentifier);
+    }
+
+    /**
+     * Get form data from session (simplified version)
+     *
+     * @param string $sessionId The session ID
+     * @param string $formIdentifier Optional form identifier (defaults to 'product_form')
+     * @return array Form data
+     */
+    public function getFormData(string $sessionId, string $formIdentifier = 'product_form'): array
+    {
         $sessionKey = $this->getSessionKey($formIdentifier, $sessionId);
+
+        // Log all session keys for debugging
+        $allSessionData = Session::all();
+        $this->logFormActivity('all_session_data_keys', [
+            'session_id' => $sessionId,
+            'all_keys' => array_keys($allSessionData)
+        ]);
+
         $data = Session::get($sessionKey, []);
+
+        // Log detailed information about the data
+        $this->logFormActivity('get_data_details', [
+            'form_identifier' => $formIdentifier,
+            'session_id' => $sessionId,
+            'session_key' => $sessionKey,
+            'data_exists' => !empty($data),
+            'has_created_at' => isset($data['created_at']),
+            'has_updated_at' => isset($data['updated_at']),
+            'has_form_type' => isset($data['form_type']),
+            'has_basic_info' => isset($data['basic_info']),
+            'basic_info' => $data['basic_info'] ?? null
+        ]);
 
         $this->logFormActivity('get_data', [
             'form_identifier' => $formIdentifier,
@@ -489,6 +522,64 @@ class MultistepFormServiceV2
         $usedSessions = Session::get($usedSessionsKey, []);
 
         return isset($usedSessions[$sessionId]);
+    }
+
+    /**
+     * Save form data to session
+     *
+     * @param string $sessionId The session ID
+     * @param array $formData The form data to save
+     * @param string $formIdentifier Optional form identifier (defaults to 'product_form')
+     * @return void
+     */
+    public function saveFormData(string $sessionId, array $formData, string $formIdentifier = 'product_form'): void
+    {
+        $sessionKey = $this->getSessionKey($formIdentifier, $sessionId);
+
+        // Update timestamp
+        $formData['updated_at'] = now();
+
+        // Ensure created_at is set
+        if (!isset($formData['created_at'])) {
+            $formData['created_at'] = now();
+        }
+
+        // Ensure form_type is set
+        if (!isset($formData['form_type'])) {
+            $formData['form_type'] = $formIdentifier;
+        }
+
+        // Log the form data before saving
+        $this->logFormActivity('save_form_data_details', [
+            'form_identifier' => $formIdentifier,
+            'session_id' => $sessionId,
+            'session_key' => $sessionKey,
+            'has_created_at' => isset($formData['created_at']),
+            'has_updated_at' => isset($formData['updated_at']),
+            'has_form_type' => isset($formData['form_type']),
+            'has_basic_info' => isset($formData['basic_info']),
+            'basic_info' => $formData['basic_info'] ?? null
+        ]);
+
+        Session::put($sessionKey, $formData);
+
+        $this->logFormActivity('save_form_data', [
+            'form_identifier' => $formIdentifier,
+            'session_id' => $sessionId,
+            'session_key' => $sessionKey
+        ]);
+    }
+
+    /**
+     * Clear form data from session
+     *
+     * @param string $sessionId The session ID
+     * @param string $formIdentifier Optional form identifier (defaults to 'product_form')
+     * @return void
+     */
+    public function clearFormData(string $sessionId, string $formIdentifier = 'product_form'): void
+    {
+        $this->clear($formIdentifier, $sessionId);
     }
 
     public function clear(string $formType, string $sessionId): void
