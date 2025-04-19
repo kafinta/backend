@@ -7,50 +7,27 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
+use App\Services\FileService;
 
 class ProductImageService
 {
     protected $disk = 'public';
     protected $path = 'products';
     protected $maxImagesPerProduct = 10; // Configurable maximum images per product
-    protected $formService;
+    protected $fileService;
 
     /**
      * Constructor
      *
-     * @param MultiStepFormService $formService
+     * @param FileService $fileService
      */
-    public function __construct(MultiStepFormService $formService)
+    public function __construct(FileService $fileService)
     {
-        $this->formService = $formService;
+        $this->fileService = $fileService;
     }
 
-    /**
-     * Process images for a product
-     *
-     * @param array $imagePaths Array of image paths
-     * @param Product $product
-     * @return array Array of created image IDs
-     */
-    public function processProductImages(array $imagePaths, Product $product): array
-    {
-        if ($product->images()->count() + count($imagePaths) > $this->maxImagesPerProduct) {
-            throw new \InvalidArgumentException(
-                "Cannot add images. Maximum limit of {$this->maxImagesPerProduct} would be exceeded."
-            );
-        }
 
-        $imageIds = [];
-
-        foreach ($imagePaths as $path) {
-            // Create image record with /storage/ prefix
-            $standardizedPath = $this->standardizeImagePath($path);
-            $newImage = $product->images()->create(['path' => $standardizedPath]);
-            $imageIds[] = $newImage->id;
-        }
-
-        return $imageIds;
-    }
 
 
 
@@ -84,6 +61,95 @@ class ProductImageService
     }
 
     /**
+     * Process image paths for a product
+     *
+     * @param array $imagePaths Array of image paths
+     * @param Product $product The product to associate images with
+     * @param bool $isPrimary Whether the first image should be set as primary
+     * @return array Array of created image IDs
+     */
+    public function processProductImages(array $imagePaths, Product $product, bool $isPrimary = false): array
+    {
+        if ($product->images()->count() + count($imagePaths) > $this->maxImagesPerProduct) {
+            throw new \InvalidArgumentException(
+                "Cannot add images. Maximum limit of {$this->maxImagesPerProduct} would be exceeded."
+            );
+        }
+
+        $imageIds = [];
+        $firstImage = true;
+
+        foreach ($imagePaths as $path) {
+            // Standardize path to include /storage/ prefix
+            $standardizedPath = $this->standardizeImagePath($path);
+
+            // Create the image record
+            $newImage = $product->images()->create([
+                'path' => $standardizedPath,
+                'is_primary' => ($firstImage && $isPrimary) ? true : false
+            ]);
+
+            $imageIds[] = $newImage->id;
+            $firstImage = false;
+        }
+
+        return $imageIds;
+    }
+
+    /**
+     * Upload images for a product
+     *
+     * @param Product $product The product to upload images for
+     * @param array $images Array of uploaded files
+     * @param bool $isPrimary Whether the first image should be set as primary
+     * @return array Array of created image IDs
+     */
+    public function uploadImages(Product $product, array $images, bool $isPrimary = false): array
+    {
+        if ($product->images()->count() + count($images) > $this->maxImagesPerProduct) {
+            throw new \InvalidArgumentException(
+                "Cannot add images. Maximum limit of {$this->maxImagesPerProduct} would be exceeded."
+            );
+        }
+
+        $imageIds = [];
+        $firstImage = true;
+
+        foreach ($images as $image) {
+            if (!$image instanceof UploadedFile || !$image->isValid()) {
+                Log::warning('Invalid image file', [
+                    'product_id' => $product->id,
+                    'error' => $image instanceof UploadedFile ? $image->getError() : 'Not an uploaded file'
+                ]);
+                continue;
+            }
+
+            // Use the FileService to upload the image
+            $directory = "products/{$product->id}";
+            $path = $this->fileService->uploadFile($image, $directory);
+
+            if (!$path) {
+                Log::error('Failed to upload product image', [
+                    'product_id' => $product->id,
+                    'original_name' => $image->getClientOriginalName()
+                ]);
+                continue;
+            }
+
+            // Create the image record
+            $newImage = $product->images()->create([
+                'path' => $path,
+                'is_primary' => ($firstImage && $isPrimary) ? true : false
+            ]);
+
+            $imageIds[] = $newImage->id;
+            $firstImage = false;
+        }
+
+        return $imageIds;
+    }
+
+    /**
      * Delete specific images from a product
      *
      * @param Product $product
@@ -100,9 +166,8 @@ class ProductImageService
         $images = $query->get();
 
         foreach ($images as $image) {
-            // Remove /storage/ prefix if present for proper deletion
-            $storagePath = $this->getStoragePath($image->path);
-            Storage::disk('public')->delete($storagePath);
+            // Delete the file using FileService
+            $this->fileService->deleteFile($image->path);
             $image->delete();
         }
     }
