@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
 use App\Http\Resources\AttributeResource;
 use Illuminate\Support\Facades\Log;
-use App\Services\MultistepFormServiceV2;
+use App\Services\MultistepFormService;
 
 // Events
 use App\Events\Product\AttributeAdded;
@@ -22,9 +22,9 @@ class ProductAttributeService
 {
     protected $formService;
 
-    public function __construct(MultistepFormServiceV2 $formService = null)
+    public function __construct(MultistepFormService $formService = null)
     {
-        $this->formService = $formService ?? app(MultistepFormServiceV2::class);
+        $this->formService = $formService ?? app(MultistepFormService::class);
     }
 
     /**
