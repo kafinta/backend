@@ -8,7 +8,6 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use App\Services\FileService;
 use App\Services\MultistepFormService;
-use App\Services\MultistepFormServiceV2;
 use App\Services\ProductImageService;
 use App\Services\ProductService;
 use App\Services\ProductAttributeService;
@@ -29,11 +28,7 @@ class AppServiceProvider extends ServiceProvider
 
         // Form services
         $this->app->singleton(MultistepFormService::class, function ($app) {
-            return new MultistepFormService();
-        });
-
-        $this->app->singleton(MultistepFormServiceV2::class, function ($app) {
-            return new MultistepFormServiceV2();
+            return new MultistepFormService($app->make(FileService::class));
         });
 
         // Product services
@@ -42,7 +37,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         $this->app->singleton(ProductAttributeService::class, function ($app) {
-            return new ProductAttributeService($app->make(MultistepFormServiceV2::class));
+            return new ProductAttributeService($app->make(MultistepFormService::class));
         });
 
         $this->app->singleton(ProductService::class, function ($app) {
