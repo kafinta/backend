@@ -110,7 +110,12 @@ class ProductService
             }
 
             if (isset($filters['location_id']) && !empty($filters['location_id'])) {
-                $query->where('location_id', $filters['location_id']);
+                // If location_id is an array, search for products in any of those locations
+                if (is_array($filters['location_id'])) {
+                    $query->whereIn('location_id', $filters['location_id']);
+                } else {
+                    $query->where('location_id', $filters['location_id']);
+                }
             }
 
             // Apply sorting
@@ -214,6 +219,7 @@ class ProductService
                 'description' => $basicInfo['description'],
                 'price' => $basicInfo['price'],
                 'subcategory_id' => $basicInfo['subcategory_id'],
+                'location_id' => $basicInfo['location_id'] ?? null,
                 'user_id' => auth()->id()
             ]);
 
@@ -598,7 +604,8 @@ class ProductService
             'name' => $basicInfo['name'] ?? null,
             'description' => $basicInfo['description'] ?? null,
             'price' => $basicInfo['price'] ?? null,
-            'subcategory_id' => $basicInfo['subcategory_id'] ?? null
+            'subcategory_id' => $basicInfo['subcategory_id'] ?? null,
+            'location_id' => $basicInfo['location_id'] ?? null
         ], fn($value) => !is_null($value));
 
         if (!empty($updateData)) {
