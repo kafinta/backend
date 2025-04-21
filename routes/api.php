@@ -43,9 +43,9 @@ Route::prefix('attributes')->group(function () {
 Route::middleware('auth:sanctum')->group(function () {
     // User Profile Routes
     Route::prefix('user/profile')->group(function() {
-        Route::get('/', [ProfileController::class, 'getProfile']);
-        Route::put('/', [ProfileController::class, 'updateProfile']);
-        Route::post('/upload-picture', [ProfileController::class, 'uploadProfilePicture']);
+        Route::get('/', [UserController::class, 'getProfile']);
+        Route::put('/', [UserController::class, 'updateProfile']);
+        Route::post('/upload-picture', [UserController::class, 'uploadProfilePicture']);
     });
 
     // Product Management Routes
