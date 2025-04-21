@@ -33,6 +33,130 @@ class ProductService
         $this->fileService = $fileService;
     }
 
+    /**
+     * Search for products based on filters
+     *
+     * @param array $filters The search filters
+     * @param int $perPage Number of items per page
+     * @return \Illuminate\Pagination\LengthAwarePaginator
+     */
+    public function searchProducts(array $filters, int $perPage = 15)
+    {
+        try {
+            // Start with a base query
+            $query = Product::query();
+
+            // Join with necessary tables
+            $query->with(['subcategory.category', 'images', 'attributeValues.attribute', 'user.seller']);
+
+            // Apply filters
+            if (isset($filters['keyword']) && !empty($filters['keyword'])) {
+                $keyword = $filters['keyword'];
+                $query->where(function($q) use ($keyword) {
+                    $q->where('name', 'like', "%{$keyword}%")
+                      ->orWhere('description', 'like', "%{$keyword}%");
+                });
+            }
+
+            if (isset($filters['category_id']) && !empty($filters['category_id'])) {
+                $query->whereHas('subcategory', function($q) use ($filters) {
+                    $q->where('category_id', $filters['category_id']);
+                });
+            }
+
+            if (isset($filters['subcategory_id']) && !empty($filters['subcategory_id'])) {
+                $query->where('subcategory_id', $filters['subcategory_id']);
+            }
+
+            if (isset($filters['min_price']) && is_numeric($filters['min_price'])) {
+                $query->where('price', '>=', $filters['min_price']);
+            }
+
+            if (isset($filters['max_price']) && is_numeric($filters['max_price'])) {
+                $query->where('price', '<=', $filters['max_price']);
+            }
+
+            if (isset($filters['status']) && !empty($filters['status'])) {
+                $query->where('status', $filters['status']);
+            }
+
+            if (isset($filters['is_featured'])) {
+                $query->where('is_featured', $filters['is_featured']);
+            }
+
+            if (isset($filters['seller_id']) && !empty($filters['seller_id'])) {
+                $query->whereHas('user', function($q) use ($filters) {
+                    $q->whereHas('seller', function($sq) use ($filters) {
+                        $sq->where('id', $filters['seller_id']);
+                    });
+                });
+            }
+
+            if (isset($filters['location_id']) && !empty($filters['location_id'])) {
+                $query->where('location_id', $filters['location_id']);
+            }
+
+            // Apply sorting
+            $sortBy = $filters['sort_by'] ?? 'created_at';
+            $sortDirection = $filters['sort_direction'] ?? 'desc';
+            $query->orderBy($sortBy, $sortDirection);
+
+            // Execute the query with pagination
+            $products = $query->paginate($perPage);
+
+            // Format the attributes for each product
+            $products->getCollection()->transform(function ($product) {
+                // Make a copy of the attributeValues for our custom formatting
+                $attributeValues = $product->attributeValues;
+
+                // Format attributes in the intuitive format
+                $formattedAttributes = [];
+                foreach ($attributeValues as $value) {
+                    if ($value->attribute) {
+                        // If name is null, use the value from the representation or a default
+                        $valueName = $value->name;
+                        if ($valueName === null) {
+                            // Try to get the name from the representation
+                            if (is_array($value->representation) && isset($value->representation['value'])) {
+                                $valueName = $value->representation['value'];
+                            } else {
+                                // Use a default value
+                                $valueName = 'Unknown';
+                            }
+                        }
+
+                        $formattedAttributes[] = [
+                            'id' => $value->attribute->id,
+                            'name' => $value->attribute->name,
+                            'value' => [
+                                'id' => $value->id,
+                                'name' => $valueName,
+                                'representation' => $value->representation
+                            ]
+                        ];
+                    }
+                }
+
+                // Remove the attributeValues relation to prevent it from being serialized
+                $product->unsetRelation('attributeValues');
+
+                // Add the formatted attributes
+                $product->attributes = $formattedAttributes;
+
+                return $product;
+            });
+
+            return $products;
+        } catch (\Exception $e) {
+            Log::error('Error searching products', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'filters' => $filters
+            ]);
+            throw $e;
+        }
+    }
+
     public function createProduct(array $formData): array
     {
         try {
