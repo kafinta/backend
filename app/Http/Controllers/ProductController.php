@@ -73,7 +73,8 @@ class ProductController extends ImprovedController
                 'sort_by', 'sort_direction'
             ]);
 
-            $products = $this->productService->searchProducts($filters, $perPage);
+            // Use the optimized search method for index view (not detailed view)
+            $products = $this->productService->searchProducts($filters, $perPage, false);
 
             return $this->respondWithSuccess('Products retrieved successfully', 200, [
                 'products' => $products
@@ -105,7 +106,8 @@ class ProductController extends ImprovedController
             // Add category ID to filters
             $filters['category_id'] = $category->id;
 
-            $products = $this->productService->searchProducts($filters, $perPage);
+            // Use the optimized search method for index view (not detailed view)
+            $products = $this->productService->searchProducts($filters, $perPage, false);
 
             return $this->respondWithSuccess('Products retrieved successfully', 200, [
                 'category' => $category->name,
@@ -134,7 +136,8 @@ class ProductController extends ImprovedController
                 'sort_by', 'sort_direction'
             ]);
 
-            $products = $this->productService->searchProducts($filters, $perPage);
+            // Use the optimized search method for index view (not detailed view)
+            $products = $this->productService->searchProducts($filters, $perPage, false);
 
             return $this->respondWithSuccess('Search results', 200, [
                 'products' => $products
