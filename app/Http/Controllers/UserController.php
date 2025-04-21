@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 use App\Models\User;
-use App\Http\Controllers\Controller;
 use App\Http\Controllers\ImprovedController;
 use App\Http\Resources\UserAccountResource;
 use Illuminate\Http\Request;
@@ -13,13 +12,20 @@ use Illuminate\Support\Facades\Hash;
 use App\Traits\ReferenceGeneratorTrait;
 use Illuminate\Support\Facades\Log;
 use App\Models\Role;
-use App\Models\Profile;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\RateLimiter;
+use App\Services\FileService;
+
 
 class UserController extends ImprovedController
 {
     use ReferenceGeneratorTrait;
+    protected $fileService;
+
+    public function __construct(FileService $fileService)
+    {
+        $this->fileService = $fileService;
+    }
 
     public function register(Request $request)
     {
@@ -33,29 +39,24 @@ class UserController extends ImprovedController
 
             DB::beginTransaction();
 
-            $user = User::create([
+            $userData = [
                 'email' => $request->email,
                 'username' => $request->username,
                 'password' => Hash::make($request->password),
-            ]);
+            ];
+
+            // Add phone number if provided
+            if ($request->has('phone_number')) {
+                $userData['phone_number'] = $request->phone_number;
+            }
+
+            $user = User::create($userData);
 
             // Assign default role to user (customer by default)
             $defaultRole = Role::where('slug', 'customer')->first();
             if ($defaultRole) {
                 $user->roles()->attach($defaultRole->id);
             }
-
-            // Create an empty profile for the user
-            $user->profile()->create([
-                'first_name' => '',
-                'last_name' => ''
-            ]);
-
-            // Log profile creation
-            Log::info('Empty profile created for new user', [
-                'user_id' => $user->id,
-                'email' => $user->email
-            ]);
 
             DB::commit();
 
@@ -117,6 +118,63 @@ class UserController extends ImprovedController
         }
     }
 
+    public function uploadProfilePicture(Request $request)
+    {
+        try {
+            $user = auth()->user();
+
+            // Log the request for debugging
+            Log::info('Profile picture upload request', [
+                'content_type' => $request->header('Content-Type'),
+                'has_file' => $request->hasFile('profile_picture')
+            ]);
+
+            // Validate the request
+            $validator = Validator::make($request->all(), [
+                'profile_picture' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
+            ]);
+
+            if ($validator->fails()) {
+                return $this->respondWithError('Validation failed: ' . $validator->errors()->first(), 422);
+            }
+
+            // Use the FileService to upload the profile picture
+            $filePath = $this->fileService->uploadFile(
+                $request->file('profile_picture'),
+                'profile-pictures'
+            );
+
+            if (!$filePath) {
+                return $this->respondWithError('Failed to upload profile picture', 500);
+            }
+
+            // Delete old profile picture if it exists
+            if ($user->profile_picture) {
+                $this->fileService->deleteFile($user->profile_picture);
+                Log::info('Deleted old profile picture', [
+                    'user_id' => $user->id,
+                    'old_path' => $user->profile_picture
+                ]);
+            }
+
+            // Update the profile with the new image path
+            $user->update([
+                'profile_picture' => $filePath
+            ]);
+
+            return $this->respondWithSuccess('Profile picture uploaded successfully', 200, [
+                'profile_picture' => $filePath
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error uploading profile picture', [
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage()
+            ]);
+            return $this->respondWithError('Error uploading profile picture: ' . $e->getMessage(), 500);
+        }
+    }
+
     public function logout(Request $request)
     {
         $request->user()->currentAccessToken()->delete();
@@ -128,7 +186,8 @@ class UserController extends ImprovedController
         return Validator::make(request()->all(), [
             'email' => 'required|unique:users',
             'username' => 'required|unique:users',
-            'password' => 'required|min:8'
+            'password' => 'required|min:8',
+            'phone_number' => 'nullable|string|max:20'
         ]);
     }
 
@@ -152,5 +211,77 @@ class UserController extends ImprovedController
             'auth_token' => $token,
             'token_type' => 'Bearer'
         ]);
+    }
+
+    /**
+     * Update user profile information
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function updateProfile(Request $request)
+    {
+        try {
+            $user = auth()->user();
+
+            // Validate the request
+            $validator = Validator::make($request->all(), [
+                'username' => 'sometimes|required|string|max:255|unique:users,username,' . $user->id,
+                'phone_number' => 'nullable|string|max:20',
+            ]);
+
+            if ($validator->fails()) {
+                return $this->respondWithError('Validation failed: ' . $validator->errors()->first(), 422);
+            }
+
+            // Update user data
+            $userData = [];
+
+            if ($request->has('username')) {
+                $userData['username'] = $request->username;
+            }
+
+            if ($request->has('phone_number')) {
+                $userData['phone_number'] = $request->phone_number;
+            }
+
+            if (!empty($userData)) {
+                $user->update($userData);
+            }
+
+            return $this->respondWithSuccess('Profile updated successfully', 200, [
+                'user' => new UserAccountResource($user)
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error updating profile', [
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage()
+            ]);
+            return $this->respondWithError('Error updating profile: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Get user profile information
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getProfile()
+    {
+        try {
+            $user = auth()->user();
+
+            return $this->respondWithSuccess('Profile retrieved successfully', 200, [
+                'user' => new UserAccountResource($user)
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error retrieving profile', [
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage()
+            ]);
+            return $this->respondWithError('Error retrieving profile: ' . $e->getMessage(), 500);
+        }
     }
 }
