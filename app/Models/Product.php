@@ -16,7 +16,8 @@ class Product extends Model
         'description',
         'price',
         'subcategory_id',
-        'user_id'
+        'user_id',
+        'location_id'
     ];
 
     /**
@@ -39,7 +40,8 @@ class Product extends Model
             ],
             'description' => 'required|string',
             'price' => 'required|numeric|min:0',
-            'subcategory_id' => 'required|exists:subcategories,id'
+            'subcategory_id' => 'required|exists:subcategories,id',
+            'location_id' => 'nullable|exists:locations,id'
         ];
     }
 
@@ -78,6 +80,11 @@ class Product extends Model
     public function images()
     {
         return $this->morphMany(Image::class, 'imageable');
+    }
+
+    public function location()
+    {
+        return $this->belongsTo(Location::class);
     }
 
     public function variants()
