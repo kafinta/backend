@@ -655,6 +655,7 @@ class ProductController extends ImprovedController
                 case 1: // Basic info
                     // Validation already done using form config
 
+                    // Store the data in the basic_info key for backward compatibility
                     $formData['basic_info'] = $stepData;
 
                     // Log the basic info for debugging
@@ -722,15 +723,23 @@ class ProductController extends ImprovedController
                         }
                     }
 
+                    // Store the data in the attributes key for backward compatibility
                     $formData['attributes'] = $stepData;
                     break;
 
                 case 3: // Images
-                    // Check if we have form-data with file uploads
-                    if ($request->hasFile('images')) {
-                        // Validation already done using form config
+                    // Check if this is an update (product_id exists in form data)
+                    $isUpdate = isset($formData['product_id']) && $formData['product_id'];
 
-                        // Process uploaded files
+                    // For new products, require at least one image
+                    if (!$isUpdate && !$request->hasFile('images')) {
+                        return $this->respondWithError('Please upload at least one product image', 422);
+                    }
+
+                    // For updates, images are optional
+
+                    // Process uploaded files if any
+                    if ($request->hasFile('images')) {
                         $uploadedImages = [];
                         foreach ($request->file('images') as $image) {
                             // Use the FileService to upload the image
@@ -748,17 +757,43 @@ class ProductController extends ImprovedController
                             'images' => $uploadedImages
                         ]);
 
-                        $formData['images'] = $uploadedImages;
-                    }
-                    // If we have JSON data with image paths
-                    else if (is_array($stepData) && !empty($stepData)) {
-                        foreach ($stepData as $image) {
-                            if (!isset($image['path'])) {
-                                return $this->respondWithError('Invalid image format. Each image must have a path property', 422);
-                            }
-                        }
+                        // For updates, we need to add new images to existing ones, not replace them
+                        if ($isUpdate) {
+                            // Get existing images from the product
+                            $product = Product::find($formData['product_id']);
+                            if ($product) {
+                                // If we already have images in the form data, add the new ones
+                                if (isset($formData['images']) && is_array($formData['images'])) {
+                                    $formData['images'] = array_merge($formData['images'], $uploadedImages);
+                                } else {
+                                    // Otherwise, set the uploaded images
+                                    $formData['images'] = $uploadedImages;
+                                }
 
-                        $formData['images'] = $stepData;
+                                Log::info('Added new images to existing ones', [
+                                    'session_id' => $request->session_id,
+                                    'product_id' => $formData['product_id'],
+                                    'total_images' => count($formData['images'])
+                                ]);
+                            } else {
+                                // If product not found, just use the uploaded images
+                                $formData['images'] = $uploadedImages;
+                            }
+                        } else {
+                            // For new products, just set the uploaded images
+                            $formData['images'] = $uploadedImages;
+                        }
+                    } else if ($isUpdate) {
+                        // For updates without new images, keep existing images
+                        Log::info('No new images uploaded for product update', [
+                            'session_id' => $request->session_id,
+                            'product_id' => $formData['product_id']
+                        ]);
+
+                        // If no images exist in form data yet, initialize with empty array
+                        if (!isset($formData['images'])) {
+                            $formData['images'] = [];
+                        }
                     }
                     break;
 
@@ -941,6 +976,14 @@ class ProductController extends ImprovedController
             // Validate that we have the required data
             if (!isset($processedFormData['data']['basic_info']) || empty($processedFormData['data']['basic_info'])) {
                 return $this->respondWithError('Basic product information is required. Please complete step 1 first.', 422);
+            }
+
+            // Check if this is a new product (not an update)
+            $isUpdate = isset($formData['product_id']) && $formData['product_id'];
+
+            // For new products, require at least one image
+            if (!$isUpdate && (!isset($processedFormData['data']['images']) || empty($processedFormData['data']['images']))) {
+                return $this->respondWithError('Product images are required for new products. Please complete step 3 first.', 422);
             }
 
             // Log the processed form data for debugging
