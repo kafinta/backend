@@ -86,7 +86,7 @@ class ProductService
             }
 
             // Load relationships for response
-            $product->load(['images', 'subcategory', 'attributes', 'attributeValues.attribute']);
+            $product->load(['images', 'category', 'subcategory', 'attributes', 'attributeValues.attribute']);
 
             // Make a copy of the attributeValues for our custom formatting
             $attributeValues = $product->attributeValues;
@@ -337,7 +337,7 @@ class ProductService
             }
 
             // Refresh and load relationships
-            $product->refresh()->load(['images', 'subcategory', 'attributes', 'attributeValues.attribute']);
+            $product->refresh()->load(['images', 'category', 'subcategory', 'attributes', 'attributeValues.attribute']);
 
             // Make a copy of the attributeValues for our custom formatting
             $attributeValues = $product->attributeValues;
@@ -622,7 +622,16 @@ class ProductService
             $imageIdsToDelete = $imageData['delete_ids'] ?? [];
         }
 
+        // Log the image update operation
+        Log::info('Updating product images', [
+            'product_id' => $product->id,
+            'image_paths_count' => count($imagePaths),
+            'image_ids_to_delete_count' => count($imageIdsToDelete),
+            'existing_image_count' => $product->images()->count()
+        ]);
+
         // Use the image service to handle the update
+        // This will add new images while preserving existing ones
         return $this->imageService->handleImageUpdate($product, $imagePaths, $imageIdsToDelete);
     }
 
