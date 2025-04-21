@@ -154,13 +154,18 @@ class ProductController extends ImprovedController
     public function show(Product $product)
     {
         try {
+            // Load relationships including the new category relationship
             $product->load(['category', 'subcategory', 'user.seller', 'images', 'attributeValues.attribute']);
 
             return $this->respondWithSuccess('Product retrieved successfully', 200, [
                 'product' => $product
             ]);
         } catch (\Exception $e) {
-            Log::error('Error retrieving product', ['error' => $e->getMessage()]);
+            Log::error('Error retrieving product', [
+                'error' => $e->getMessage(),
+                'product_id' => $product->id,
+                'trace' => $e->getTraceAsString()
+            ]);
             return $this->respondWithError('Error retrieving product', 500);
         }
     }
@@ -766,14 +771,24 @@ class ProductController extends ImprovedController
                                 if (isset($formData['images']) && is_array($formData['images'])) {
                                     $formData['images'] = array_merge($formData['images'], $uploadedImages);
                                 } else {
-                                    // Otherwise, set the uploaded images
-                                    $formData['images'] = $uploadedImages;
+                                    // If no images in form data yet, get existing images from the product
+                                    $existingImages = $product->images->map(function($image) {
+                                        return [
+                                            'id' => $image->id,
+                                            'path' => $image->path
+                                        ];
+                                    })->toArray();
+
+                                    // Add new images to existing ones
+                                    $formData['images'] = array_merge($existingImages, $uploadedImages);
                                 }
 
                                 Log::info('Added new images to existing ones', [
                                     'session_id' => $request->session_id,
                                     'product_id' => $formData['product_id'],
-                                    'total_images' => count($formData['images'])
+                                    'existing_image_count' => $product->images->count(),
+                                    'new_image_count' => count($uploadedImages),
+                                    'total_images_in_form' => count($formData['images'])
                                 ]);
                             } else {
                                 // If product not found, just use the uploaded images
@@ -1206,23 +1221,52 @@ class ProductController extends ImprovedController
                 'image_count' => isset($processedFormData['data']['images']) ? count($processedFormData['data']['images']) : 0
             ]);
 
-            // If we have existing images that need to be deleted, add them to the form data
+            // Handle images for the update
             if (isset($formData['images'])) {
-                // Get existing image IDs
+                // Get existing image IDs from the database
                 $existingImageIds = $product->images->pluck('id')->toArray();
 
                 // Get image IDs from form data
                 $formImageIds = collect($formData['images'])->pluck('id')->filter()->toArray();
 
-                // Find images to delete
-                $imagesToDelete = array_diff($existingImageIds, $formImageIds);
+                // Log image IDs for debugging
+                Log::info('Image IDs for update', [
+                    'product_id' => $product->id,
+                    'existing_image_ids' => $existingImageIds,
+                    'form_image_ids' => $formImageIds
+                ]);
 
-                if (!empty($imagesToDelete)) {
-                    $processedFormData['data']['images'] = [
-                        'paths' => $processedFormData['data']['images'],
-                        'delete_ids' => $imagesToDelete
-                    ];
+                // If form has no image IDs but there are existing images, we need to preserve them
+                if (empty($formImageIds) && !empty($existingImageIds)) {
+                    // No explicit image IDs in form data, so we're adding new images to existing ones
+                    // Just ensure the paths are set correctly
+                    if (isset($processedFormData['data']['images']) && !is_array($processedFormData['data']['images'])) {
+                        // Convert to array if it's not already
+                        $processedFormData['data']['images'] = [$processedFormData['data']['images']];
+                    }
+                } else {
+                    // Find images to delete (images in database but not in form data)
+                    $imagesToDelete = array_diff($existingImageIds, $formImageIds);
+
+                    if (!empty($imagesToDelete)) {
+                        // Structure the image data for the update
+                        $processedFormData['data']['images'] = [
+                            'paths' => isset($processedFormData['data']['images']) ? $processedFormData['data']['images'] : [],
+                            'delete_ids' => $imagesToDelete
+                        ];
+
+                        Log::info('Images to delete during update', [
+                            'product_id' => $product->id,
+                            'delete_ids' => $imagesToDelete
+                        ]);
+                    }
                 }
+            } else {
+                // No images in form data, preserve existing images
+                Log::info('No images in form data, preserving existing images', [
+                    'product_id' => $product->id,
+                    'existing_image_count' => $product->images->count()
+                ]);
             }
 
             // Log the processed form data for debugging

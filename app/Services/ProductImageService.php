@@ -43,6 +43,14 @@ class ProductImageService
      */
     public function handleImageUpdate(Product $product, array $imagePaths, array $imageIdsToDelete = []): array
     {
+        // Log the update operation
+        Log::info('Handling image update for product', [
+            'product_id' => $product->id,
+            'existing_image_count' => $product->images()->count(),
+            'new_image_paths_count' => count($imagePaths),
+            'image_ids_to_delete_count' => count($imageIdsToDelete)
+        ]);
+
         // Delete specified images if any
         if (!empty($imageIdsToDelete)) {
             $this->deleteProductImages($product, $imageIdsToDelete);
@@ -50,12 +58,46 @@ class ProductImageService
 
         // Add new images if any
         $imageIds = [];
+
+        // First, get all existing image IDs that weren't deleted
+        if (empty($imageIdsToDelete)) {
+            // If no images were deleted, get all existing image IDs
+            $existingImageIds = $product->images()->pluck('id')->toArray();
+        } else {
+            // If some images were deleted, get the remaining image IDs
+            $existingImageIds = $product->images()->whereNotIn('id', $imageIdsToDelete)->pluck('id')->toArray();
+        }
+
+        // Add existing image IDs to the result
+        $imageIds = array_merge($imageIds, $existingImageIds);
+
+        // Add new images
         foreach ($imagePaths as $path) {
+            // Skip empty paths
+            if (empty($path)) {
+                continue;
+            }
+
             // Standardize path to include /storage/ prefix
             $standardizedPath = $this->standardizeImagePath($path);
+
+            // Create the image record
             $newImage = $product->images()->create(['path' => $standardizedPath]);
             $imageIds[] = $newImage->id;
+
+            Log::info('Added new image to product', [
+                'product_id' => $product->id,
+                'image_id' => $newImage->id,
+                'path' => $standardizedPath
+            ]);
         }
+
+        // Log the final result
+        Log::info('Image update complete', [
+            'product_id' => $product->id,
+            'total_images_after_update' => $product->images()->count(),
+            'returned_image_ids_count' => count($imageIds)
+        ]);
 
         return $imageIds;
     }
