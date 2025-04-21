@@ -547,20 +547,45 @@ class ProductController extends ImprovedController
     public function createStep(Request $request)
     {
         try {
-            // Validate request
-            $validator = Validator::make($request->all(), [
+            // Get form configuration
+            $formConfig = config('forms.product_form');
+
+            // Basic validation for step and session_id
+            $basicValidator = Validator::make($request->all(), [
                 'session_id' => 'required|string',
-                'step' => 'required|integer|min:1|max:3',
-                'data' => 'required_unless:step,3', // Data is required unless we're on step 3 (images)
+                'step' => 'required|integer|min:1|max:' . $formConfig['total_steps'],
                 'product_id' => 'sometimes|exists:products,id' // Optional product ID for updates
             ]);
 
-            if ($validator->fails()) {
-                // Special case for step 3 with file uploads
-                if ($request->step == 3 && $request->hasFile('images')) {
-                    // This is fine, we'll handle it below
-                } else {
-                    return $this->respondWithError(['errors' => $validator->errors()], 422);
+            if ($basicValidator->fails()) {
+                // Get the first validation error message
+                $errors = $basicValidator->errors()->toArray();
+                $firstErrorField = array_key_first($errors);
+                $firstErrorMessage = $errors[$firstErrorField][0];
+
+                return $this->respondWithError($firstErrorMessage, 422);
+            }
+
+            // Get step-specific validation rules from config
+            $step = $request->step;
+            if (!isset($formConfig['steps'][$step])) {
+                return $this->respondWithError('Invalid step number', 422);
+            }
+
+            // Special case for step 3 with file uploads
+            if ($step == 3 && $request->hasFile('images')) {
+                // Skip data validation as we'll handle file uploads separately
+            } else {
+                // Validate step data using rules from config
+                $stepValidator = Validator::make($request->all(), $formConfig['steps'][$step]['validation_rules']);
+
+                if ($stepValidator->fails()) {
+                    // Get the first validation error message
+                    $errors = $stepValidator->errors()->toArray();
+                    $firstErrorField = array_key_first($errors);
+                    $firstErrorMessage = $errors[$firstErrorField][0];
+
+                    return $this->respondWithError($firstErrorMessage, 422);
                 }
             }
 
@@ -613,7 +638,7 @@ class ProductController extends ImprovedController
                     'all_session_keys' => array_keys($allSessionData)
                 ]);
 
-                return $this->respondWithError('Session not found or expired', 404);
+                return $this->respondWithError('Session not found or expired. Please generate a new session and try again', 404);
             }
 
             // Get the data for this step
@@ -628,20 +653,7 @@ class ProductController extends ImprovedController
             // Update form data based on the step
             switch ($request->step) {
                 case 1: // Basic info
-                    $stepValidator = Validator::make($stepData, [
-                        'name' => 'required|string|max:255',
-                        'description' => 'required|string',
-                        'price' => 'required|numeric|min:0',
-                        'subcategory_id' => 'required|exists:subcategories,id',
-                        'status' => 'sometimes|in:draft,active,inactive',
-                        'is_featured' => 'sometimes|boolean',
-                        'sku' => 'sometimes|string|max:50',
-                        'location_id' => 'sometimes|exists:locations,id'
-                    ]);
-
-                    if ($stepValidator->fails()) {
-                        return $this->respondWithError(['errors' => $stepValidator->errors()], 422);
-                    }
+                    // Validation already done using form config
 
                     $formData['basic_info'] = $stepData;
 
@@ -671,7 +683,7 @@ class ProductController extends ImprovedController
                             $formattedAttributes = [];
                             foreach ($stepData as $rawAttribute) {
                                 if (!isset($rawAttribute['attribute_id']) || !isset($rawAttribute['value_id'])) {
-                                    return $this->respondWithError('Invalid raw attribute format', 422);
+                                    return $this->respondWithError('Invalid raw attribute format. Expected format: {attribute_id, value_id}', 422);
                                 }
 
                                 // Get attribute and value details
@@ -716,15 +728,7 @@ class ProductController extends ImprovedController
                 case 3: // Images
                     // Check if we have form-data with file uploads
                     if ($request->hasFile('images')) {
-                        // Validate uploaded files
-                        $validator = Validator::make($request->all(), [
-                            'images' => 'required|array',
-                            'images.*' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
-                        ]);
-
-                        if ($validator->fails()) {
-                            return $this->respondWithError(['errors' => $validator->errors()], 422);
-                        }
+                        // Validation already done using form config
 
                         // Process uploaded files
                         $uploadedImages = [];
@@ -750,7 +754,7 @@ class ProductController extends ImprovedController
                     else if (is_array($stepData) && !empty($stepData)) {
                         foreach ($stepData as $image) {
                             if (!isset($image['path'])) {
-                                return $this->respondWithError('Invalid image format', 422);
+                                return $this->respondWithError('Invalid image format. Each image must have a path property', 422);
                             }
                         }
 
@@ -759,7 +763,7 @@ class ProductController extends ImprovedController
                     break;
 
                 default:
-                    return $this->respondWithError('Invalid step', 422);
+                    return $this->respondWithError('Invalid step. Step must be between 1 and ' . $formConfig['total_steps'], 422);
             }
 
             // Update current step if it's higher than the existing one
@@ -814,13 +818,21 @@ class ProductController extends ImprovedController
     public function submit(Request $request)
     {
         try {
+            // Get form configuration
+            $formConfig = config('forms.product_form');
+
             // Validate request
             $validator = Validator::make($request->all(), [
                 'session_id' => 'required|string'
             ]);
 
             if ($validator->fails()) {
-                return $this->respondWithError(['errors' => $validator->errors()], 422);
+                // Get the first validation error message
+                $errors = $validator->errors()->toArray();
+                $firstErrorField = array_key_first($errors);
+                $firstErrorMessage = $errors[$firstErrorField][0];
+
+                return $this->respondWithError($firstErrorMessage, 422);
             }
 
             // Get form data for the session
@@ -846,12 +858,12 @@ class ProductController extends ImprovedController
             Log::debug('Complete form data', ['form_data' => $formData]);
 
             if (!$formData) {
-                return $this->respondWithError('Session not found or expired', 404);
+                return $this->respondWithError('Session not found or expired. Please generate a new session and try again.', 404);
             }
 
             // Check if all required steps are completed
             if (!$formData['basic_info']) {
-                return $this->respondWithError('Basic information is required', 422);
+                return $this->respondWithError('Basic product information is required. Please complete step 1 first.', 422);
             }
 
             // Start transaction
@@ -928,7 +940,7 @@ class ProductController extends ImprovedController
 
             // Validate that we have the required data
             if (!isset($processedFormData['data']['basic_info']) || empty($processedFormData['data']['basic_info'])) {
-                return $this->respondWithError('Basic information is required', 422);
+                return $this->respondWithError('Basic product information is required. Please complete step 1 first.', 422);
             }
 
             // Log the processed form data for debugging
@@ -1017,13 +1029,21 @@ class ProductController extends ImprovedController
     public function submitUpdate(Request $request, Product $product)
     {
         try {
+            // Get form configuration
+            $formConfig = config('forms.product_form');
+
             // Validate request
             $validator = Validator::make($request->all(), [
                 'session_id' => 'required|string'
             ]);
 
             if ($validator->fails()) {
-                return $this->respondWithError(['errors' => $validator->errors()], 422);
+                // Get the first validation error message
+                $errors = $validator->errors()->toArray();
+                $firstErrorField = array_key_first($errors);
+                $firstErrorMessage = $errors[$firstErrorField][0];
+
+                return $this->respondWithError($firstErrorMessage, 422);
             }
 
             // Check if user has permission to update this product
@@ -1045,12 +1065,12 @@ class ProductController extends ImprovedController
             ]);
 
             if (!$formData) {
-                return $this->respondWithError('Session not found or expired', 404);
+                return $this->respondWithError('Session not found or expired. Please generate a new session and try again.', 404);
             }
 
             // Check if all required steps are completed
             if (!$formData['basic_info']) {
-                return $this->respondWithError('Basic information is required', 422);
+                return $this->respondWithError('Basic product information is required. Please complete step 1 first.', 422);
             }
 
             // Start transaction
@@ -1127,7 +1147,7 @@ class ProductController extends ImprovedController
 
             // Validate that we have the required data
             if (!isset($processedFormData['data']['basic_info']) || empty($processedFormData['data']['basic_info'])) {
-                return $this->respondWithError('Basic information is required', 422);
+                return $this->respondWithError('Basic product information is required. Please complete step 1 first.', 422);
             }
 
             // Log the processed form data for debugging
