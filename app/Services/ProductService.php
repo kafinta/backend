@@ -38,16 +38,33 @@ class ProductService
      *
      * @param array $filters The search filters
      * @param int $perPage Number of items per page
+     * @param bool $isDetailedView Whether to load detailed relationships (for show vs index)
      * @return \Illuminate\Pagination\LengthAwarePaginator
      */
-    public function searchProducts(array $filters, int $perPage = 15)
+    public function searchProducts(array $filters, int $perPage = 15, bool $isDetailedView = false)
     {
         try {
             // Start with a base query
             $query = Product::query();
 
-            // Join with necessary tables
-            $query->with(['subcategory.category', 'images', 'attributeValues.attribute', 'user.seller']);
+            // For index view, only load minimal data
+            if (!$isDetailedView) {
+                // Only select specific fields from user and seller
+                $query->with(['user' => function($query) {
+                    $query->select('id');
+                    $query->with(['seller' => function($query) {
+                        $query->select('id', 'user_id', 'business_name');
+                    }]);
+                }]);
+
+                // Use a custom query to limit images to 3 per product
+                $query->with(['images' => function($query) {
+                    $query->limit(3);
+                }]);
+            } else {
+                // For detailed view, load all relationships
+                $query->with(['subcategory.category', 'images', 'attributeValues.attribute', 'user.seller']);
+            }
 
             // Apply filters
             if (isset($filters['keyword']) && !empty($filters['keyword'])) {
@@ -104,44 +121,56 @@ class ProductService
             // Execute the query with pagination
             $products = $query->paginate($perPage);
 
-            // Format the attributes for each product
-            $products->getCollection()->transform(function ($product) {
-                // Make a copy of the attributeValues for our custom formatting
-                $attributeValues = $product->attributeValues;
+            // Transform the products based on view type
+            $products->getCollection()->transform(function ($product) use ($isDetailedView) {
+                if ($isDetailedView) {
+                    // For detailed view, format attributes
+                    // Make a copy of the attributeValues for our custom formatting
+                    $attributeValues = $product->attributeValues;
 
-                // Format attributes in the intuitive format
-                $formattedAttributes = [];
-                foreach ($attributeValues as $value) {
-                    if ($value->attribute) {
-                        // If name is null, use the value from the representation or a default
-                        $valueName = $value->name;
-                        if ($valueName === null) {
-                            // Try to get the name from the representation
-                            if (is_array($value->representation) && isset($value->representation['value'])) {
-                                $valueName = $value->representation['value'];
-                            } else {
-                                // Use a default value
-                                $valueName = 'Unknown';
+                    // Format attributes in the intuitive format
+                    $formattedAttributes = [];
+                    foreach ($attributeValues as $value) {
+                        if ($value->attribute) {
+                            // If name is null, use the value from the representation or a default
+                            $valueName = $value->name;
+                            if ($valueName === null) {
+                                // Try to get the name from the representation
+                                if (is_array($value->representation) && isset($value->representation['value'])) {
+                                    $valueName = $value->representation['value'];
+                                } else {
+                                    // Use a default value
+                                    $valueName = 'Unknown';
+                                }
                             }
+
+                            $formattedAttributes[] = [
+                                'id' => $value->attribute->id,
+                                'name' => $value->attribute->name,
+                                'value' => [
+                                    'id' => $value->id,
+                                    'name' => $valueName,
+                                    'representation' => $value->representation
+                                ]
+                            ];
                         }
-
-                        $formattedAttributes[] = [
-                            'id' => $value->attribute->id,
-                            'name' => $value->attribute->name,
-                            'value' => [
-                                'id' => $value->id,
-                                'name' => $valueName,
-                                'representation' => $value->representation
-                            ]
-                        ];
                     }
+
+                    // Remove the attributeValues relation to prevent it from being serialized
+                    $product->unsetRelation('attributeValues');
+
+                    // Add the formatted attributes
+                    $product->attributes = $formattedAttributes;
+                } else {
+                    // For index view, simplify the seller data
+                    if ($product->user && $product->user->seller) {
+                        // Create a simplified seller property with just the business name
+                        $product->seller_name = $product->user->seller->business_name;
+                    }
+
+                    // Remove the full user relation to reduce payload size
+                    $product->unsetRelation('user');
                 }
-
-                // Remove the attributeValues relation to prevent it from being serialized
-                $product->unsetRelation('attributeValues');
-
-                // Add the formatted attributes
-                $product->attributes = $formattedAttributes;
 
                 return $product;
             });
