@@ -62,7 +62,7 @@ class UserController extends ImprovedController
 
             $token = $user->createToken('auth_token')->plainTextToken;
             return $this->respondWithSuccess("Account Created Successfully", 200, [
-                'account' => new UserAccountResource($user),
+                'user' => new UserAccountResource($user),
                 'auth_token' => $token,
                 'token_type' => 'Bearer'
             ]);
@@ -108,7 +108,7 @@ class UserController extends ImprovedController
             $token = $user->createToken('auth_token', ['*'], $tokenExpiration)->plainTextToken;
 
             return $this->respondWithSuccess("Login successful", 200, [
-                'account' => new UserAccountResource($user),
+                'user' => new UserAccountResource($user),
                 'auth_token' => $token,
                 'token_type' => 'Bearer'
             ]);
