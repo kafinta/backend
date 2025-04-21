@@ -155,6 +155,16 @@ class SellerController extends ImprovedController
             $result = $this->formService->process($request, 'seller_form');
 
             if (!$result['success']) {
+                // If we have validation errors, use the first one as the message
+                if (isset($result['errors']) && !empty($result['errors'])) {
+                    // Get the first validation error message
+                    $firstErrorField = array_key_first($result['errors']);
+                    $firstErrorMessage = $result['errors'][$firstErrorField][0] ?? 'Validation failed';
+
+                    return $this->respondWithError($firstErrorMessage, 400);
+                }
+
+                // Otherwise, use the general error message
                 return $this->respondWithError($result['error'], 400);
             }
 
