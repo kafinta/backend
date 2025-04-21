@@ -157,8 +157,19 @@ class ProductController extends ImprovedController
     public function show(Product $product)
     {
         try {
-            // Load relationships including the new category relationship
-            $product->load(['category', 'subcategory', 'user.seller', 'images', 'attributeValues.attribute']);
+            // Load relationships with optimized user/seller data
+            $product->load([
+                'category',
+                'subcategory',
+                'images',
+                'attributeValues.attribute',
+                'user' => function($query) {
+                    $query->select('id');
+                    $query->with(['seller' => function($query) {
+                        $query->select('id', 'user_id', 'business_name');
+                    }]);
+                }
+            ]);
 
             // Format attributes in the consistent format
             $attributeValues = $product->attributeValues;
@@ -195,6 +206,12 @@ class ProductController extends ImprovedController
 
             // Add the formatted attributes
             $product->attributes = $formattedAttributes;
+
+            // Extract seller business name and remove full user/seller data
+            if ($product->user && $product->user->seller) {
+                $product->seller_name = $product->user->seller->business_name;
+            }
+            $product->unsetRelation('user');
 
             return $this->respondWithSuccess('Product retrieved successfully', 200, [
                 'product' => $product
