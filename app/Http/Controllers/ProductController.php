@@ -157,6 +157,42 @@ class ProductController extends ImprovedController
             // Load relationships including the new category relationship
             $product->load(['category', 'subcategory', 'user.seller', 'images', 'attributeValues.attribute']);
 
+            // Format attributes in the consistent format
+            $attributeValues = $product->attributeValues;
+            $formattedAttributes = [];
+
+            foreach ($attributeValues as $value) {
+                if ($value->attribute) {
+                    // If name is null, use the value from the representation or a default
+                    $valueName = $value->name;
+                    if ($valueName === null) {
+                        // Try to get the name from the representation
+                        if (is_array($value->representation) && isset($value->representation['value'])) {
+                            $valueName = $value->representation['value'];
+                        } else {
+                            // Use a default value
+                            $valueName = 'Unknown';
+                        }
+                    }
+
+                    $formattedAttributes[] = [
+                        'id' => $value->attribute->id,
+                        'name' => $value->attribute->name,
+                        'value' => [
+                            'id' => $value->id,
+                            'name' => $valueName,
+                            'representation' => $value->representation
+                        ]
+                    ];
+                }
+            }
+
+            // Remove the attributeValues relation to prevent it from being serialized
+            $product->unsetRelation('attributeValues');
+
+            // Add the formatted attributes
+            $product->attributes = $formattedAttributes;
+
             return $this->respondWithSuccess('Product retrieved successfully', 200, [
                 'product' => $product
             ]);
