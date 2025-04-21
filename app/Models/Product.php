@@ -53,6 +53,23 @@ class Product extends Model
         return $this->belongsTo(Subcategory::class);
     }
 
+    /**
+     * Get the category of the product through the subcategory relationship
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasOneThrough
+     */
+    public function category()
+    {
+        return $this->hasOneThrough(
+            \App\Models\Category::class,
+            \App\Models\Subcategory::class,
+            'id', // Foreign key on subcategories table
+            'id', // Foreign key on categories table
+            'subcategory_id', // Local key on products table
+            'category_id' // Local key on subcategories table
+        );
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);
