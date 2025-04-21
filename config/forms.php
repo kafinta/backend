@@ -11,11 +11,13 @@ return [
                 'label' => 'Basic Information',
                 'description' => 'Enter the basic product details',
                 'validation_rules' => [
-                    'basic_info' => 'required|array',
-                    'basic_info.name' => 'sometimes|required|string|max:255',
-                    'basic_info.description' => 'sometimes|required|string',
-                    'basic_info.price' => 'sometimes|required|numeric|min:0',
-                    'basic_info.subcategory_id' => 'sometimes|required|exists:subcategories,id',
+                    'data' => 'required|array',
+                    'data.name' => 'required|string|max:255',
+                    'data.description' => 'required|string',
+                    'data.price' => 'required|numeric|min:0',
+                    'data.subcategory_id' => 'required|exists:subcategories,id',
+                    'data.status' => 'sometimes|in:draft,active,inactive',
+                    'data.location_id' => 'sometimes|exists:locations,id',
                     'session_id' => 'required|string',
                     'step' => 'required|integer|in:1'
                 ]
@@ -24,9 +26,11 @@ return [
                 'label' => 'Product Attributes',
                 'description' => 'Select product attributes and values',
                 'validation_rules' => [
-                    'attributes' => 'sometimes|array',
-                    'attributes.*.attribute_id' => 'required|integer|exists:attributes,id',
-                    'attributes.*.value_id' => 'required|integer|exists:attribute_values,id',
+                    'data' => 'sometimes|array',
+                    'data.*.id' => 'sometimes|integer|exists:attributes,id',
+                    'data.*.value.id' => 'sometimes|integer|exists:attribute_values,id',
+                    'data.*.attribute_id' => 'sometimes|integer|exists:attributes,id',
+                    'data.*.value_id' => 'sometimes|integer|exists:attribute_values,id',
                     'session_id' => 'required|string',
                     'step' => 'required|integer|in:2'
                 ]
