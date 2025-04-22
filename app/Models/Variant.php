@@ -10,11 +10,10 @@ class Variant extends Model
     use HasFactory;
 
     protected $fillable = [
-        'product_id', 
+        'product_id',
         'name',
-        'sku', 
-        'price', 
-        'stock'
+        'price'
+        // We'll add 'sku' and 'stock' in a future update
     ];
 
     public function product()
@@ -33,17 +32,28 @@ class Variant extends Model
         return $this->morphMany(Image::class, 'imageable');
     }
 
+    /**
+     * Check if the variant is in stock
+     * Note: Currently always returns true as we're not tracking stock yet
+     *
+     * @return bool
+     */
     public function isInStock()
     {
-        return $this->stock > 0;
+        // We'll implement proper stock tracking in a future update
+        return true;
     }
 
+    /**
+     * Decrease the stock of the variant
+     * Note: Currently a placeholder as we're not tracking stock yet
+     *
+     * @param int $quantity
+     * @return bool
+     */
     public function decreaseStock($quantity)
     {
-        if ($this->stock >= $quantity) {
-            $this->decrement('stock', $quantity);
-            return true;
-        }
-        return false;
+        // We'll implement proper stock tracking in a future update
+        return true;
     }
 }
