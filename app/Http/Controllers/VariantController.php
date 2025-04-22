@@ -9,6 +9,7 @@ use App\Services\VariantService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Storage;
 
 class VariantController extends ImprovedController
 {
@@ -64,13 +65,41 @@ class VariantController extends ImprovedController
     public function show($id)
     {
         try {
-            $variant = Variant::with('attributeValues')->findOrFail($id);
+            $variant = Variant::with('attributeValues.attribute')->findOrFail($id);
             $product = $variant->product;
 
             // Check if user has permission to view this variant
             if (!auth()->user()->hasRole('admin') && auth()->id() !== $product->user_id) {
                 return $this->respondWithError('Unauthorized access', 403);
             }
+
+            // Format the attributes to match the product attribute format
+            $attributes = $variant->attributeValues->map(function ($attributeValue) {
+                // If name is null, use the value from the representation or a default
+                $valueName = $attributeValue->name;
+                if ($valueName === null) {
+                    // Try to get the name from the representation
+                    if (is_array($attributeValue->representation) && isset($attributeValue->representation['value'])) {
+                        $valueName = $attributeValue->representation['value'];
+                    } else {
+                        // Use a default value
+                        $valueName = 'Unknown';
+                    }
+                }
+
+                return [
+                    'id' => $attributeValue->attribute->id,
+                    'name' => $attributeValue->attribute->name,
+                    'value' => [
+                        'id' => $attributeValue->id,
+                        'name' => $valueName,
+                        'representation' => $attributeValue->representation
+                    ]
+                ];
+            });
+
+            // Add the formatted attributes to the variant using the same key as products
+            $variant->setAttribute('attributes', $attributes);
 
             return $this->respondWithSuccess('Variant retrieved successfully', 200, $variant);
         } catch (\Exception $e) {
@@ -84,31 +113,47 @@ class VariantController extends ImprovedController
     }
 
     /**
-     * Generate variants for a product.
+     * Create a new variant for a product.
      *
      * @param Request $request
      * @param int $productId
      * @return \Illuminate\Http\JsonResponse
      */
-    public function generate(Request $request, $productId)
+    public function store(Request $request, $productId)
     {
         try {
             $product = Product::findOrFail($productId);
 
-            // Check if user has permission to generate variants for this product
+            // Check if user has permission to create variants for this product
             if (!auth()->user()->hasRole('admin') && auth()->id() !== $product->user_id) {
                 return $this->respondWithError('Unauthorized access', 403);
             }
 
-            $variants = $this->variantService->generateVariantsForProduct($product);
+            $validator = Validator::make($request->all(), [
+                'name' => 'required|string|max:255',
+                'price' => 'required|numeric|min:0',
+                'attributes' => 'required|array',
+                'attributes.*.attribute_id' => 'required|exists:attributes,id',
+                'attributes.*.value_id' => 'required|exists:attribute_values,id'
+            ]);
 
-            return $this->respondWithSuccess(
-                count($variants) . ' variants generated successfully',
-                200,
-                $variants
+            if ($validator->fails()) {
+                return $this->respondWithError($validator->errors(), 422);
+            }
+
+            // The attributes are already in the correct format
+            $attributeValues = $request->input('attributes');
+
+            $variant = $this->variantService->createVariant(
+                $product,
+                $request->input('name'),
+                $request->input('price'),
+                $attributeValues
             );
+
+            return $this->respondWithSuccess('Variant created successfully', 201, $variant);
         } catch (\Exception $e) {
-            Log::error('Error generating variants', [
+            Log::error('Error creating variant', [
                 'product_id' => $productId,
                 'error' => $e->getMessage()
             ]);
@@ -136,9 +181,11 @@ class VariantController extends ImprovedController
             }
 
             $validator = Validator::make($request->all(), [
+                'name' => 'sometimes|string|max:255',
                 'price' => 'sometimes|numeric|min:0',
-                'attribute_values' => 'sometimes|array',
-                'attribute_values.*' => 'exists:attribute_values,id'
+                'attributes' => 'sometimes|array',
+                'attributes.*.attribute_id' => 'required_with:attributes|exists:attributes,id',
+                'attributes.*.value_id' => 'required_with:attributes|exists:attribute_values,id'
                 // We'll add SKU and stock validation in a future update
             ]);
 
@@ -146,7 +193,15 @@ class VariantController extends ImprovedController
                 return $this->respondWithError($validator->errors(), 422);
             }
 
-            $variant = $this->variantService->updateVariant($variant, $validator->validated());
+            $updateData = $validator->validated();
+
+            // Process attribute values if provided
+            if (isset($updateData['attributes'])) {
+                $updateData['attribute_values'] = $updateData['attributes'];
+                unset($updateData['attributes']);
+            }
+
+            $variant = $this->variantService->updateVariant($variant, $updateData);
 
             return $this->respondWithSuccess('Variant updated successfully', 200, $variant);
         } catch (\Exception $e) {
@@ -182,6 +237,155 @@ class VariantController extends ImprovedController
         } catch (\Exception $e) {
             Log::error('Error deleting variant', [
                 'variant_id' => $id,
+                'error' => $e->getMessage()
+            ]);
+
+            return $this->respondWithError($e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Upload images for a variant
+     *
+     * @param Request $request
+     * @param int $id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function uploadImages(Request $request, $id)
+    {
+        try {
+            $variant = Variant::findOrFail($id);
+            $product = $variant->product;
+
+            // Check if user has permission to upload images for this variant
+            if (!auth()->user()->hasRole('admin') && auth()->id() !== $product->user_id) {
+                return $this->respondWithError('Unauthorized access', 403);
+            }
+
+            $validator = Validator::make($request->all(), [
+                'images' => 'required|array',
+                'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048'
+            ]);
+
+            if ($validator->fails()) {
+                return $this->respondWithError($validator->errors(), 422);
+            }
+
+            $uploadedImages = [];
+            foreach ($request->file('images') as $image) {
+                $path = $image->store('variants', 'public');
+                $uploadedImage = $variant->images()->create([
+                    'path' => '/storage/' . $path
+                ]);
+                $uploadedImages[] = $uploadedImage;
+            }
+
+            return $this->respondWithSuccess('Images uploaded successfully', 200, $uploadedImages);
+        } catch (\Exception $e) {
+            Log::error('Error uploading variant images', [
+                'variant_id' => $id,
+                'error' => $e->getMessage()
+            ]);
+
+            return $this->respondWithError($e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Delete an image from a variant
+     *
+     * @param int $id
+     * @param int $imageId
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function deleteImage($id, $imageId)
+    {
+        try {
+            $variant = Variant::findOrFail($id);
+            $product = $variant->product;
+
+            // Check if user has permission to delete images for this variant
+            if (!auth()->user()->hasRole('admin') && auth()->id() !== $product->user_id) {
+                return $this->respondWithError('Unauthorized access', 403);
+            }
+
+            $image = $variant->images()->findOrFail($imageId);
+
+            // Delete the file from storage
+            Storage::disk('public')->delete(str_replace('/storage/', '', $image->path));
+
+            // Delete the image record
+            $image->delete();
+
+            return $this->respondWithSuccess('Image deleted successfully', 200);
+        } catch (\Exception $e) {
+            Log::error('Error deleting variant image', [
+                'variant_id' => $id,
+                'image_id' => $imageId,
+                'error' => $e->getMessage()
+            ]);
+
+            return $this->respondWithError($e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Update multiple variants at once
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function batchUpdate(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'variants' => 'required|array',
+                'variants.*.id' => 'required|exists:variants,id',
+                'variants.*.name' => 'sometimes|string|max:255',
+                'variants.*.price' => 'sometimes|numeric|min:0',
+                'variants.*.attributes' => 'sometimes|array',
+                'variants.*.attributes.*.attribute_id' => 'required_with:variants.*.attributes|exists:attributes,id',
+                'variants.*.attributes.*.value_id' => 'required_with:variants.*.attributes|exists:attribute_values,id'
+            ]);
+
+            if ($validator->fails()) {
+                return $this->respondWithError($validator->errors(), 422);
+            }
+
+            $updatedVariants = [];
+            foreach ($request->variants as $variantData) {
+                $variant = Variant::findOrFail($variantData['id']);
+                $product = $variant->product;
+
+                // Check if user has permission to update this variant
+                if (!auth()->user()->hasRole('admin') && auth()->id() !== $product->user_id) {
+                    continue; // Skip unauthorized variants
+                }
+
+                $updateData = [];
+
+                // Add basic fields
+                if (isset($variantData['name'])) {
+                    $updateData['name'] = $variantData['name'];
+                }
+                if (isset($variantData['price'])) {
+                    $updateData['price'] = $variantData['price'];
+                }
+
+                // Process attribute values if provided
+                if (isset($variantData['attributes'])) {
+                    $updateData['attribute_values'] = $variantData['attributes'];
+                }
+
+                if (!empty($updateData)) {
+                    $this->variantService->updateVariant($variant, $updateData);
+                    $updatedVariants[] = $variant->fresh(['attributeValues.attribute']);
+                }
+            }
+
+            return $this->respondWithSuccess(count($updatedVariants) . ' variants updated successfully', 200, $updatedVariants);
+        } catch (\Exception $e) {
+            Log::error('Error batch updating variants', [
                 'error' => $e->getMessage()
             ]);
 
