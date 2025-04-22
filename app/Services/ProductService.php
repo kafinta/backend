@@ -314,8 +314,7 @@ class ProductService
             // Dispatch event
             event(new ProductCreated($product, $rawAttributes, $imagePaths));
 
-            // Generate variants if the product has variant-generating attributes
-            $this->generateVariantsIfNeeded($product);
+            // We're using manual variant creation instead of automatic generation
 
             return $productData;
 
@@ -572,10 +571,7 @@ class ProductService
             // Dispatch event
             event(new ProductUpdated($product, $changedFields));
 
-            // Generate variants if attributes were updated
-            if (in_array('attributes', $changedFields)) {
-                $this->generateVariantsIfNeeded($product);
-            }
+            // We're using manual variant creation instead of automatic generation
 
             return $productData;
 
@@ -760,8 +756,7 @@ class ProductService
             // Reload the product to ensure we have the latest attribute data
             $product->refresh()->load(['attributeValues.attribute']);
 
-            // Generate variants if the product has variant-generating attributes
-            $this->generateVariantsIfNeeded($product);
+            // We're using manual variant creation instead of automatic generation
 
             // Log the updated attribute values for debugging
             Log::info('Updated product attributes', [
@@ -826,45 +821,5 @@ class ProductService
         });
     }
 
-    /**
-     * Generate variants for a product if it has variant-generating attributes
-     *
-     * @param Product $product The product to generate variants for
-     * @return array The generated variants
-     */
-    protected function generateVariantsIfNeeded(Product $product): array
-    {
-        try {
-            // Check if the product has any variant-generating attributes
-            $hasVariantGenerators = $product->subcategory
-                ->attributes()
-                ->where('is_variant_generator', true)
-                ->exists();
-
-            if (!$hasVariantGenerators) {
-                Log::info('Product has no variant-generating attributes, skipping variant generation', [
-                    'product_id' => $product->id,
-                    'subcategory_id' => $product->subcategory_id
-                ]);
-                return [];
-            }
-
-            // Generate variants using the variant service
-            $variants = $this->variantService->generateVariantsForProduct($product);
-
-            Log::info('Generated variants for product', [
-                'product_id' => $product->id,
-                'variant_count' => count($variants)
-            ]);
-
-            return $variants;
-        } catch (\Exception $e) {
-            Log::error('Error generating variants for product', [
-                'product_id' => $product->id,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            return [];
-        }
-    }
+    // We've removed the automatic variant generation methods since we're using manual variant creation
 }
