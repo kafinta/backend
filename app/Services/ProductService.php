@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use App\Services\FileService;
+use App\Services\VariantService;
 
 // Events
 use App\Events\Product\ProductCreated;
@@ -22,15 +23,18 @@ class ProductService
     protected $imageService;
     protected $attributeService;
     protected $fileService;
+    protected $variantService;
 
     public function __construct(
         ProductImageService $imageService,
         ProductAttributeService $attributeService,
-        FileService $fileService
+        FileService $fileService,
+        VariantService $variantService
     ) {
         $this->imageService = $imageService;
         $this->attributeService = $attributeService;
         $this->fileService = $fileService;
+        $this->variantService = $variantService;
     }
 
     /**
@@ -310,6 +314,9 @@ class ProductService
             // Dispatch event
             event(new ProductCreated($product, $rawAttributes, $imagePaths));
 
+            // Generate variants if the product has variant-generating attributes
+            $this->generateVariantsIfNeeded($product);
+
             return $productData;
 
         } catch (\Exception $e) {
@@ -565,6 +572,11 @@ class ProductService
             // Dispatch event
             event(new ProductUpdated($product, $changedFields));
 
+            // Generate variants if attributes were updated
+            if (in_array('attributes', $changedFields)) {
+                $this->generateVariantsIfNeeded($product);
+            }
+
             return $productData;
 
         } catch (\Exception $e) {
@@ -748,6 +760,9 @@ class ProductService
             // Reload the product to ensure we have the latest attribute data
             $product->refresh()->load(['attributeValues.attribute']);
 
+            // Generate variants if the product has variant-generating attributes
+            $this->generateVariantsIfNeeded($product);
+
             // Log the updated attribute values for debugging
             Log::info('Updated product attributes', [
                 'product_id' => $product->id,
@@ -809,5 +824,47 @@ class ProductService
 
             return true;
         });
+    }
+
+    /**
+     * Generate variants for a product if it has variant-generating attributes
+     *
+     * @param Product $product The product to generate variants for
+     * @return array The generated variants
+     */
+    protected function generateVariantsIfNeeded(Product $product): array
+    {
+        try {
+            // Check if the product has any variant-generating attributes
+            $hasVariantGenerators = $product->subcategory
+                ->attributes()
+                ->where('is_variant_generator', true)
+                ->exists();
+
+            if (!$hasVariantGenerators) {
+                Log::info('Product has no variant-generating attributes, skipping variant generation', [
+                    'product_id' => $product->id,
+                    'subcategory_id' => $product->subcategory_id
+                ]);
+                return [];
+            }
+
+            // Generate variants using the variant service
+            $variants = $this->variantService->generateVariantsForProduct($product);
+
+            Log::info('Generated variants for product', [
+                'product_id' => $product->id,
+                'variant_count' => count($variants)
+            ]);
+
+            return $variants;
+        } catch (\Exception $e) {
+            Log::error('Error generating variants for product', [
+                'product_id' => $product->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return [];
+        }
     }
 }
