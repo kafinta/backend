@@ -12,53 +12,49 @@ use Illuminate\Support\Str;
 class VariantService
 {
     /**
-     * Generate variants for a product based on its variant-generating attributes
+     * Create a variant for a product with specific attribute values
      *
-     * @param Product $product
-     * @return array
+     * @param Product $product The product to create a variant for
+     * @param string $name The name of the variant
+     * @param float $price The price of the variant
+     * @param array $attributeValues Array of attribute and value pairs
+     * @return Variant
      */
-    public function generateVariantsForProduct(Product $product)
+    public function createVariant(Product $product, string $name, float $price, array $attributeValues)
     {
         try {
             DB::beginTransaction();
 
-            // Find variant-generating attributes for this product's subcategory
-            $variantAttributes = $product->subcategory
-                ->attributes()
-                ->where('is_variant_generator', true)
-                ->with(['values' => function($query) use ($product) {
-                    // Only include values that are assigned to this product
-                    $query->whereHas('products', function($q) use ($product) {
-                        $q->where('products.id', $product->id);
-                    });
-                }])
-                ->get();
+            // Create the variant
+            $variant = $product->variants()->create([
+                'name' => $name,
+                'price' => $price
+            ]);
 
-            // If no variant-generating attributes or no values, return empty array
-            if ($variantAttributes->isEmpty() || $variantAttributes->pluck('values')->flatten()->isEmpty()) {
-                DB::commit();
-                return [];
-            }
+            // Process attribute values
+            foreach ($attributeValues as $attributeValue) {
+                // Verify that the attribute value belongs to the attribute
+                $valueExists = DB::table('attribute_values')
+                    ->where('id', $attributeValue['value_id'])
+                    ->where('attribute_id', $attributeValue['attribute_id'])
+                    ->exists();
 
-            // Clear existing variants
-            $product->variants()->delete();
-
-            // Generate all possible combinations
-            $combinations = $this->generateAttributeCombinations($variantAttributes);
-
-            $generatedVariants = [];
-            foreach ($combinations as $combination) {
-                $variant = $this->createVariantFromCombination($product, $combination);
-                if ($variant) {
-                    $generatedVariants[] = $variant;
+                if (!$valueExists) {
+                    throw new \Exception('Invalid attribute value combination');
                 }
+
+                // Attach the attribute value to the variant
+                $variant->attributeValues()->attach($attributeValue['value_id']);
             }
+
+            // Load the attribute values relationship with their attributes
+            $variant->load('attributeValues.attribute');
 
             DB::commit();
-            return $generatedVariants;
+            return $variant;
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error generating variants', [
+            Log::error('Error creating variant', [
                 'product_id' => $product->id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
@@ -67,126 +63,7 @@ class VariantService
         }
     }
 
-    /**
-     * Generate all possible combinations of attribute values
-     *
-     * @param \Illuminate\Support\Collection $variantAttributes
-     * @return array
-     */
-    protected function generateAttributeCombinations($variantAttributes)
-    {
-        if ($variantAttributes->isEmpty()) {
-            return [];
-        }
-
-        // Start with first attribute's values
-        $firstAttribute = $variantAttributes->first();
-        $combinations = collect($firstAttribute->values->all());
-
-        // Skip if no values for the first attribute
-        if ($combinations->isEmpty()) {
-            return [];
-        }
-
-        // Progressively combine with other attributes
-        $variantAttributes->slice(1)->each(function ($attribute) use (&$combinations) {
-            // Skip if this attribute has no values
-            if ($attribute->values->isEmpty()) {
-                return;
-            }
-
-            $newCombinations = collect();
-
-            $combinations->each(function ($existingCombination) use ($attribute, &$newCombinations) {
-                $attribute->values->each(function ($value) use ($existingCombination, &$newCombinations) {
-                    $newCombination = is_array($existingCombination)
-                        ? array_merge($existingCombination, [$value])
-                        : [$existingCombination, $value];
-
-                    $newCombinations->push($newCombination);
-                });
-            });
-
-            $combinations = $newCombinations;
-        });
-
-        return $combinations->all();
-    }
-
-    /**
-     * Create a variant from a combination of attribute values
-     *
-     * @param Product $product
-     * @param array $combination
-     * @return Variant|null
-     */
-    protected function createVariantFromCombination(Product $product, $combination)
-    {
-        try {
-            // Calculate variant-specific price (default to product price)
-            $basePrice = $product->price;
-
-            // Generate variant name from combination
-            $name = $this->generateVariantName($combination);
-
-            // Generate unique SKU
-            $sku = $this->generateSku($product, $combination);
-
-            // Create variant
-            $variant = $product->variants()->create([
-                'name' => $name,
-                'price' => $basePrice
-                // We'll add SKU and stock tracking in a future update
-            ]);
-
-            // Attach attribute values
-            $attributeValueIds = collect($combination)->pluck('id')->all();
-            $variant->attributeValues()->attach($attributeValueIds);
-
-            return $variant;
-        } catch (\Exception $e) {
-            Log::error('Error creating variant', [
-                'product_id' => $product->id,
-                'error' => $e->getMessage()
-            ]);
-            return null;
-        }
-    }
-
-    /**
-     * Generate a variant name from a combination of attribute values
-     *
-     * @param array $combination
-     * @return string
-     */
-    protected function generateVariantName($combination)
-    {
-        return collect($combination)
-            ->map(function($value) {
-                return $value->name;
-            })
-            ->implode(' / ');
-    }
-
-    /**
-     * Generate a unique SKU for a variant
-     *
-     * @param Product $product
-     * @param array $combination
-     * @return string
-     */
-    protected function generateSku(Product $product, $combination)
-    {
-        $productId = $product->id;
-        $attributeValueIds = collect($combination)
-            ->map(function($value) {
-                return $value->id;
-            })
-            ->sort()
-            ->implode('-');
-
-        return "P{$productId}-{$attributeValueIds}";
-    }
+    // We've removed the automatic variant generation methods since we're using manual variant creation
 
     /**
      * Update a variant
@@ -201,15 +78,42 @@ class VariantService
             DB::beginTransaction();
 
             // Update variant fields
-            $variant->update([
-                'price' => $data['price'] ?? $variant->price
-                // We'll add SKU and stock tracking in a future update
-            ]);
+            $updateFields = [];
+            if (isset($data['name'])) {
+                $updateFields['name'] = $data['name'];
+            }
+            if (isset($data['price'])) {
+                $updateFields['price'] = $data['price'];
+            }
+
+            if (!empty($updateFields)) {
+                $variant->update($updateFields);
+            }
 
             // Update attribute values if provided
             if (isset($data['attribute_values']) && is_array($data['attribute_values'])) {
-                $variant->attributeValues()->sync($data['attribute_values']);
+                // First detach all existing attribute values
+                $variant->attributeValues()->detach();
+
+                // Then attach the new attribute values
+                foreach ($data['attribute_values'] as $attributeValue) {
+                    // Verify that the attribute value belongs to the attribute
+                    $valueExists = DB::table('attribute_values')
+                        ->where('id', $attributeValue['value_id'])
+                        ->where('attribute_id', $attributeValue['attribute_id'])
+                        ->exists();
+
+                    if (!$valueExists) {
+                        throw new \Exception('Invalid attribute value combination');
+                    }
+
+                    // Attach the attribute value to the variant
+                    $variant->attributeValues()->attach($attributeValue['value_id']);
+                }
             }
+
+            // Reload the variant with its attribute values
+            $variant->load('attributeValues.attribute');
 
             DB::commit();
             return $variant;
@@ -232,8 +136,39 @@ class VariantService
     public function getVariantsForProduct(Product $product)
     {
         return $product->variants()
-            ->with('attributeValues')
-            ->get();
+            ->with(['attributeValues.attribute'])
+            ->get()
+            ->map(function ($variant) {
+                // Format the attributes to match the product attribute format
+                $attributes = $variant->attributeValues->map(function ($attributeValue) {
+                    // If name is null, use the value from the representation or a default
+                    $valueName = $attributeValue->name;
+                    if ($valueName === null) {
+                        // Try to get the name from the representation
+                        if (is_array($attributeValue->representation) && isset($attributeValue->representation['value'])) {
+                            $valueName = $attributeValue->representation['value'];
+                        } else {
+                            // Use a default value
+                            $valueName = 'Unknown';
+                        }
+                    }
+
+                    return [
+                        'id' => $attributeValue->attribute->id,
+                        'name' => $attributeValue->attribute->name,
+                        'value' => [
+                            'id' => $attributeValue->id,
+                            'name' => $valueName,
+                            'representation' => $attributeValue->representation
+                        ]
+                    ];
+                });
+
+                // Add the formatted attributes to the variant using the same key as products
+                $variant->setAttribute('attributes', $attributes);
+
+                return $variant;
+            });
     }
 
     /**
