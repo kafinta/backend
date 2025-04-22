@@ -10,6 +10,7 @@ use App\Http\Controllers\LocationController;
 use App\Http\Controllers\SubcategoryController;
 use App\Http\Controllers\AttributeController;
 use App\Http\Controllers\AttributeValueController;
+use App\Http\Controllers\VariantController;
 
 /*
 |--------------------------------------------------------------------------
@@ -79,6 +80,16 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::delete('/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
             Route::post('/{product}/images', [ProductController::class, 'uploadImages'])->name('products.images.upload');
             Route::delete('/{product}/images/{imageId}', [ProductController::class, 'deleteImage'])->name('products.images.delete');
+
+            // Variant routes
+            Route::get('/{productId}/variants', [VariantController::class, 'index'])->name('variants.index');
+            Route::post('/{productId}/variants', [VariantController::class, 'store'])->name('variants.store');
+            Route::get('/variants/{id}', [VariantController::class, 'show'])->name('variants.show');
+            Route::put('/variants/{id}', [VariantController::class, 'update'])->name('variants.update');
+            Route::delete('/variants/{id}', [VariantController::class, 'destroy'])->name('variants.destroy');
+            Route::post('/variants/{id}/images', [VariantController::class, 'uploadImages'])->name('variants.images.upload');
+            Route::delete('/variants/{id}/images/{imageId}', [VariantController::class, 'deleteImage'])->name('variants.images.delete');
+            Route::post('/variants/batch/update', [VariantController::class, 'batchUpdate'])->name('variants.batch.update');
         });
     });
 
