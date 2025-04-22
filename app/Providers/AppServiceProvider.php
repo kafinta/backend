@@ -11,6 +11,7 @@ use App\Services\MultistepFormService;
 use App\Services\ProductImageService;
 use App\Services\ProductService;
 use App\Services\ProductAttributeService;
+use App\Services\VariantService;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -44,8 +45,14 @@ class AppServiceProvider extends ServiceProvider
             return new ProductService(
                 $app->make(ProductImageService::class),
                 $app->make(ProductAttributeService::class),
-                $app->make(FileService::class)
+                $app->make(FileService::class),
+                $app->make(VariantService::class)
             );
+        });
+
+        // Variant service
+        $this->app->singleton(VariantService::class, function ($app) {
+            return new VariantService();
         });
     }
 
