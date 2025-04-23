@@ -142,7 +142,7 @@ class VariantService
     public function getVariantsForProduct(Product $product)
     {
         return $product->variants()
-            ->with(['attributeValues.attribute'])
+            ->with(['attributeValues.attribute', 'images'])
             ->get()
             ->map(function ($variant) {
                 // Format the variant attributes
