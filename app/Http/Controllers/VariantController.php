@@ -65,7 +65,7 @@ class VariantController extends ImprovedController
     public function show($id)
     {
         try {
-            $variant = Variant::with('attributeValues.attribute')->findOrFail($id);
+            $variant = Variant::with(['attributeValues.attribute', 'images'])->findOrFail($id);
             $product = $variant->product;
 
             // Check if user has permission to view this variant
@@ -109,7 +109,9 @@ class VariantController extends ImprovedController
                 'price' => 'required|numeric|min:0',
                 'attributes' => 'required|array',
                 'attributes.*.attribute_id' => 'required|exists:attributes,id',
-                'attributes.*.value_id' => 'required|exists:attribute_values,id'
+                'attributes.*.value_id' => 'required|exists:attribute_values,id',
+                'images' => 'sometimes|array',
+                'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048'
             ]);
 
             if ($validator->fails()) {
@@ -125,6 +127,21 @@ class VariantController extends ImprovedController
                 $request->input('price'),
                 $attributeValues
             );
+
+            // Process images if provided
+            if ($request->hasFile('images')) {
+                $uploadedImages = [];
+                foreach ($request->file('images') as $image) {
+                    $path = $image->store('variants', 'public');
+                    $uploadedImage = $variant->images()->create([
+                        'path' => '/storage/' . $path
+                    ]);
+                    $uploadedImages[] = $uploadedImage;
+                }
+
+                // Reload the variant with images
+                $variant->load('images');
+            }
 
             return $this->respondWithSuccess('Variant created successfully', 201, $variant);
         } catch (\Exception $e) {
@@ -160,7 +177,11 @@ class VariantController extends ImprovedController
                 'price' => 'sometimes|numeric|min:0',
                 'attributes' => 'sometimes|array',
                 'attributes.*.attribute_id' => 'required_with:attributes|exists:attributes,id',
-                'attributes.*.value_id' => 'required_with:attributes|exists:attribute_values,id'
+                'attributes.*.value_id' => 'required_with:attributes|exists:attribute_values,id',
+                'images' => 'sometimes|array',
+                'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
+                'delete_image_ids' => 'sometimes|array',
+                'delete_image_ids.*' => 'required_with:delete_image_ids|exists:images,id'
                 // We'll add SKU and stock validation in a future update
             ]);
 
@@ -177,6 +198,34 @@ class VariantController extends ImprovedController
             }
 
             $variant = $this->variantService->updateVariant($variant, $updateData);
+
+            // Process images if provided
+            if ($request->hasFile('images')) {
+                $uploadedImages = [];
+                foreach ($request->file('images') as $image) {
+                    $path = $image->store('variants', 'public');
+                    $uploadedImage = $variant->images()->create([
+                        'path' => '/storage/' . $path
+                    ]);
+                    $uploadedImages[] = $uploadedImage;
+                }
+            }
+
+            // Delete images if requested
+            if ($request->has('delete_image_ids') && is_array($request->input('delete_image_ids'))) {
+                foreach ($request->input('delete_image_ids') as $imageId) {
+                    $image = $variant->images()->find($imageId);
+                    if ($image) {
+                        // Delete the file from storage
+                        Storage::disk('public')->delete(str_replace('/storage/', '', $image->path));
+                        // Delete the image record
+                        $image->delete();
+                    }
+                }
+            }
+
+            // Reload the variant with images
+            $variant->load('images');
 
             return $this->respondWithSuccess('Variant updated successfully', 200, $variant);
         } catch (\Exception $e) {
