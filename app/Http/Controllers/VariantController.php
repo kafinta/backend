@@ -73,33 +73,8 @@ class VariantController extends ImprovedController
                 return $this->respondWithError('Unauthorized access', 403);
             }
 
-            // Format the attributes to match the product attribute format
-            $attributes = $variant->attributeValues->map(function ($attributeValue) {
-                // If name is null, use the value from the representation or a default
-                $valueName = $attributeValue->name;
-                if ($valueName === null) {
-                    // Try to get the name from the representation
-                    if (is_array($attributeValue->representation) && isset($attributeValue->representation['value'])) {
-                        $valueName = $attributeValue->representation['value'];
-                    } else {
-                        // Use a default value
-                        $valueName = 'Unknown';
-                    }
-                }
-
-                return [
-                    'id' => $attributeValue->attribute->id,
-                    'name' => $attributeValue->attribute->name,
-                    'value' => [
-                        'id' => $attributeValue->id,
-                        'name' => $valueName,
-                        'representation' => $attributeValue->representation
-                    ]
-                ];
-            });
-
-            // Add the formatted attributes to the variant using the same key as products
-            $variant->setAttribute('attributes', $attributes);
+            // Format the variant attributes using the service
+            $variant = $this->variantService->formatVariantAttributes($variant);
 
             return $this->respondWithSuccess('Variant retrieved successfully', 200, $variant);
         } catch (\Exception $e) {
@@ -378,8 +353,8 @@ class VariantController extends ImprovedController
                 }
 
                 if (!empty($updateData)) {
-                    $this->variantService->updateVariant($variant, $updateData);
-                    $updatedVariants[] = $variant->fresh(['attributeValues.attribute']);
+                    $updatedVariant = $this->variantService->updateVariant($variant, $updateData);
+                    $updatedVariants[] = $updatedVariant;
                 }
             }
 
