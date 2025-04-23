@@ -50,6 +50,9 @@ class VariantService
             // Load the attribute values relationship with their attributes
             $variant->load('attributeValues.attribute');
 
+            // Format the variant attributes
+            $variant = $this->formatVariantAttributes($variant);
+
             DB::commit();
             return $variant;
         } catch (\Exception $e) {
@@ -115,6 +118,9 @@ class VariantService
             // Reload the variant with its attribute values
             $variant->load('attributeValues.attribute');
 
+            // Format the variant attributes
+            $variant = $this->formatVariantAttributes($variant);
+
             DB::commit();
             return $variant;
         } catch (\Exception $e) {
@@ -139,35 +145,8 @@ class VariantService
             ->with(['attributeValues.attribute'])
             ->get()
             ->map(function ($variant) {
-                // Format the attributes to match the product attribute format
-                $attributes = $variant->attributeValues->map(function ($attributeValue) {
-                    // If name is null, use the value from the representation or a default
-                    $valueName = $attributeValue->name;
-                    if ($valueName === null) {
-                        // Try to get the name from the representation
-                        if (is_array($attributeValue->representation) && isset($attributeValue->representation['value'])) {
-                            $valueName = $attributeValue->representation['value'];
-                        } else {
-                            // Use a default value
-                            $valueName = 'Unknown';
-                        }
-                    }
-
-                    return [
-                        'id' => $attributeValue->attribute->id,
-                        'name' => $attributeValue->attribute->name,
-                        'value' => [
-                            'id' => $attributeValue->id,
-                            'name' => $valueName,
-                            'representation' => $attributeValue->representation
-                        ]
-                    ];
-                });
-
-                // Add the formatted attributes to the variant using the same key as products
-                $variant->setAttribute('attributes', $attributes);
-
-                return $variant;
+                // Format the variant attributes
+                return $this->formatVariantAttributes($variant);
             });
     }
 
@@ -198,5 +177,47 @@ class VariantService
             ]);
             throw $e;
         }
+    }
+
+    /**
+     * Format variant attributes to match the product attribute format
+     *
+     * @param Variant $variant
+     * @return Variant
+     */
+    public function formatVariantAttributes(Variant $variant)
+    {
+        // Format the attributes to match the product attribute format
+        $attributes = $variant->attributeValues->map(function ($attributeValue) {
+            // If name is null, use the value from the representation or a default
+            $valueName = $attributeValue->name;
+            if ($valueName === null) {
+                // Try to get the name from the representation
+                if (is_array($attributeValue->representation) && isset($attributeValue->representation['value'])) {
+                    $valueName = $attributeValue->representation['value'];
+                } else {
+                    // Use a default value
+                    $valueName = 'Unknown';
+                }
+            }
+
+            return [
+                'id' => $attributeValue->attribute->id,
+                'name' => $attributeValue->attribute->name,
+                'value' => [
+                    'id' => $attributeValue->id,
+                    'name' => $valueName,
+                    'representation' => $attributeValue->representation
+                ]
+            ];
+        });
+
+        // Add the formatted attributes to the variant using the same key as products
+        $variant->setAttribute('attributes', $attributes);
+
+        // Remove the raw attributeValues relation to prevent it from being serialized
+        $variant->unsetRelation('attributeValues');
+
+        return $variant;
     }
 }
