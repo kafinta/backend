@@ -1,99 +1,213 @@
 <?php
 
 namespace App\Http\Controllers;
-use App\Http\Controllers\Controller;
+
 use App\Http\Controllers\ImprovedController;
+use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Product;
+use App\Models\Variant;
+use App\Services\CartService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Validator;
 
 class CartController extends ImprovedController
 {
+    protected $cartService;
+
+    /**
+     * Create a new controller instance.
+     *
+     * @param CartService $cartService
+     */
+    public function __construct(CartService $cartService)
+    {
+        $this->cartService = $cartService;
+    }
+    /**
+     * Get the current cart contents
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function viewCart()
     {
-        $user = auth()->user(); // Assuming you have authentication
-
-        if (!$user) {
-            return response()->json(['error' => 'User not authenticated'], 401);
+        try {
+            $cartContents = $this->cartService->getCartContents();
+            return $this->respondWithSuccess('Cart retrieved successfully', 200, $cartContents);
+        } catch (\Exception $e) {
+            return $this->respondWithError('Error retrieving cart: ' . $e->getMessage(), 500);
         }
-
-        // Retrieve cart items associated with the user
-        $cartItems = $user->cartItems;
-
-        return response()->json(['cart_items' => $cartItems], 200);
     }
 
-    public function addToCart(Request $request, $productId)
+    /**
+     * Add an item to the cart
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function addToCart(Request $request)
     {
-        $product = Product::find($productId);
-
-        if (!$product) {
-            return response()->json(['error' => 'Product not found'], 404);
-        }
-
-        $cartItem = CartItem::where('product_id', $productId)->first();
-
-        if ($cartItem) {
-            // If the product is already in the cart, update the quantity
-            $cartItem->update([
-                'quantity' => $cartItem->quantity + 1,
+        try {
+            $validator = Validator::make($request->all(), [
+                'product_id' => 'required_without:variant_id|exists:products,id',
+                'variant_id' => 'required_without:product_id|exists:variants,id',
+                'quantity' => 'required|integer|min:1'
             ]);
-        } else {
-            // If the product is not in the cart, create a new cart item
-            $cartItem = CartItem::create([
-                'product_id' => $productId,
-                'quantity' => 1,
-            ]);
-        }
 
-        return response()->json(['message' => 'Product added to cart', 'cart_item' => $cartItem], 200);
+            if ($validator->fails()) {
+                return $this->respondWithError($validator->errors(), 422);
+            }
+
+            $quantity = $request->input('quantity', 1);
+
+            if ($request->has('variant_id')) {
+                // Add variant to cart
+                $cartItem = $this->cartService->addVariantToCart(
+                    $request->input('variant_id'),
+                    $quantity
+                );
+                $message = 'Variant added to cart';
+            } else {
+                // Add product to cart
+                $cartItem = $this->cartService->addProductToCart(
+                    $request->input('product_id'),
+                    $quantity
+                );
+                $message = 'Product added to cart';
+            }
+
+            // Get updated cart contents
+            $cartContents = $this->cartService->getCartContents();
+
+            return $this->respondWithSuccess($message, 200, [
+                'cart_item' => $cartItem,
+                'cart' => $cartContents
+            ]);
+        } catch (\Exception $e) {
+            return $this->respondWithError('Error adding to cart: ' . $e->getMessage(), 500);
+        }
     }
 
+    /**
+     * Update a cart item's quantity
+     *
+     * @param Request $request
+     * @param int $cartItemId
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function updateCartItem(Request $request, $cartItemId)
     {
-        $request->validate([
-            'quantity' => 'required|integer|min:1', // Validate that the quantity is an integer and at least 1
-        ]);
+        try {
+            $validator = Validator::make($request->all(), [
+                'quantity' => 'required|integer|min:1'
+            ]);
 
-        $cartItem = CartItem::find($cartItemId);
+            if ($validator->fails()) {
+                return $this->respondWithError($validator->errors(), 422);
+            }
 
-        if (!$cartItem) {
-            return response()->json(['error' => 'Cart item not found'], 404);
+            $cartItem = $this->cartService->updateCartItemQuantity(
+                $cartItemId,
+                $request->input('quantity')
+            );
+
+            // Get updated cart contents
+            $cartContents = $this->cartService->getCartContents();
+
+            return $this->respondWithSuccess('Cart item updated successfully', 200, [
+                'cart_item' => $cartItem,
+                'cart' => $cartContents
+            ]);
+        } catch (\Exception $e) {
+            if (str_contains($e->getMessage(), 'No query results for model')) {
+                return $this->respondWithError('Cart item not found', 404);
+            }
+            return $this->respondWithError('Error updating cart item: ' . $e->getMessage(), 500);
         }
-
-        $cartItem->update([
-            'quantity' => $request->input('quantity'),
-        ]);
-
-        return response()->json(['message' => 'Cart item updated successfully', 'cart_item' => $cartItem], 200);
     }
 
+    /**
+     * Remove an item from the cart
+     *
+     * @param int $cartItemId
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function deleteCartItem($cartItemId)
     {
-        $cartItem = CartItem::find($cartItemId);
+        try {
+            $this->cartService->removeCartItem($cartItemId);
 
-        if (!$cartItem) {
-            return response()->json(['error' => 'Cart item not found'], 404);
+            // Get updated cart contents
+            $cartContents = $this->cartService->getCartContents();
+
+            return $this->respondWithSuccess('Cart item removed successfully', 200, [
+                'cart' => $cartContents
+            ]);
+        } catch (\Exception $e) {
+            if (str_contains($e->getMessage(), 'No query results for model')) {
+                return $this->respondWithError('Cart item not found', 404);
+            }
+            return $this->respondWithError('Error removing cart item: ' . $e->getMessage(), 500);
         }
-
-        $cartItem->delete();
-
-        return response()->json(['message' => 'Cart item deleted successfully']);
     }
 
+    /**
+     * Clear all items from the cart
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function clearCart()
     {
-        $user = auth()->user(); // Retrieve the authenticated user
-
-        if (!$user) {
-            return response()->json(['error' => 'User not authenticated'], 401);
+        try {
+            $this->cartService->clearCart();
+            return $this->respondWithSuccess('Cart cleared successfully', 200);
+        } catch (\Exception $e) {
+            return $this->respondWithError('Error clearing cart: ' . $e->getMessage(), 500);
         }
+    }
 
-        // Delete all cart items associated with the user
-        $user->cartItems()->delete();
+    /**
+     * Transfer a guest cart to a user cart after login
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function transferGuestCart(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'session_id' => 'required|string'
+            ]);
 
-        return response()->json(['message' => 'Cart cleared successfully']);
+            if ($validator->fails()) {
+                return $this->respondWithError($validator->errors(), 422);
+            }
+
+            if (!Auth::check()) {
+                return $this->respondWithError('User not authenticated', 401);
+            }
+
+            $userCart = $this->cartService->transferGuestCart(
+                $request->input('session_id'),
+                Auth::id()
+            );
+
+            if (!$userCart) {
+                return $this->respondWithSuccess('No guest cart found or cart was empty', 200);
+            }
+
+            // Get updated cart contents
+            $cartContents = $this->cartService->getCartContents();
+
+            return $this->respondWithSuccess('Guest cart transferred successfully', 200, [
+                'cart' => $cartContents
+            ]);
+        } catch (\Exception $e) {
+            return $this->respondWithError('Error transferring guest cart: ' . $e->getMessage(), 500);
+        }
     }
 
     public function checkout(Request $request)
