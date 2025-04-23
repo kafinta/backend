@@ -11,6 +11,7 @@ use App\Http\Controllers\SubcategoryController;
 use App\Http\Controllers\AttributeController;
 use App\Http\Controllers\AttributeValueController;
 use App\Http\Controllers\VariantController;
+use App\Http\Controllers\CartController;
 
 /*
 |--------------------------------------------------------------------------
@@ -106,5 +107,18 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('{seller}', [SellerController::class, 'show'])->name('sellers.show');
             Route::get('{seller}/document', [SellerController::class, 'downloadDocument'])->name('sellers.document.download');
         });
+    });
+
+    // Cart Routes
+    Route::prefix('cart')->group(function () {
+        // Public cart routes - available to all users (logged in or not)
+        Route::get('/', [CartController::class, 'viewCart'])->name('cart.view');
+        Route::post('/items', [CartController::class, 'addToCart'])->name('cart.add');
+        Route::put('/items/{id}', [CartController::class, 'updateCartItem'])->name('cart.update');
+        Route::delete('/items/{id}', [CartController::class, 'deleteCartItem'])->name('cart.delete');
+        Route::delete('/', [CartController::class, 'clearCart'])->name('cart.clear');
+
+        // Route to transfer guest cart to user cart after login
+        Route::post('/transfer', [CartController::class, 'transferGuestCart'])->name('cart.transfer');
     });
 });
