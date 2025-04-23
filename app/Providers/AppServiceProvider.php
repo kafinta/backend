@@ -12,6 +12,7 @@ use App\Services\ProductImageService;
 use App\Services\ProductService;
 use App\Services\ProductAttributeService;
 use App\Services\VariantService;
+use App\Services\CartService;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -53,6 +54,11 @@ class AppServiceProvider extends ServiceProvider
         // Variant service
         $this->app->singleton(VariantService::class, function ($app) {
             return new VariantService();
+        });
+
+        // Cart service
+        $this->app->singleton(CartService::class, function ($app) {
+            return new CartService();
         });
     }
 
