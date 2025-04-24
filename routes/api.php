@@ -39,7 +39,26 @@ Route::prefix('attributes')->group(function () {
     Route::get('/subcategory/{subcategoryId}', [AttributeController::class, 'getAttributesForSubcategory']);
 });
 
-// Public product routes are defined within the products group below
+// Public Product Routes
+Route::prefix('products')->group(function () {
+    Route::get('/', [ProductController::class, 'index'])->name('products.index');
+    Route::get('/category/{category}', [ProductController::class, 'byCategory'])->name('products.by-category');
+    Route::get('/search', [ProductController::class, 'search'])->name('products.search');
+    Route::get('/{product}', [ProductController::class, 'show'])->name('products.show');
+
+    // Public variant routes
+    Route::get('/{productId}/variants', [VariantController::class, 'index'])->name('variants.index');
+    Route::get('/variants/{id}', [VariantController::class, 'show'])->name('variants.show');
+});
+
+// Public Cart Routes
+Route::prefix('cart')->group(function () {
+    Route::get('/', [CartController::class, 'viewCart'])->name('cart.view');
+    Route::post('/items', [CartController::class, 'addToCart'])->name('cart.add');
+    Route::put('/items/{id}', [CartController::class, 'updateCartItem'])->name('cart.update');
+    Route::delete('/items/{id}', [CartController::class, 'deleteCartItem'])->name('cart.delete');
+    Route::delete('/', [CartController::class, 'clearCart'])->name('cart.clear');
+});
 
 // Protected Routes
 Route::middleware('auth:sanctum')->group(function () {
@@ -50,21 +69,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/upload-picture', [UserController::class, 'uploadProfilePicture']);
     });
 
-    // Product Management Routes
+    // Product Management Routes (Protected)
     Route::prefix('products')->group(function () {
-        // Public routes - available to all users
-        Route::get('/', [ProductController::class, 'index'])->name('products.index');
-        Route::get('/category/{category}', [ProductController::class, 'byCategory'])->name('products.by-category');
-        Route::get('/search', [ProductController::class, 'search'])->name('products.search');
-
-        // Session route must come before the wildcard product route
-        Route::middleware(['auth:sanctum', 'role:seller|admin'])->group(function() {
+        // Session route for product creation/editing
+        Route::middleware(['role:seller|admin'])->group(function() {
             Route::get('/session', [ProductController::class, 'generateSessionId'])->name('products.session');
             Route::get('/form/{sessionId}', [ProductController::class, 'getFormData'])->name('products.form');
         });
-
-        // This wildcard route must come after all other specific routes
-        Route::get('/{product}', [ProductController::class, 'show'])->name('products.show');
 
         // Seller routes - require seller role
         Route::middleware(['auth:sanctum', 'role:seller|admin'])->group(function() {
@@ -82,10 +93,8 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/{product}/images', [ProductController::class, 'uploadImages'])->name('products.images.upload');
             Route::delete('/{product}/images/{imageId}', [ProductController::class, 'deleteImage'])->name('products.images.delete');
 
-            // Variant routes
-            Route::get('/{productId}/variants', [VariantController::class, 'index'])->name('variants.index');
+            // Protected variant routes
             Route::post('/{productId}/variants', [VariantController::class, 'store'])->name('variants.store');
-            Route::get('/variants/{id}', [VariantController::class, 'show'])->name('variants.show');
             Route::put('/variants/{id}', [VariantController::class, 'update'])->name('variants.update');
             Route::delete('/variants/{id}', [VariantController::class, 'destroy'])->name('variants.destroy');
             Route::post('/variants/{id}/images', [VariantController::class, 'uploadImages'])->name('variants.images.upload');
@@ -109,15 +118,8 @@ Route::middleware('auth:sanctum')->group(function () {
         });
     });
 
-    // Cart Routes
+    // Protected Cart Routes (require authentication)
     Route::prefix('cart')->group(function () {
-        // Public cart routes - available to all users (logged in or not)
-        Route::get('/', [CartController::class, 'viewCart'])->name('cart.view');
-        Route::post('/items', [CartController::class, 'addToCart'])->name('cart.add');
-        Route::put('/items/{id}', [CartController::class, 'updateCartItem'])->name('cart.update');
-        Route::delete('/items/{id}', [CartController::class, 'deleteCartItem'])->name('cart.delete');
-        Route::delete('/', [CartController::class, 'clearCart'])->name('cart.clear');
-
         // Route to transfer guest cart to user cart after login
         Route::post('/transfer', [CartController::class, 'transferGuestCart'])->name('cart.transfer');
     });
