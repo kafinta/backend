@@ -7,17 +7,20 @@ use App\Models\CartItem;
 use App\Models\Product;
 use App\Models\Variant;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Str;
 
 class CartService
 {
+
     /**
      * Get the current cart for the user or session
      *
+     * @param string|null $sessionId Optional session ID for guest carts
      * @return Cart
      */
-    public function getCurrentCart()
+    public function getCurrentCart($sessionId = null)
     {
         if (Auth::check()) {
             // User is logged in, get or create their cart
@@ -25,26 +28,46 @@ class CartService
                 ['user_id' => Auth::id()],
                 ['session_id' => null]
             );
-        } else {
-            // User is a guest, get or create a session-based cart
-            $sessionId = Session::getId();
-            
-            // If no session ID, generate one
-            if (!$sessionId) {
-                $sessionId = Str::uuid()->toString();
-                Session::setId($sessionId);
-                Session::start();
-            }
-            
-            $cart = Cart::firstOrCreate(
-                ['session_id' => $sessionId],
-                ['user_id' => null]
-            );
+
+            \Log::info('User Cart Retrieved', [
+                'cart_id' => $cart->id,
+                'user_id' => $cart->user_id
+            ]);
+
+            return $cart;
         }
-        
+
+        // User is a guest
+        if ($sessionId) {
+            // Try to find an existing cart with this session ID
+            $cart = Cart::where('session_id', $sessionId)->first();
+
+            if ($cart) {
+                \Log::info('Found existing guest cart', [
+                    'cart_id' => $cart->id,
+                    'session_id' => $sessionId
+                ]);
+
+                return $cart;
+            }
+        }
+
+        // Create a new cart with a new session ID
+        $newSessionId = Str::uuid()->toString();
+
+        $cart = Cart::create([
+            'session_id' => $newSessionId,
+            'user_id' => null
+        ]);
+
+        \Log::info('Created new guest cart', [
+            'cart_id' => $cart->id,
+            'session_id' => $newSessionId
+        ]);
+
         return $cart;
     }
-    
+
     /**
      * Add a product to the cart
      *
@@ -52,17 +75,17 @@ class CartService
      * @param int $quantity
      * @return CartItem
      */
-    public function addProductToCart($productId, $quantity = 1)
+    public function addProductToCart($productId, $quantity = 1, $sessionId = null)
     {
-        $cart = $this->getCurrentCart();
+        $cart = $this->getCurrentCart($sessionId);
         $product = Product::findOrFail($productId);
-        
+
         // Check if the product is already in the cart
         $cartItem = $cart->cartItems()
             ->where('product_id', $productId)
             ->where('variant_id', null)
             ->first();
-        
+
         if ($cartItem) {
             // Update quantity if the product is already in the cart
             $cartItem->update([
@@ -76,10 +99,10 @@ class CartService
                 'quantity' => $quantity
             ]);
         }
-        
+
         return $cartItem;
     }
-    
+
     /**
      * Add a variant to the cart
      *
@@ -87,16 +110,16 @@ class CartService
      * @param int $quantity
      * @return CartItem
      */
-    public function addVariantToCart($variantId, $quantity = 1)
+    public function addVariantToCart($variantId, $quantity = 1, $sessionId = null)
     {
-        $cart = $this->getCurrentCart();
+        $cart = $this->getCurrentCart($sessionId);
         $variant = Variant::with('product')->findOrFail($variantId);
-        
+
         // Check if the variant is already in the cart
         $cartItem = $cart->cartItems()
             ->where('variant_id', $variantId)
             ->first();
-        
+
         if ($cartItem) {
             // Update quantity if the variant is already in the cart
             $cartItem->update([
@@ -110,10 +133,10 @@ class CartService
                 'quantity' => $quantity
             ]);
         }
-        
+
         return $cartItem;
     }
-    
+
     /**
      * Update cart item quantity
      *
@@ -121,67 +144,67 @@ class CartService
      * @param int $quantity
      * @return CartItem
      */
-    public function updateCartItemQuantity($cartItemId, $quantity)
+    public function updateCartItemQuantity($cartItemId, $quantity, $sessionId = null)
     {
-        $cart = $this->getCurrentCart();
+        $cart = $this->getCurrentCart($sessionId);
         $cartItem = $cart->cartItems()->findOrFail($cartItemId);
-        
+
         $cartItem->update([
             'quantity' => $quantity
         ]);
-        
+
         return $cartItem;
     }
-    
+
     /**
      * Remove an item from the cart
      *
      * @param int $cartItemId
      * @return bool
      */
-    public function removeCartItem($cartItemId)
+    public function removeCartItem($cartItemId, $sessionId = null)
     {
-        $cart = $this->getCurrentCart();
+        $cart = $this->getCurrentCart($sessionId);
         $cartItem = $cart->cartItems()->findOrFail($cartItemId);
-        
+
         return $cartItem->delete();
     }
-    
+
     /**
      * Clear all items from the cart
      *
      * @return bool
      */
-    public function clearCart()
+    public function clearCart($sessionId = null)
     {
-        $cart = $this->getCurrentCart();
-        
+        $cart = $this->getCurrentCart($sessionId);
+
         return $cart->cartItems()->delete();
     }
-    
+
     /**
      * Get cart contents with product/variant details
      *
      * @return array
      */
-    public function getCartContents()
+    public function getCartContents($sessionId = null)
     {
-        $cart = $this->getCurrentCart();
-        
+        $cart = $this->getCurrentCart($sessionId);
+
         // Load cart items with their related products and variants
         $cartItems = $cart->cartItems()
             ->with(['product', 'variant', 'variant.attributeValues.attribute'])
             ->get();
-        
+
         $items = [];
         $totalPrice = 0;
-        
+
         foreach ($cartItems as $cartItem) {
             // Determine the price (use variant price if available, otherwise product price)
             $price = $cartItem->variant ? $cartItem->variant->price : $cartItem->product->price;
             $subtotal = $price * $cartItem->quantity;
             $totalPrice += $subtotal;
-            
+
             // Format the item data
             $item = [
                 'id' => $cartItem->id,
@@ -195,7 +218,7 @@ class CartService
                 ],
                 'variant' => null
             ];
-            
+
             // Add variant details if this is a variant
             if ($cartItem->variant) {
                 $item['variant'] = [
@@ -210,17 +233,34 @@ class CartService
                     })
                 ];
             }
-            
+
             $items[] = $item;
         }
-        
-        return [
+
+        $result = [
             'items' => $items,
             'total_price' => $totalPrice,
             'item_count' => $cartItems->sum('quantity')
         ];
+
+        // Always include session_id for guest carts
+        if (!Auth::check() && $cart->session_id) {
+            $result['session_id'] = $cart->session_id;
+        }
+
+        // Log cart contents
+        \Log::info('Cart Contents', [
+            'cart_id' => $cart->id,
+            'session_id' => $cart->session_id,
+            'user_id' => $cart->user_id,
+            'is_authenticated' => Auth::check(),
+            'item_count' => count($items),
+            'total_price' => $totalPrice
+        ]);
+
+        return $result;
     }
-    
+
     /**
      * Transfer a guest cart to a user cart after login
      *
@@ -232,17 +272,17 @@ class CartService
     {
         // Find the guest cart
         $guestCart = Cart::where('session_id', $sessionId)->first();
-        
+
         if (!$guestCart || $guestCart->cartItems->isEmpty()) {
             return null;
         }
-        
+
         // Find or create the user cart
         $userCart = Cart::firstOrCreate(
             ['user_id' => $userId],
             ['session_id' => null]
         );
-        
+
         // Transfer items from guest cart to user cart
         foreach ($guestCart->cartItems as $guestItem) {
             // Check if the same product/variant is already in the user's cart
@@ -250,7 +290,7 @@ class CartService
                 ->where('product_id', $guestItem->product_id)
                 ->where('variant_id', $guestItem->variant_id)
                 ->first();
-            
+
             if ($existingItem) {
                 // Update quantity if the item already exists
                 $existingItem->update([
@@ -265,10 +305,10 @@ class CartService
                 ]);
             }
         }
-        
+
         // Delete the guest cart
         $guestCart->delete();
-        
+
         return $userCart;
     }
 }
