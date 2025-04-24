@@ -15,9 +15,9 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->nullable()->constrained()->onDelete('cascade');
             $table->string('session_id')->nullable();
-            $table->timestamp('expires_at')->nullable()->after('session_id');
+            $table->timestamp('expires_at')->nullable();
             $table->timestamps();
-            
+
             // Add index on session_id for faster lookups
             $table->index('session_id');
         });
