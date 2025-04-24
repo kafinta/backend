@@ -19,6 +19,32 @@ class CartController extends ImprovedController
     protected $cartService;
 
     /**
+     * Extract the cart session ID from the request
+     *
+     * @param Request $request
+     * @return string|null
+     */
+    protected function extractSessionId(Request $request)
+    {
+        // Check for session_id in the request headers
+        if ($request->hasHeader('X-Cart-Session')) {
+            return $request->header('X-Cart-Session');
+        }
+
+        // Check for session_id in the request parameters
+        if ($request->has('session_id')) {
+            return $request->input('session_id');
+        }
+
+        // Check for session_id in cookies
+        if ($request->hasCookie('cart_session_id')) {
+            return $request->cookie('cart_session_id');
+        }
+
+        return null;
+    }
+
+    /**
      * Create a new controller instance.
      *
      * @param CartService $cartService
@@ -32,10 +58,18 @@ class CartController extends ImprovedController
      *
      * @return \Illuminate\Http\JsonResponse
      */
-    public function viewCart()
+    public function viewCart(Request $request)
     {
         try {
-            $cartContents = $this->cartService->getCartContents();
+            $sessionId = $this->extractSessionId($request);
+            $cartContents = $this->cartService->getCartContents($sessionId);
+
+            // Set a cookie with the session ID for future requests
+            if (!Auth::check() && isset($cartContents['session_id'])) {
+                $cookie = cookie('cart_session_id', $cartContents['session_id'], 60 * 24 * 30); // 30 days
+                return $this->respondWithSuccess('Cart retrieved successfully', 200, $cartContents)->withCookie($cookie);
+            }
+
             return $this->respondWithSuccess('Cart retrieved successfully', 200, $cartContents);
         } catch (\Exception $e) {
             return $this->respondWithError('Error retrieving cart: ' . $e->getMessage(), 500);
@@ -62,30 +96,42 @@ class CartController extends ImprovedController
             }
 
             $quantity = $request->input('quantity', 1);
+            $sessionId = $this->extractSessionId($request);
 
             if ($request->has('variant_id')) {
                 // Add variant to cart
                 $cartItem = $this->cartService->addVariantToCart(
                     $request->input('variant_id'),
-                    $quantity
+                    $quantity,
+                    $sessionId
                 );
                 $message = 'Variant added to cart';
             } else {
                 // Add product to cart
                 $cartItem = $this->cartService->addProductToCart(
                     $request->input('product_id'),
-                    $quantity
+                    $quantity,
+                    $sessionId
                 );
                 $message = 'Product added to cart';
             }
 
             // Get updated cart contents
-            $cartContents = $this->cartService->getCartContents();
+            $cartContents = $this->cartService->getCartContents($sessionId);
 
-            return $this->respondWithSuccess($message, 200, [
+            // Set a cookie with the session ID for future requests
+            $response = $this->respondWithSuccess($message, 200, [
                 'cart_item' => $cartItem,
                 'cart' => $cartContents
             ]);
+
+            // Add session ID cookie for guest users
+            if (!Auth::check() && isset($cartContents['session_id'])) {
+                $cookie = cookie('cart_session_id', $cartContents['session_id'], 60 * 24 * 30); // 30 days
+                $response->withCookie($cookie);
+            }
+
+            return $response;
         } catch (\Exception $e) {
             return $this->respondWithError('Error adding to cart: ' . $e->getMessage(), 500);
         }
@@ -109,18 +155,29 @@ class CartController extends ImprovedController
                 return $this->respondWithError($validator->errors(), 422);
             }
 
+            $sessionId = $this->extractSessionId($request);
             $cartItem = $this->cartService->updateCartItemQuantity(
                 $cartItemId,
-                $request->input('quantity')
+                $request->input('quantity'),
+                $sessionId
             );
 
             // Get updated cart contents
-            $cartContents = $this->cartService->getCartContents();
+            $cartContents = $this->cartService->getCartContents($sessionId);
 
-            return $this->respondWithSuccess('Cart item updated successfully', 200, [
+            // Set a cookie with the session ID for future requests
+            $response = $this->respondWithSuccess('Cart item updated successfully', 200, [
                 'cart_item' => $cartItem,
                 'cart' => $cartContents
             ]);
+
+            // Add session ID cookie for guest users
+            if (!Auth::check() && isset($cartContents['session_id'])) {
+                $cookie = cookie('cart_session_id', $cartContents['session_id'], 60 * 24 * 30); // 30 days
+                $response->withCookie($cookie);
+            }
+
+            return $response;
         } catch (\Exception $e) {
             if (str_contains($e->getMessage(), 'No query results for model')) {
                 return $this->respondWithError('Cart item not found', 404);
@@ -135,17 +192,27 @@ class CartController extends ImprovedController
      * @param int $cartItemId
      * @return \Illuminate\Http\JsonResponse
      */
-    public function deleteCartItem($cartItemId)
+    public function deleteCartItem(Request $request, $cartItemId)
     {
         try {
-            $this->cartService->removeCartItem($cartItemId);
+            $sessionId = $this->extractSessionId($request);
+            $this->cartService->removeCartItem($cartItemId, $sessionId);
 
             // Get updated cart contents
-            $cartContents = $this->cartService->getCartContents();
+            $cartContents = $this->cartService->getCartContents($sessionId);
 
-            return $this->respondWithSuccess('Cart item removed successfully', 200, [
+            // Set a cookie with the session ID for future requests
+            $response = $this->respondWithSuccess('Cart item removed successfully', 200, [
                 'cart' => $cartContents
             ]);
+
+            // Add session ID cookie for guest users
+            if (!Auth::check() && isset($cartContents['session_id'])) {
+                $cookie = cookie('cart_session_id', $cartContents['session_id'], 60 * 24 * 30); // 30 days
+                $response->withCookie($cookie);
+            }
+
+            return $response;
         } catch (\Exception $e) {
             if (str_contains($e->getMessage(), 'No query results for model')) {
                 return $this->respondWithError('Cart item not found', 404);
@@ -159,11 +226,27 @@ class CartController extends ImprovedController
      *
      * @return \Illuminate\Http\JsonResponse
      */
-    public function clearCart()
+    public function clearCart(Request $request)
     {
         try {
-            $this->cartService->clearCart();
-            return $this->respondWithSuccess('Cart cleared successfully', 200);
+            $sessionId = $this->extractSessionId($request);
+            $this->cartService->clearCart($sessionId);
+
+            // Get updated cart contents (empty but with session ID)
+            $cartContents = $this->cartService->getCartContents($sessionId);
+
+            // Set a cookie with the session ID for future requests
+            $response = $this->respondWithSuccess('Cart cleared successfully', 200, [
+                'cart' => $cartContents
+            ]);
+
+            // Add session ID cookie for guest users
+            if (!Auth::check() && isset($cartContents['session_id'])) {
+                $cookie = cookie('cart_session_id', $cartContents['session_id'], 60 * 24 * 30); // 30 days
+                $response->withCookie($cookie);
+            }
+
+            return $response;
         } catch (\Exception $e) {
             return $this->respondWithError('Error clearing cart: ' . $e->getMessage(), 500);
         }
