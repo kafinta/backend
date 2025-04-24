@@ -13,6 +13,7 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule): void
     {
         $schedule->command('tokens:prune')->daily();
+        $schedule->command('cart:clean-expired')->daily();
     }
 
     /**
