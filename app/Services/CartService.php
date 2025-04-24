@@ -43,26 +43,42 @@ class CartService
             $cart = Cart::where('session_id', $sessionId)->first();
 
             if ($cart) {
+                // Check if the cart is expired
+                if ($cart->isExpired()) {
+                    \Log::info('Found expired guest cart, refreshing expiration', [
+                        'cart_id' => $cart->id,
+                        'session_id' => $sessionId,
+                        'expired_at' => $cart->expires_at
+                    ]);
+                }
+
+                // Extend the expiration date
+                $cart->extendExpiration(30);
+                $cart->save();
+
                 \Log::info('Found existing guest cart', [
                     'cart_id' => $cart->id,
-                    'session_id' => $sessionId
+                    'session_id' => $sessionId,
+                    'expires_at' => $cart->expires_at
                 ]);
 
                 return $cart;
             }
         }
 
-        // Create a new cart with a new session ID
+        // Create a new cart with a new session ID and expiration date
         $newSessionId = Str::uuid()->toString();
 
         $cart = Cart::create([
             'session_id' => $newSessionId,
-            'user_id' => null
+            'user_id' => null,
+            'expires_at' => now()->addDays(30) // Set expiration to 30 days from now
         ]);
 
         \Log::info('Created new guest cart', [
             'cart_id' => $cart->id,
-            'session_id' => $newSessionId
+            'session_id' => $newSessionId,
+            'expires_at' => $cart->expires_at
         ]);
 
         return $cart;
