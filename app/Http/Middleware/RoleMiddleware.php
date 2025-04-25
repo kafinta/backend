@@ -21,8 +21,9 @@ class RoleMiddleware
     {
         if (!$request->user()) {
             return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized: Please login to continue.',
+                'status' => 'fail',
+                'status_code' => 401,
+                'message' => 'Unauthenticated. Please login to continue.'
             ], 401);
         }
 
@@ -48,8 +49,9 @@ class RoleMiddleware
             ]);
 
             return response()->json([
-                'success' => false,
-                'message' => 'Forbidden: You do not have permission to access this resource.',
+                'status' => 'fail',
+                'status_code' => 403,
+                'message' => 'Forbidden: You do not have the required role to access this resource.'
             ], 403);
         }
 
