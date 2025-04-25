@@ -52,14 +52,17 @@ class CartService
                     ]);
                 }
 
-                // Extend the expiration date
+                // Reset the expiration date to 30 days from now
+                $oldExpiresAt = $cart->expires_at ? $cart->expires_at->toIso8601String() : null;
                 $cart->extendExpiration(30);
                 $cart->save();
 
-                \Log::info('Found existing guest cart', [
+                \Log::info('Found existing guest cart, reset expiration', [
                     'cart_id' => $cart->id,
                     'session_id' => $sessionId,
-                    'expires_at' => $cart->expires_at
+                    'old_expires_at' => $oldExpiresAt,
+                    'new_expires_at' => $cart->expires_at->toIso8601String(),
+                    'expires_in_days' => now()->diffInDays($cart->expires_at)
                 ]);
 
                 return $cart;
@@ -259,9 +262,15 @@ class CartService
             'item_count' => $cartItems->sum('quantity')
         ];
 
-        // Always include session_id for guest carts
+        // Include session_id and expires_at for guest carts
         if (!Auth::check() && $cart->session_id) {
             $result['session_id'] = $cart->session_id;
+
+            // Include expiration date if it exists
+            if ($cart->expires_at) {
+                $result['expires_at'] = $cart->expires_at->toIso8601String();
+                $result['expires_in_days'] = now()->diffInDays($cart->expires_at, false);
+            }
         }
 
         // Log cart contents
@@ -271,7 +280,9 @@ class CartService
             'user_id' => $cart->user_id,
             'is_authenticated' => Auth::check(),
             'item_count' => count($items),
-            'total_price' => $totalPrice
+            'total_price' => $totalPrice,
+            'expires_at' => $cart->expires_at ? $cart->expires_at->toIso8601String() : null,
+            'expires_in_days' => $cart->expires_at ? now()->diffInDays($cart->expires_at, false) : null
         ]);
 
         return $result;
