@@ -60,10 +60,21 @@ class Handler extends ExceptionHandler
         // Handle model not found exception
         if ($exception instanceof \Illuminate\Database\Eloquent\ModelNotFoundException) {
             $modelName = strtolower(class_basename($exception->getModel()));
+
+            // Special handling for specific models
+            $customMessages = [
+                'product' => 'The requested product could not be found. Please check the product ID and try again.',
+                'user' => 'The requested user account could not be found.',
+                'seller' => 'The requested seller profile could not be found.',
+                'variant' => 'The requested product variant could not be found.'
+            ];
+
+            $message = $customMessages[$modelName] ?? "The requested {$modelName} was not found.";
+
             return response()->json([
                 'status' => 'fail',
                 'status_code' => 404,
-                'message' => "The requested {$modelName} was not found."
+                'message' => $message
             ], 404);
         }
 
