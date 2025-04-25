@@ -38,6 +38,29 @@ class OrderService
                 throw new \Exception('Cannot create order: Cart is empty');
             }
 
+            // Get the current user
+            $user = Auth::user();
+            $userId = $user->id;
+
+            // Only check for seller's own products if the user is a seller
+            if ($user && $user->isSeller()) {
+                // Get all products in the cart
+                $sellerProducts = [];
+                foreach ($cart->cartItems as $cartItem) {
+                    $product = $cartItem->product;
+
+                    // Check if the user is the seller of this product
+                    if ($product->user_id === $userId) {
+                        $sellerProducts[] = $product->name;
+                    }
+                }
+
+                // If there are any products sold by the user, throw an exception
+                if (!empty($sellerProducts)) {
+                    throw new \Exception('As a seller, you cannot order your own products: ' . implode(', ', $sellerProducts));
+                }
+            }
+
             // Calculate order totals
             $cartContents = $this->cartService->getCartContents($sessionId);
             $subtotal = $cartContents['total_price'];
