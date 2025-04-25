@@ -85,15 +85,9 @@ class Cart extends Model
      */
     public function extendExpiration($days = 30)
     {
-        // If already expired, set from now
-        if ($this->isExpired()) {
-            $this->expires_at = Carbon::now()->addDays($days);
-        } else {
-            // Otherwise extend from current expiration
-            $this->expires_at = $this->expires_at
-                ? $this->expires_at->addDays($days)
-                : Carbon::now()->addDays($days);
-        }
+        // Always set expiration to $days from now
+        // This prevents the expiration date from being pushed too far into the future
+        $this->expires_at = Carbon::now()->addDays($days);
 
         return $this;
     }
