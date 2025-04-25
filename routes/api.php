@@ -12,6 +12,8 @@ use App\Http\Controllers\AttributeController;
 use App\Http\Controllers\AttributeValueController;
 use App\Http\Controllers\VariantController;
 use App\Http\Controllers\CartController;
+use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\OrderController;
 
 /*
 |--------------------------------------------------------------------------
@@ -37,6 +39,18 @@ Route::apiResources([
 // Additional Public Routes
 Route::prefix('attributes')->group(function () {
     Route::get('/subcategory/{subcategoryId}', [AttributeController::class, 'getAttributesForSubcategory']);
+});
+
+// Public Checkout Routes
+Route::prefix('checkout')->group(function () {
+    // Calculate totals (shipping, tax, etc.)
+    Route::post('/calculate', [CheckoutController::class, 'calculateTotals'])->name('checkout.calculate');
+
+    // Get shipping methods
+    Route::get('/shipping-methods', [CheckoutController::class, 'getShippingMethods'])->name('checkout.shipping-methods');
+
+    // Get payment methods
+    Route::get('/payment-methods', [CheckoutController::class, 'getPaymentMethods'])->name('checkout.payment-methods');
 });
 
 // Public Cart Routes
@@ -114,6 +128,24 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('cart')->group(function () {
         // Route to transfer guest cart to user cart after login
         Route::post('/transfer', [CartController::class, 'transferGuestCart'])->name('cart.transfer');
+    });
+
+    // Protected Checkout Routes (require authentication)
+    Route::prefix('checkout')->group(function () {
+        // Place an order
+        Route::post('/place-order', [CheckoutController::class, 'placeOrder'])->name('checkout.place-order');
+    });
+
+    // Protected Order Routes (require authentication)
+    Route::prefix('orders')->group(function () {
+        // List user's orders
+        Route::get('/', [OrderController::class, 'index'])->name('orders.index');
+
+        // View a specific order
+        Route::get('/{id}', [OrderController::class, 'show'])->name('orders.show');
+
+        // Cancel an order
+        Route::post('/{id}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
     });
 });
 
