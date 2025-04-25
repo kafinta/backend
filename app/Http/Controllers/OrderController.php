@@ -2,12 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\ImprovedController;
 use App\Models\Order;
 use App\Services\OrderService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
-class OrderController extends Controller
+class OrderController extends ImprovedController
 {
     protected $orderService;
 
@@ -95,37 +96,5 @@ class OrderController extends Controller
         }
     }
 
-    /**
-     * Return a success response
-     *
-     * @param string $message
-     * @param int $statusCode
-     * @param array $data
-     * @return \Illuminate\Http\JsonResponse
-     */
-    protected function respondWithSuccess($message, $statusCode = 200, $data = [])
-    {
-        return response()->json([
-            'status' => 'success',
-            'status_code' => $statusCode,
-            'message' => $message,
-            'data' => $data
-        ], $statusCode);
-    }
 
-    /**
-     * Return an error response
-     *
-     * @param string|array $message
-     * @param int $statusCode
-     * @return \Illuminate\Http\JsonResponse
-     */
-    protected function respondWithError($message, $statusCode = 400)
-    {
-        return response()->json([
-            'status' => 'fail',
-            'status_code' => $statusCode,
-            'message' => $message
-        ], $statusCode);
-    }
 }

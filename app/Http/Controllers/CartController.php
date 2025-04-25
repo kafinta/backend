@@ -295,10 +295,10 @@ class CartController extends ImprovedController
 
     public function checkout(Request $request)
     {
-        $user = auth()->user(); // Assuming you have authentication
+        $user = auth()->user();
 
         if (!$user) {
-            return response()->json(['error' => 'User not authenticated'], 401);
+            return $this->respondWithError('User not authenticated', 401);
         }
 
         // Validate the cart or perform any additional checks as needed
@@ -330,17 +330,27 @@ class CartController extends ImprovedController
             // Commit the transaction
             DB::commit();
 
-            return response()->json(['message' => 'Checkout successful', 'order_id' => $order->id]);
+            return $this->respondWithSuccess('Checkout successful', 200, [
+                'order_id' => $order->id
+            ]);
         } catch (\Exception $e) {
             // An error occurred, rollback the transaction
             DB::rollBack();
 
-            return response()->json(['error' => 'Checkout failed', 'message' => $e->getMessage()], 500);
+            return $this->respondWithError('Checkout failed: ' . $e->getMessage(), 500);
         }
     }
 
-    public function viewOrderSummary()
+    public function viewOrderSummary(Request $request)
     {
-        // Retrieve and display the order summary
+        try {
+            // Retrieve and display the order summary
+            // This is a placeholder for future implementation
+            return $this->respondWithSuccess('Order summary retrieved successfully', 200, [
+                'summary' => 'Order summary will be implemented here'
+            ]);
+        } catch (\Exception $e) {
+            return $this->respondWithError('Error retrieving order summary: ' . $e->getMessage(), 500);
+        }
     }
 }
