@@ -14,6 +14,7 @@ use App\Services\ProductAttributeService;
 use App\Services\VariantService;
 use App\Services\CartService;
 use App\Services\OrderService;
+use App\Services\SellerOrderService;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -65,6 +66,11 @@ class AppServiceProvider extends ServiceProvider
         // Order service
         $this->app->singleton(OrderService::class, function ($app) {
             return new OrderService($app->make(CartService::class));
+        });
+
+        // Seller Order service
+        $this->app->singleton(SellerOrderService::class, function ($app) {
+            return new SellerOrderService();
         });
     }
 
