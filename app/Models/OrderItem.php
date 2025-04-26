@@ -24,6 +24,10 @@ class OrderItem extends Model
         'subtotal',
         'product_name',
         'variant_name',
+        'status',
+        'shipped_at',
+        'delivered_at',
+        'cancelled_at',
     ];
 
     /**
@@ -34,6 +38,9 @@ class OrderItem extends Model
     protected $casts = [
         'price' => 'decimal:2',
         'subtotal' => 'decimal:2',
+        'shipped_at' => 'datetime',
+        'delivered_at' => 'datetime',
+        'cancelled_at' => 'datetime',
     ];
 
     /**
