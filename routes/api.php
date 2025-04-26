@@ -14,6 +14,7 @@ use App\Http\Controllers\VariantController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\SellerOrderController;
 
 /*
 |--------------------------------------------------------------------------
@@ -121,6 +122,18 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::middleware('role:seller|admin')->group(function() {
             Route::get('{seller}', [SellerController::class, 'show'])->name('sellers.show');
             Route::get('{seller}/document', [SellerController::class, 'downloadDocument'])->name('sellers.document.download');
+        });
+
+        // Seller Order Management Routes
+        Route::prefix('seller/orders')->group(function () {
+            // List all orders containing the seller's products
+            Route::get('/', [SellerOrderController::class, 'index'])->name('seller.orders.index');
+
+            // View a specific order with items sold by the seller
+            Route::get('/{id}', [SellerOrderController::class, 'show'])->name('seller.orders.show');
+
+            // Update the status of the seller's items in an order
+            Route::put('/{id}/status', [SellerOrderController::class, 'updateStatus'])->name('seller.orders.update-status');
         });
     });
 
