@@ -81,7 +81,6 @@ class SubcategoryController extends ImprovedController
         try {
             $validatedData = $request->validate([
                 'name' => 'required|string|unique:subcategories|max:255',
-                'has_colors' => 'required|boolean',
                 'image_path' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
                 'category_id' => 'required|exists:categories,id'
             ]);
@@ -117,7 +116,6 @@ class SubcategoryController extends ImprovedController
         try {
             $validatedData = $request->validate([
                 'name' => 'sometimes|string|unique:subcategories,name,'.$subcategory->id.'|max:255',
-                'has_colors' => 'sometimes|boolean',
                 'image_path' => 'sometimes|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
                 'category_id' => 'sometimes|exists:categories,id',
                 'locations' => 'sometimes|array',
@@ -172,24 +170,23 @@ class SubcategoryController extends ImprovedController
         $subcategory->delete();
         return $this->respondWithSuccess('Subcategory deleted successfully', 200);
     }
-    
+
 
     private function formatSubcategory($subcategory)
     {
         $attributes = DB::table('attributes')
-            ->join('attribute_subcategory', 'attributes.id', '=', 'attribute_subcategory.attribute_id')
-            ->where('attribute_subcategory.subcategory_id', $subcategory->id)
+            ->join('subcategory_attributes', 'attributes.id', '=', 'subcategory_attributes.attribute_id')
+            ->where('subcategory_attributes.subcategory_id', $subcategory->id)
             ->select('attributes.id', 'attributes.name')
             ->get();
 
         return [
             'id' => $subcategory->id,
             'name' => $subcategory->name,
-            'has_colors' => $subcategory->has_colors,
             'image_path' => $subcategory->image_path,
             'attributes' => $attributes->map(function ($attribute) {
                 $values = AttributeValue::where('attribute_id', $attribute->id)
-                    ->pluck('value')
+                    ->pluck('name')
                     ->toArray();
                 return [
                     'id' => $attribute->id,
