@@ -186,7 +186,14 @@ class SubcategoryController extends ImprovedController
             'image_path' => $subcategory->image_path,
             'attributes' => $attributes->map(function ($attribute) {
                 $values = AttributeValue::where('attribute_id', $attribute->id)
-                    ->pluck('name')
+                    ->select('id', 'name')
+                    ->get()
+                    ->map(function ($value) {
+                        return [
+                            'id' => $value->id,
+                            'name' => $value->name
+                        ];
+                    })
                     ->toArray();
                 return [
                     'id' => $attribute->id,
