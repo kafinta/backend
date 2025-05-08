@@ -284,4 +284,28 @@ class UserController extends ImprovedController
             return $this->respondWithError('Error retrieving profile: ' . $e->getMessage(), 500);
         }
     }
+
+    /**
+     * Get user roles
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getRoles()
+    {
+        try {
+            $user = auth()->user();
+            $roles = $user->roles()->get(['id', 'name', 'slug']);
+
+            return $this->respondWithSuccess('User roles retrieved successfully', 200, [
+                'roles' => $roles
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error retrieving user roles', [
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage()
+            ]);
+            return $this->respondWithError('Error retrieving user roles: ' . $e->getMessage(), 500);
+        }
+    }
 }
