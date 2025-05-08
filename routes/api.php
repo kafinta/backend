@@ -70,6 +70,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/', [UserController::class, 'getProfile']);
         Route::put('/', [UserController::class, 'updateProfile']);
         Route::post('/upload-picture', [UserController::class, 'uploadProfilePicture']);
+        Route::get('/roles', [UserController::class, 'getRoles']);
     });
 
     // Product Management Routes (Protected)
