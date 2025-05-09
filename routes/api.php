@@ -65,6 +65,9 @@ Route::prefix('cart')->group(function () {
 
 // Protected Routes
 Route::middleware('auth:sanctum')->group(function () {
+    // User Auth Routes
+    Route::post('/user/logout', [UserController::class, 'logout']);
+
     // User Profile Routes
     Route::prefix('user/profile')->group(function() {
         Route::get('/', [UserController::class, 'getProfile']);
