@@ -294,7 +294,7 @@ class UserController extends ImprovedController
     {
         try {
             $user = auth()->user();
-            $roles = $user->roles()->get(['id', 'name', 'slug']);
+            $roles = $user->roles()->get(['roles.id', 'roles.name', 'roles.slug'])->makeHidden(['pivot']);
 
             return $this->respondWithSuccess('User roles retrieved successfully', 200, [
                 'roles' => $roles
