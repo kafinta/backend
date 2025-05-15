@@ -15,7 +15,8 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\SellerOrderController;
-use App\Http\Controllers\SellerVerificationController;
+use App\Http\Controllers\SimulatedEmailController;
+use App\Http\Controllers\VerificationTokenController;
 
 /*
 |--------------------------------------------------------------------------
@@ -27,6 +28,33 @@ use App\Http\Controllers\SellerVerificationController;
 Route::middleware(['throttle:6,1'])->prefix('user')->group(function () {
     Route::post('/login', [UserController::class, 'login']);
     Route::post('/signup', [UserController::class, 'register']);
+
+    // Protected routes
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::post('/resend-verification-email', [UserController::class, 'resendVerificationEmail']);
+        Route::get('/email-verification-status', [UserController::class, 'checkEmailVerification']);
+    });
+});
+
+// Email Verification Routes (Public)
+Route::post('/verify-email/token', [UserController::class, 'verifyEmailToken'])->name('verify.email.token');
+Route::get('/verify-email/{token}', [UserController::class, 'verifyEmailToken'])->name('verify.email');
+Route::post('/verify-email/code', [UserController::class, 'verifyEmailCode'])->name('verify.email.code');
+
+// Simulated Email Routes (Development Only)
+Route::prefix('simulated-emails')->group(function () {
+    Route::get('/', [SimulatedEmailController::class, 'index'])->name('simulated-emails.index');
+    Route::get('/{filename}', [SimulatedEmailController::class, 'show'])->name('simulated-emails.show');
+    Route::delete('/{filename}', [SimulatedEmailController::class, 'destroy'])->name('simulated-emails.destroy');
+    Route::delete('/', [SimulatedEmailController::class, 'destroyAll'])->name('simulated-emails.destroy-all');
+});
+
+// Verification Token Routes (Development Only)
+Route::prefix('verification-tokens')->group(function () {
+    Route::get('/', [VerificationTokenController::class, 'index'])->name('verification-tokens.index');
+    Route::get('/{token}', [VerificationTokenController::class, 'show'])->name('verification-tokens.show');
+    Route::delete('/{token}', [VerificationTokenController::class, 'destroy'])->name('verification-tokens.destroy');
+    Route::delete('/', [VerificationTokenController::class, 'destroyAll'])->name('verification-tokens.destroy-all');
 });
 
 // Public Resource Routes
@@ -144,13 +172,15 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // New Seller Verification Routes - Step by Step Approach
     Route::prefix('seller')->middleware('auth:sanctum')->group(function () {
-        Route::post('/verify-email', [SellerController::class, 'verifyEmail'])->name('seller.verify-email');
         Route::post('/verify-phone', [SellerController::class, 'verifyPhone'])->name('seller.verify-phone');
         Route::post('/update-profile', [SellerController::class, 'updateProfile'])->name('seller.update-profile');
         Route::post('/verify-kyc', [SellerController::class, 'verifyKYC'])->name('seller.verify-kyc');
         Route::post('/complete-onboarding', [SellerController::class, 'completeOnboarding'])->name('seller.complete-onboarding');
         Route::get('/progress', [SellerController::class, 'getProgress'])->name('seller.progress');
     });
+
+    // Logout route (requires authentication)
+    Route::post('/logout', [UserController::class, 'logout'])->name('user.logout');
 
     // Protected Cart Routes (require authentication)
     Route::prefix('cart')->group(function () {
