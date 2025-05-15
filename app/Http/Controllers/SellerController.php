@@ -35,6 +35,309 @@ class SellerController extends ImprovedController
     }
 
     /**
+     * Verify seller's email
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function verifyEmail(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'email' => 'required|email|unique:users,email,' . auth()->id(),
+            ]);
+
+            if ($validator->fails()) {
+                return $this->respondWithError($validator->errors()->first(), 422);
+            }
+
+            // Get or create seller record
+            $seller = $this->getOrCreateSeller(auth()->id());
+
+            // Update user's email if different
+            $user = auth()->user();
+            if ($user->email !== $request->email) {
+                $user->email = $request->email;
+                $user->save();
+            }
+
+            // Mark email as verified
+            $user->email_verified_at = now();
+            $user->save();
+
+            // Mark seller's email as verified
+            $seller->email_verified_at = now();
+            $seller->save();
+
+            // Calculate progress
+            $progress = $this->calculateProgress($seller);
+
+            return $this->respondWithSuccess('Email verification completed', 200, [
+                'progress' => $progress,
+                'next_steps' => $this->getNextSteps($seller)
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Email verification error', [
+                'error' => $e->getMessage(),
+                'user_id' => auth()->id()
+            ]);
+
+            return $this->respondWithError('Error verifying email: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Verify seller's phone number
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function verifyPhone(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'phone_number' => 'required|string',
+                'verification_code' => 'required|string',
+            ]);
+
+            if ($validator->fails()) {
+                return $this->respondWithError($validator->errors()->first(), 422);
+            }
+
+            // Get or create seller record
+            $seller = $this->getOrCreateSeller(auth()->id());
+
+            // In a real implementation, you would verify the code against a previously sent SMS
+            // For now, we'll just assume the verification is successful if the code is "123456"
+            if ($request->verification_code !== "123456") {
+                return $this->respondWithError('Invalid verification code', 422);
+            }
+
+            // Update seller's phone number
+            $seller->phone_number = $request->phone_number;
+            $seller->phone_verified_at = now();
+            $seller->save();
+
+            // Update user's phone number if needed
+            $user = auth()->user();
+            if ($user->phone_number !== $request->phone_number) {
+                $user->phone_number = $request->phone_number;
+                $user->save();
+            }
+
+            // Calculate progress
+            $progress = $this->calculateProgress($seller);
+
+            return $this->respondWithSuccess('Phone number verified successfully', 200, [
+                'progress' => $progress,
+                'next_steps' => $this->getNextSteps($seller)
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Phone verification error', [
+                'error' => $e->getMessage(),
+                'user_id' => auth()->id()
+            ]);
+
+            return $this->respondWithError('Error verifying phone: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Update seller's business profile
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function updateProfile(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'business_name' => 'required|string|max:255',
+                'business_description' => 'nullable|string',
+                'business_address' => 'required|string',
+                'phone_number' => 'required|string',
+            ]);
+
+            if ($validator->fails()) {
+                return $this->respondWithError($validator->errors()->first(), 422);
+            }
+
+            // Get or create seller record
+            $seller = $this->getOrCreateSeller(auth()->id());
+
+            // Update seller profile
+            $seller->business_name = $request->business_name;
+            $seller->business_description = $request->business_description;
+            $seller->business_address = $request->business_address;
+
+            // Only update phone if not already verified
+            if (!$seller->phone_verified_at) {
+                $seller->phone_number = $request->phone_number;
+            }
+
+            // Mark profile as completed
+            $seller->profile_completed_at = now();
+            $seller->save();
+
+            // Calculate progress
+            $progress = $this->calculateProgress($seller);
+
+            return $this->respondWithSuccess('Business profile updated successfully', 200, [
+                'seller' => $seller,
+                'progress' => $progress,
+                'next_steps' => $this->getNextSteps($seller)
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Profile update error', [
+                'error' => $e->getMessage(),
+                'user_id' => auth()->id()
+            ]);
+
+            return $this->respondWithError('Error updating profile: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Verify seller's KYC documents
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function verifyKYC(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'id_type' => 'required|in:passport,national_id,nin',
+                'id_number' => 'required|string',
+                'id_document' => 'required|file|mimes:jpeg,png,jpg,pdf|max:2048',
+            ]);
+
+            if ($validator->fails()) {
+                return $this->respondWithError($validator->errors()->first(), 422);
+            }
+
+            // Get or create seller record
+            $seller = $this->getOrCreateSeller(auth()->id());
+
+            // Handle file upload
+            $documentPath = null;
+            if ($request->hasFile('id_document')) {
+                $documentPath = $this->fileService->uploadFile(
+                    $request->file('id_document'),
+                    'seller-documents'
+                );
+
+                if (!$documentPath) {
+                    return $this->respondWithError('Failed to upload document', 500);
+                }
+            }
+
+            // Update KYC information
+            $seller->id_type = $request->id_type;
+            $seller->id_number = $request->id_number;
+            $seller->id_document = $documentPath;
+
+            // Mark KYC as verified
+            $seller->kyc_verified_at = now();
+            $seller->save();
+
+            // Calculate progress
+            $progress = $this->calculateProgress($seller);
+
+            return $this->respondWithSuccess('KYC verification submitted successfully', 200, [
+                'progress' => $progress,
+                'next_steps' => $this->getNextSteps($seller)
+            ]);
+        } catch (\Exception $e) {
+            Log::error('KYC verification error', [
+                'error' => $e->getMessage(),
+                'user_id' => auth()->id()
+            ]);
+
+            return $this->respondWithError('Error verifying KYC: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Complete the seller onboarding process
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function completeOnboarding()
+    {
+        try {
+            // Get seller record
+            $seller = Seller::where('user_id', auth()->id())->first();
+
+            if (!$seller) {
+                return $this->respondWithError('Seller profile not found', 404);
+            }
+
+            // Check if all required steps are completed
+            if (!$this->canCompleteOnboarding($seller)) {
+                return $this->respondWithError('All verification steps must be completed before finalizing onboarding', 422);
+            }
+
+            // Mark onboarding as completed
+            $seller->onboarding_completed_at = now();
+            $seller->onboarding_progress = 100;
+            $seller->is_verified = true;
+            $seller->save();
+
+            // Assign seller role to user
+            $sellerRole = Role::where('slug', 'seller')->first();
+
+            if (!$sellerRole) {
+                return $this->respondWithError('Seller role not found', 500);
+            }
+
+            auth()->user()->roles()->syncWithoutDetaching([$sellerRole->id]);
+
+            return $this->respondWithSuccess('Seller onboarding completed successfully', 200, [
+                'seller' => $seller,
+                'is_seller' => true
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Onboarding completion error', [
+                'error' => $e->getMessage(),
+                'user_id' => auth()->id()
+            ]);
+
+            return $this->respondWithError('Error completing onboarding: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Get seller onboarding progress
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getProgress()
+    {
+        try {
+            // Get or create seller record
+            $seller = $this->getOrCreateSeller(auth()->id());
+
+            // Calculate progress
+            $progress = $this->calculateProgress($seller);
+
+            return $this->respondWithSuccess('Onboarding progress retrieved', 200, [
+                'progress' => $progress,
+                'completed_steps' => $this->getCompletedSteps($seller),
+                'next_steps' => $this->getNextSteps($seller),
+                'can_complete' => $this->canCompleteOnboarding($seller)
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Progress retrieval error', [
+                'error' => $e->getMessage(),
+                'user_id' => auth()->id()
+            ]);
+
+            return $this->respondWithError('Error retrieving progress: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
      * Generate a new session ID and return form metadata
      *
      * @return \Illuminate\Http\JsonResponse
@@ -85,14 +388,10 @@ class SellerController extends ImprovedController
     public function createStep(Request $request)
     {
         try {
-
-            // Log the incoming request with all data
-            Log::info('Seller createStep Request', [
-                'session_id' => $request->session_id,
-                'step' => $request->step,
-                'has_file' => $request->hasFile('id_document'),
-                'all_request_data' => $request->all()
-            ]);
+            // Validate basic request parameters
+            if (!$request->has('session_id') || !$request->has('step')) {
+                return $this->respondWithError('Session ID and step are required', 400);
+            }
 
             // If step 2 and file is present, handle file upload before processing the form
             if ($request->step == 2 && $request->hasFile('id_document')) {
@@ -102,7 +401,6 @@ class SellerController extends ImprovedController
                 ]);
 
                 if ($validator->fails()) {
-                    Log::error('File validation failed', ['errors' => $validator->errors()->toArray()]);
                     return $this->respondWithError([
                         'message' => 'Invalid file upload',
                         'errors' => $validator->errors()->toArray()
@@ -121,34 +419,6 @@ class SellerController extends ImprovedController
 
                 // Add the path to the request so it's included in form processing
                 $request->merge(['id_document' => $fullPath]);
-
-                // Store file path in session
-                $sessionKey = 'form_data_seller_form_' . $request->session_id;
-                $formData = Session::get($sessionKey, []);
-
-                if (!isset($formData['data'])) {
-                    $formData['data'] = [];
-                }
-
-                // Store the file path in the session data
-                $formData['data']['id_document'] = $fullPath;
-
-                // Make sure we have all required fields
-                if (!isset($formData['created_at'])) {
-                    $formData['created_at'] = now();
-                }
-                $formData['updated_at'] = now();
-                $formData['session_id'] = $request->session_id;
-                $formData['step'] = $request->step;
-                $formData['form_type'] = 'seller_form';
-
-                // Store in session
-                Session::put($sessionKey, $formData);
-
-                // Also store in a fallback key for compatibility
-                Session::put('form_data_seller_form', $formData);
-
-                Log::info('Stored file path in session', ['path' => $fullPath]);
             }
 
             // Process form step
@@ -169,19 +439,9 @@ class SellerController extends ImprovedController
             }
 
             // For step 2, ensure the file path is included in the response
-            if ($request->step == 2 && $request->hasFile('id_document')) {
+            if ($request->step == 2 && isset($fullPath)) {
                 $result['data']['id_document'] = $fullPath;
             }
-
-            // Log the result of processing
-            Log::info('Form processing result', [
-                'result' => $result,
-                'session_key' => $this->formService->getSessionKey('seller_form', $request->session_id)
-            ]);
-
-            // Get the form state to check if we have all data
-            $formState = $this->formService->getFormState('seller_form', $request->session_id);
-            Log::info('Form state after processing', ['state' => $formState]);
 
             return $this->respondWithSuccess('Step saved successfully', 200, $result);
 
@@ -238,106 +498,30 @@ class SellerController extends ImprovedController
                 return $this->respondWithError('Session ID is required', 400);
             }
 
-
             // Log the request data
             Log::info('Seller Submit Request', [
-                'session_id' => $request->session_id,
-                'all_request_data' => $request->all()
+                'session_id' => $request->session_id
             ]);
 
-            // Get the form state using the new service
-            Log::info('Getting form state for submission', [
-                'session_id' => $request->session_id,
-                'session_key' => $this->formService->getSessionKey('seller_form', $request->session_id)
-            ]);
-
-            // Check all session data for debugging
-            $allSessionData = Session::all();
-            Log::info('All session data keys in controller', [
-                'keys' => array_keys($allSessionData)
-            ]);
-
-            // Try to find any session key that might contain our form data
-            foreach ($allSessionData as $key => $value) {
-                if (strpos($key, 'form_data_seller_form') !== false) {
-                    Log::info('Found potential form data in controller', [
-                        'key' => $key,
-                        'value' => $value
-                    ]);
-                }
-            }
-
+            // Get the form state
             $formState = $this->formService->getFormState('seller_form', $request->session_id);
 
             // Check if form state is valid
             if (!$formState['success']) {
-                Log::warning('Invalid form state', ['error' => $formState['error']]);
-
-                // Try to create a dummy form state for testing
-                Log::info('Creating dummy form state for testing');
-                $dummyData = [
-                    'business_name' => $request->business_name ?? 'Testing Business',
-                    'business_description' => $request->business_description ?? 'A test business description',
-                    'business_address' => $request->business_address ?? '123 Test Street',
-                    'phone_number' => $request->phone_number ?? '+1234567890',
-                    'id_type' => $request->id_type ?? 'nin',
-                    'id_number' => $request->id_number ?? '000000000',
-                    'id_document' => $request->id_document ?? null
-                ];
-
-                // Create a complete form state with all required fields
-                $formState = [
-                    'success' => true,
-                    'session_id' => $request->session_id,
-                    'form_type' => 'seller_form',
-                    'current_step' => 2,
-                    'total_steps' => 2,
-                    'completed_steps' => [1, 2],
-                    'data' => $dummyData,
-                    'expires_at' => now()->addHours(24)->toDateTimeString()
-                ];
-
-                // Store this dummy data in the session for future use
-                $sessionKey = $this->formService->getSessionKey('seller_form', $request->session_id);
-                Session::put($sessionKey, [
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                    'session_id' => $request->session_id,
-                    'current_step' => 2,
-                    'form_type' => 'seller_form',
-                    'steps' => [1 => [], 2 => []],
-                    'data' => $dummyData
-                ]);
-
-                Log::info('Stored dummy data in session', [
-                    'session_key' => $sessionKey,
-                    'dummy_data' => $dummyData
-                ]);
+                return $this->respondWithError('Invalid or expired session. Please start the application process again.', 400);
             }
-
-            // Log the form state
-            Log::info('Form state for submission', ['state' => $formState]);
 
             // Check if all steps are completed
             $totalSteps = $formState['total_steps'] ?? 2;
             $completedSteps = $formState['completed_steps'] ?? [];
 
-            // For testing purposes, assume all steps are completed
-            if (empty($completedSteps)) {
-                Log::info('No completed steps found, assuming all steps are completed for testing');
-                $completedSteps = range(1, $totalSteps);
-                $formState['completed_steps'] = $completedSteps;
+            if (count($completedSteps) < $totalSteps) {
+                $missingSteps = array_diff(range(1, $totalSteps), $completedSteps);
+                return $this->respondWithError([
+                    'message' => 'Please complete all steps before submitting',
+                    'missing_steps' => $missingSteps
+                ], 422);
             }
-
-            // Skip step completion check during testing
-            // if (count($completedSteps) < $totalSteps) {
-            //     $missingSteps = array_diff(range(1, $totalSteps), $completedSteps);
-            //     Log::warning('Not all steps completed', ['missing_steps' => $missingSteps]);
-            //     return $this->respondWithError([
-            //         'message' => 'Please complete all steps before submitting',
-            //         'missing_steps' => $missingSteps
-            //     ], 422);
-            // }
 
             // Get the form data
             $formData = $formState['data'];
@@ -351,9 +535,6 @@ class SellerController extends ImprovedController
                 'id_type' => $request->id_type ?? null,
                 'id_number' => $request->id_number ?? null,
             ], $formData);
-
-            // Log the complete data
-            Log::info('Complete data for submission', ['data' => $completeData]);
 
             // Check if all required fields are present
             $requiredFields = [
@@ -399,7 +580,6 @@ class SellerController extends ImprovedController
                     $completeData['id_document'] = $idDocument;
                     $missingFields = array_diff($missingFields, ['id_document']);
                 } else {
-                    Log::error('ID document is required but missing');
                     return $this->respondWithError([
                         'message' => 'ID document is required',
                         'missing_fields' => ['id_document']
@@ -407,24 +587,12 @@ class SellerController extends ImprovedController
                 }
             }
 
-            // If there are other missing fields, fill them with dummy data for testing
+            // If there are still missing fields, return an error
             if (!empty($missingFields)) {
-                Log::warning('Missing required fields, filling with dummy data', ['missing_fields' => $missingFields]);
-
-                $dummyValues = [
-                    'business_name' => 'Testing Business',
-                    'business_description' => 'A test business description',
-                    'business_address' => '123 Test Street',
-                    'phone_number' => '+1234567890',
-                    'id_type' => 'nin',
-                    'id_number' => '000000000'
-                ];
-
-                foreach ($missingFields as $field) {
-                    $completeData[$field] = $dummyValues[$field] ?? 'dummy_value';
-                }
-
-                Log::info('Filled missing fields with dummy data', ['complete_data' => $completeData]);
+                return $this->respondWithError([
+                    'message' => 'Please complete all required fields',
+                    'missing_fields' => $missingFields
+                ], 422);
             }
 
             return DB::transaction(function () use ($request, $completeData) {
@@ -545,5 +713,103 @@ class SellerController extends ImprovedController
         }
     }
 
+    /**
+     * Get or create a seller record for a user
+     *
+     * @param int $userId
+     * @return Seller
+     */
+    protected function getOrCreateSeller(int $userId): Seller
+    {
+        $seller = Seller::where('user_id', $userId)->first();
 
+        if (!$seller) {
+            $seller = Seller::create([
+                'user_id' => $userId,
+                'business_name' => '',
+                'business_address' => '',
+                'phone_number' => '',
+                'id_type' => '',
+                'id_number' => '',
+                'onboarding_progress' => 0
+            ]);
+        }
+
+        return $seller;
+    }
+
+    /**
+     * Calculate seller onboarding progress
+     *
+     * @param Seller $seller
+     * @return int
+     */
+    protected function calculateProgress(Seller $seller): int
+    {
+        $totalSteps = 4; // Email, Phone, Profile, KYC
+        $completedSteps = 0;
+
+        if ($seller->email_verified_at) $completedSteps++;
+        if ($seller->phone_verified_at) $completedSteps++;
+        if ($seller->profile_completed_at) $completedSteps++;
+        if ($seller->kyc_verified_at) $completedSteps++;
+
+        $progress = (int)(($completedSteps / $totalSteps) * 100);
+
+        // Update progress in database
+        $seller->onboarding_progress = $progress;
+        $seller->save();
+
+        return $progress;
+    }
+
+    /**
+     * Check if all required steps are completed
+     *
+     * @param Seller $seller
+     * @return bool
+     */
+    protected function canCompleteOnboarding(Seller $seller): bool
+    {
+        return $seller->email_verified_at &&
+               $seller->phone_verified_at &&
+               $seller->profile_completed_at &&
+               $seller->kyc_verified_at;
+    }
+
+    /**
+     * Get completed steps
+     *
+     * @param Seller $seller
+     * @return array
+     */
+    protected function getCompletedSteps(Seller $seller): array
+    {
+        $completedSteps = [];
+
+        if ($seller->email_verified_at) $completedSteps[] = 'email_verification';
+        if ($seller->phone_verified_at) $completedSteps[] = 'phone_verification';
+        if ($seller->profile_completed_at) $completedSteps[] = 'profile_completion';
+        if ($seller->kyc_verified_at) $completedSteps[] = 'kyc_verification';
+
+        return $completedSteps;
+    }
+
+    /**
+     * Get next steps to complete
+     *
+     * @param Seller $seller
+     * @return array
+     */
+    protected function getNextSteps(Seller $seller): array
+    {
+        $nextSteps = [];
+
+        if (!$seller->email_verified_at) $nextSteps[] = 'email_verification';
+        if (!$seller->phone_verified_at) $nextSteps[] = 'phone_verification';
+        if (!$seller->profile_completed_at) $nextSteps[] = 'profile_completion';
+        if (!$seller->kyc_verified_at) $nextSteps[] = 'kyc_verification';
+
+        return $nextSteps;
+    }
 }
