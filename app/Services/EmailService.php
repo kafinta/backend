@@ -60,6 +60,7 @@ class EmailService
      *
      * @param User $user
      * @param string $verificationUrl
+     * @param string|null $verificationCode
      * @return bool
      */
     public function sendVerificationEmail(User $user, string $verificationUrl, string $verificationCode = null): bool
@@ -97,11 +98,34 @@ class EmailService
 
         // Save the HTML email to a file
         if (file_put_contents($filepath, $htmlContent)) {
-            Log::info('Simulated Email Saved', ['filepath' => $filepath]);
+            Log::info('Simulated Email Saved', ['filepath' => $filepath, 'filename' => $filename]);
             return true;
         }
 
         Log::error('Failed to save simulated email', ['filepath' => $filepath]);
+        return false;
+    }
+
+    /**
+     * Delete the email files associated with a user
+     *
+     * @param EmailVerificationToken $token
+     * @return bool
+     */
+    private function deleteEmailFile(EmailVerificationToken $token): bool
+    {
+        // Find all email files for this user
+        $pattern = 'verification_' . $token->user_id . '_*.html';
+        $files = glob(storage_path('simulated-emails/' . $pattern));
+
+        if (!empty($files)) {
+            foreach ($files as $file) {
+                unlink($file);
+                Log::info('Deleted email file', ['file' => basename($file)]);
+            }
+            return true;
+        }
+
         return false;
     }
 
@@ -212,6 +236,12 @@ HTML;
 
         // Check if token is expired
         if ($verificationToken->isExpired()) {
+            // Delete the email file for expired token
+            $this->deleteEmailFile($verificationToken);
+
+            // Delete the token
+            $verificationToken->delete();
+
             return [
                 'success' => false,
                 'message' => 'Verification token has expired',
@@ -229,6 +259,9 @@ HTML;
         // Mark email as verified
         $user->email_verified_at = now();
         $user->save();
+
+        // Delete the email file
+        $this->deleteEmailFile($verificationToken);
 
         // Delete the token
         $verificationToken->delete();
@@ -264,6 +297,12 @@ HTML;
 
         // Check if token is expired
         if ($verificationToken->isExpired()) {
+            // Delete the email file for expired token
+            $this->deleteEmailFile($verificationToken);
+
+            // Delete the token
+            $verificationToken->delete();
+
             return [
                 'success' => false,
                 'message' => 'Verification code has expired',
@@ -281,6 +320,9 @@ HTML;
         // Mark email as verified
         $user->email_verified_at = now();
         $user->save();
+
+        // Delete the email file
+        $this->deleteEmailFile($verificationToken);
 
         // Delete the token
         $verificationToken->delete();
