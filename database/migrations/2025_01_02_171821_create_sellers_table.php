@@ -23,6 +23,12 @@ return new class extends Migration
             $table->string('id_document')->nullable(); // For storing document file path
             $table->decimal('rating', 3, 2)->nullable();
             $table->boolean('is_verified')->default(false);
+            $table->timestamp('email_verified_at')->nullable();
+            $table->timestamp('phone_verified_at')->nullable();
+            $table->timestamp('profile_completed_at')->nullable();
+            $table->timestamp('kyc_verified_at')->nullable();
+            $table->timestamp('onboarding_completed_at')->nullable();
+            $table->integer('onboarding_progress')->default(0);
             $table->timestamps();
         });
     }
