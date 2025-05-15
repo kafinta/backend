@@ -145,11 +145,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Seller Routes
     Route::prefix('sellers')->group(function () {
-        // Legacy routes for multistep form approach
-        Route::get('/session', [SellerController::class, 'generateSessionId'])->name('sellers.session');
-        Route::get('/form/{sessionId}', [SellerController::class, 'getFormData'])->name('sellers.form');
-        Route::post('/steps', [SellerController::class, 'createStep'])->name('sellers.steps');
-        Route::post('/submit', [SellerController::class, 'submit'])->name('sellers.submit');
+
 
         // Routes that require seller or admin role
         Route::middleware('role:seller|admin')->group(function() {
