@@ -15,6 +15,7 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\SellerOrderController;
+use App\Http\Controllers\SellerVerificationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -116,7 +117,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Seller Routes
     Route::prefix('sellers')->group(function () {
-        // Routes for becoming a seller - available to all authenticated users
+        // Legacy routes for multistep form approach
         Route::get('/session', [SellerController::class, 'generateSessionId'])->name('sellers.session');
         Route::get('/form/{sessionId}', [SellerController::class, 'getFormData'])->name('sellers.form');
         Route::post('/steps', [SellerController::class, 'createStep'])->name('sellers.steps');
@@ -139,6 +140,16 @@ Route::middleware('auth:sanctum')->group(function () {
             // Update the status of the seller's items in an order
             Route::put('/{id}/status', [SellerOrderController::class, 'updateStatus'])->name('seller.orders.update-status');
         });
+    });
+
+    // New Seller Verification Routes - Step by Step Approach
+    Route::prefix('seller')->middleware('auth:sanctum')->group(function () {
+        Route::post('/verify-email', [SellerController::class, 'verifyEmail'])->name('seller.verify-email');
+        Route::post('/verify-phone', [SellerController::class, 'verifyPhone'])->name('seller.verify-phone');
+        Route::post('/update-profile', [SellerController::class, 'updateProfile'])->name('seller.update-profile');
+        Route::post('/verify-kyc', [SellerController::class, 'verifyKYC'])->name('seller.verify-kyc');
+        Route::post('/complete-onboarding', [SellerController::class, 'completeOnboarding'])->name('seller.complete-onboarding');
+        Route::get('/progress', [SellerController::class, 'getProgress'])->name('seller.progress');
     });
 
     // Protected Cart Routes (require authentication)
