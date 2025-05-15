@@ -48,38 +48,4 @@ return [
         ]
     ],
     // You can add more form types here
-    'seller_form' => [
-        'total_steps' => 2,
-        'expiration_hours' => 48,
-        'steps' => [
-          1 => [
-            'label' => 'Business Details',
-            'description' => 'Enter your business information',
-            'validation_rules' => [
-              'business_name' => 'required|string|max:255',
-              'business_description' => 'nullable|string',
-              'business_address' => 'required|string',
-              'phone_number' => 'required|string',
-              'session_id' => 'required|string',
-              'step' => 'required|integer|in:1'
-            ]
-          ],
-          2 => [
-            'label' => 'Identification',
-            'description' => 'Upload your identification document',
-            'validation_rules' => [
-              'id_type' => 'required|in:passport,national_id,nin',
-              'id_number' => 'required|string',
-              'id_document' => [
-                'required',
-                'file',
-                'max:2048',
-                'mimetypes:application/pdf,image/jpeg,image/png,image/jpg'
-              ],
-              'session_id' => 'required|string',
-              'step' => 'required|integer|in:2'
-            ]
-          ],
-        ]
-    ]
 ];
