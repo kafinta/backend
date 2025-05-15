@@ -7,6 +7,7 @@ use App\Models\Role;
 use App\Models\Seller;
 use App\Services\MultistepFormService;
 use App\Services\FileService;
+use App\Services\EmailService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -26,65 +27,17 @@ class SellerController extends ImprovedController
 {
     protected $formService;
     protected $fileService;
+    protected $emailService;
 
-    public function __construct(MultistepFormService $formService, FileService $fileService)
+    public function __construct(MultistepFormService $formService, FileService $fileService, EmailService $emailService)
     {
         $this->middleware(['auth:sanctum']);
         $this->formService = $formService;
         $this->fileService = $fileService;
+        $this->emailService = $emailService;
     }
 
-    /**
-     * Verify seller's email
-     *
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function verifyEmail(Request $request)
-    {
-        try {
-            $validator = Validator::make($request->all(), [
-                'email' => 'required|email|unique:users,email,' . auth()->id(),
-            ]);
 
-            if ($validator->fails()) {
-                return $this->respondWithError($validator->errors()->first(), 422);
-            }
-
-            // Get or create seller record
-            $seller = $this->getOrCreateSeller(auth()->id());
-
-            // Update user's email if different
-            $user = auth()->user();
-            if ($user->email !== $request->email) {
-                $user->email = $request->email;
-                $user->save();
-            }
-
-            // Mark email as verified
-            $user->email_verified_at = now();
-            $user->save();
-
-            // Mark seller's email as verified
-            $seller->email_verified_at = now();
-            $seller->save();
-
-            // Calculate progress
-            $progress = $this->calculateProgress($seller);
-
-            return $this->respondWithSuccess('Email verification completed', 200, [
-                'progress' => $progress,
-                'next_steps' => $this->getNextSteps($seller)
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Email verification error', [
-                'error' => $e->getMessage(),
-                'user_id' => auth()->id()
-            ]);
-
-            return $this->respondWithError('Error verifying email: ' . $e->getMessage(), 500);
-        }
-    }
 
     /**
      * Verify seller's phone number
