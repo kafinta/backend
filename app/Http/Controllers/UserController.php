@@ -15,16 +15,19 @@ use App\Models\Role;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\RateLimiter;
 use App\Services\FileService;
+use App\Services\EmailService;
 
 
 class UserController extends ImprovedController
 {
     use ReferenceGeneratorTrait;
     protected $fileService;
+    protected $emailService;
 
-    public function __construct(FileService $fileService)
+    public function __construct(FileService $fileService, EmailService $emailService)
     {
         $this->fileService = $fileService;
+        $this->emailService = $emailService;
     }
 
     public function register(Request $request)
@@ -58,13 +61,23 @@ class UserController extends ImprovedController
                 $user->roles()->attach($defaultRole->id);
             }
 
+            // Generate verification token and send email
+            $tokenData = $this->emailService->generateVerificationToken($user);
+            $emailSent = $this->emailService->sendVerificationEmail(
+                $user,
+                $tokenData['verification_url'],
+                $tokenData['verification_code']
+            );
+
             DB::commit();
 
             $token = $user->createToken('auth_token')->plainTextToken;
             return $this->respondWithSuccess("Account Created Successfully", 200, [
                 'user' => new UserAccountResource($user),
                 'auth_token' => $token,
-                'token_type' => 'Bearer'
+                'token_type' => 'Bearer',
+                'email_verification_required' => true,
+                'verification_email_sent' => $emailSent,
             ]);
 
         } catch (\Exception $e) {
@@ -306,6 +319,140 @@ class UserController extends ImprovedController
                 'error' => $e->getMessage()
             ]);
             return $this->respondWithError('Error retrieving user roles: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Resend verification email
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function resendVerificationEmail(Request $request)
+    {
+        try {
+            $user = auth()->user();
+
+            // Check if email is already verified
+            if ($user->email_verified_at) {
+                return $this->respondWithSuccess('Email already verified', 200);
+            }
+
+            // Generate new token and send email
+            $result = $this->emailService->resendVerificationEmail($user);
+
+            if (!$result['success']) {
+                return $this->respondWithError($result['message'], 500);
+            }
+
+            return $this->respondWithSuccess('Verification email sent successfully', 200, [
+                'verification_email_sent' => true,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error resending verification email', [
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage()
+            ]);
+            return $this->respondWithError('Error resending verification email: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Verify email with token
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function verifyEmailToken(Request $request)
+    {
+        try {
+            // Get token from request parameters or route parameter
+            $token = $request->token ?? $request->route('token');
+
+            if (!$token) {
+                return $this->respondWithError('Verification token is required', 400);
+            }
+
+            // Verify the token
+            $result = $this->emailService->verifyToken($token);
+
+            if (!$result['success']) {
+                return $this->respondWithError($result['message'], 400);
+            }
+
+            return $this->respondWithSuccess('Email verified successfully', 200, [
+                'email_verified' => true
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Email token verification error', [
+                'error' => $e->getMessage(),
+                'token' => $request->token ?? $request->route('token') ?? null
+            ]);
+
+            return $this->respondWithError('Error verifying email token: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Check email verification status
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function checkEmailVerification()
+    {
+        try {
+            $user = auth()->user();
+
+            return $this->respondWithSuccess('Email verification status retrieved', 200, [
+                'email_verified' => $user->email_verified_at !== null,
+                'email' => $user->email
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error checking email verification status', [
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage()
+            ]);
+
+            return $this->respondWithError('Error checking email verification status: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Verify email with verification code
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function verifyEmailCode(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'code' => 'required|string|size:6',
+                'email' => 'required|email'
+            ]);
+
+            if ($validator->fails()) {
+                return $this->respondWithError($validator->errors()->first(), 422);
+            }
+
+            // Verify the code
+            $result = $this->emailService->verifyCode($request->code, $request->email);
+
+            if (!$result['success']) {
+                return $this->respondWithError($result['message'], 400);
+            }
+
+            return $this->respondWithSuccess('Email verified successfully', 200, [
+                'email_verified' => true
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Email code verification error', [
+                'error' => $e->getMessage(),
+                'code' => $request->code ?? null,
+                'email' => $request->email ?? null
+            ]);
+
+            return $this->respondWithError('Error verifying email code: ' . $e->getMessage(), 500);
         }
     }
 }
