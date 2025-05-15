@@ -17,5 +17,15 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::post('/user/auth/login', 'UserController@login');
-Route::post('/user/auth/signup', 'UserController@signup');
+// Simulated Emails Interface (Development Only)
+Route::get('/simulated-emails', function () {
+    return view('simulated-emails.index');
+})->name('simulated-emails.web');
+
+// Verification Tokens Interface (Development Only)
+Route::get('/verification-tokens', function () {
+    return view('verification-tokens.index');
+})->name('verification-tokens.web');
+
+Route::post('/user/auth/login', [App\Http\Controllers\UserController::class, 'login']);
+Route::post('/user/auth/signup', [App\Http\Controllers\UserController::class, 'register']);
