@@ -103,61 +103,82 @@
 </head>
 <body>
     <h1>Verification Tokens</h1>
-    
+
     <div class="actions">
         <button id="refresh-btn">Refresh</button>
         <button id="clear-all-btn" class="danger">Clear All Tokens</button>
     </div>
-    
+
     <div id="token-list" class="token-list">
         <div class="no-tokens">Loading tokens...</div>
     </div>
-    
+
     <script>
+        // Initial tokens data from server
+        const initialTokens = @if(isset($initialTokens)) {!! $initialTokens !!} @else null @endif;
+
         // Function to fetch and display tokens
         function fetchTokens() {
+            // If we have initial data, use it
+            if (initialTokens) {
+                displayTokens(initialTokens);
+                return;
+            }
+
+            // Otherwise fetch from API
             fetch('/api/verification-tokens')
                 .then(response => response.json())
                 .then(data => {
-                    const tokenList = document.getElementById('token-list');
-                    tokenList.innerHTML = '';
-                    
-                    if (data.success && data.data.tokens.length > 0) {
-                        data.data.tokens.forEach(token => {
-                            const tokenItem = document.createElement('div');
-                            tokenItem.className = 'token-item';
-                            
-                            tokenItem.innerHTML = `
-                                <h3>Token for ${token.username} (User #${token.user_id})</h3>
-                                <p><strong>Email:</strong> ${token.email}</p>
-                                <p><strong>Token:</strong> <span class="token-value">${token.token}</span></p>
-                                <p><strong>Created:</strong> ${token.created_at}</p>
-                                <p><strong>Expires:</strong> ${token.expires_at} ${token.is_expired ? '<span class="expired">(EXPIRED)</span>' : ''}</p>
-                                <a href="${token.verification_url}" target="_blank">Verify Email</a>
-                                <button class="delete-btn" data-token="${token.token}">Delete</button>
-                            `;
-                            
-                            tokenList.appendChild(tokenItem);
-                        });
-                        
-                        // Add event listeners to delete buttons
-                        document.querySelectorAll('.delete-btn').forEach(btn => {
-                            btn.addEventListener('click', function() {
-                                const token = this.getAttribute('data-token');
-                                deleteToken(token);
-                            });
-                        });
-                    } else {
-                        tokenList.innerHTML = '<div class="no-tokens">No verification tokens found</div>';
-                    }
+                    displayTokens(data);
                 })
                 .catch(error => {
                     console.error('Error fetching tokens:', error);
-                    document.getElementById('token-list').innerHTML = 
+                    document.getElementById('token-list').innerHTML =
                         '<div class="no-tokens">Error loading tokens</div>';
                 });
         }
-        
+
+        // Function to display tokens
+        function displayTokens(data) {
+            const tokenList = document.getElementById('token-list');
+            tokenList.innerHTML = '';
+
+            if (data.success && data.data.tokens.length > 0) {
+                data.data.tokens.forEach(token => {
+                    const tokenItem = document.createElement('div');
+                    tokenItem.className = 'token-item';
+
+                    // Add verification code if available
+                    const verificationCode = token.verification_code
+                        ? `<p><strong>Verification Code:</strong> <span class="token-value">${token.verification_code}</span></p>`
+                        : '';
+
+                    tokenItem.innerHTML = `
+                        <h3>Token for ${token.username} (User #${token.user_id})</h3>
+                        <p><strong>Email:</strong> ${token.email}</p>
+                        <p><strong>Token:</strong> <span class="token-value">${token.token}</span></p>
+                        ${verificationCode}
+                        <p><strong>Created:</strong> ${token.created_at}</p>
+                        <p><strong>Expires:</strong> ${token.expires_at} ${token.is_expired ? '<span class="expired">(EXPIRED)</span>' : ''}</p>
+                        <a href="${token.verification_url}" target="_blank">Verify Email</a>
+                        <button class="delete-btn" data-token="${token.token}">Delete</button>
+                    `;
+
+                    tokenList.appendChild(tokenItem);
+                });
+
+                // Add event listeners to delete buttons
+                document.querySelectorAll('.delete-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const token = this.getAttribute('data-token');
+                        deleteToken(token);
+                    });
+                });
+            } else {
+                tokenList.innerHTML = '<div class="no-tokens">No verification tokens found</div>';
+            }
+        }
+
         // Function to delete a specific token
         function deleteToken(token) {
             if (confirm(`Are you sure you want to delete this token?`)) {
@@ -178,7 +199,7 @@
                 });
             }
         }
-        
+
         // Function to clear all tokens
         function clearAllTokens() {
             if (confirm('Are you sure you want to delete all verification tokens?')) {
@@ -199,11 +220,11 @@
                 });
             }
         }
-        
+
         // Add event listeners
         document.getElementById('refresh-btn').addEventListener('click', fetchTokens);
         document.getElementById('clear-all-btn').addEventListener('click', clearAllTokens);
-        
+
         // Fetch tokens on page load
         document.addEventListener('DOMContentLoaded', fetchTokens);
     </script>
