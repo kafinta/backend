@@ -182,6 +182,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('cart')->group(function () {
         // Route to transfer guest cart to user cart after login
         Route::post('/transfer', [CartController::class, 'transferGuestCart'])->name('cart.transfer');
+        // Automatic cart transfer after login (no parameters needed)
+        Route::get('/transfer-after-login', [CartController::class, 'transferGuestCart'])->name('cart.transfer-after-login');
     });
 
     // Protected Checkout Routes (require authentication)
