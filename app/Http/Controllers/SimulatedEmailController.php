@@ -18,15 +18,17 @@ class SimulatedEmailController extends ImprovedController
     {
         try {
             $emailsDir = storage_path('simulated-emails');
-            
+
             // Create directory if it doesn't exist
             if (!File::exists($emailsDir)) {
                 File::makeDirectory($emailsDir, 0755, true);
+                \Log::info('Created simulated-emails directory', ['path' => $emailsDir]);
             }
-            
+
             // Get all email files
             $files = File::files($emailsDir);
-            
+            \Log::info('Found simulated email files', ['count' => count($files)]);
+
             $emails = [];
             foreach ($files as $file) {
                 $emails[] = [
@@ -36,20 +38,27 @@ class SimulatedEmailController extends ImprovedController
                     'url' => route('simulated-emails.show', ['filename' => $file->getFilename()]),
                 ];
             }
-            
+
             // Sort by creation time (newest first)
             usort($emails, function($a, $b) {
                 return strtotime($b['created_at']) - strtotime($a['created_at']);
             });
-            
+
             return $this->respondWithSuccess('Simulated emails retrieved successfully', 200, [
                 'emails' => $emails,
+                'directory' => $emailsDir,
+                'directory_exists' => File::exists($emailsDir),
+                'email_count' => count($emails),
             ]);
         } catch (\Exception $e) {
+            \Log::error('Error retrieving simulated emails', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return $this->respondWithError('Error retrieving simulated emails: ' . $e->getMessage(), 500);
         }
     }
-    
+
     /**
      * Show a specific simulated email
      *
@@ -60,13 +69,13 @@ class SimulatedEmailController extends ImprovedController
     {
         try {
             $filepath = storage_path('simulated-emails/' . $filename);
-            
+
             if (!File::exists($filepath)) {
                 return $this->respondWithError('Email not found', 404);
             }
-            
+
             $content = File::get($filepath);
-            
+
             return Response::make($content, 200, [
                 'Content-Type' => 'text/html',
             ]);
@@ -74,7 +83,7 @@ class SimulatedEmailController extends ImprovedController
             return $this->respondWithError('Error retrieving email: ' . $e->getMessage(), 500);
         }
     }
-    
+
     /**
      * Delete a specific simulated email
      *
@@ -85,19 +94,19 @@ class SimulatedEmailController extends ImprovedController
     {
         try {
             $filepath = storage_path('simulated-emails/' . $filename);
-            
+
             if (!File::exists($filepath)) {
                 return $this->respondWithError('Email not found', 404);
             }
-            
+
             File::delete($filepath);
-            
+
             return $this->respondWithSuccess('Email deleted successfully', 200);
         } catch (\Exception $e) {
             return $this->respondWithError('Error deleting email: ' . $e->getMessage(), 500);
         }
     }
-    
+
     /**
      * Delete all simulated emails
      *
@@ -107,17 +116,17 @@ class SimulatedEmailController extends ImprovedController
     {
         try {
             $emailsDir = storage_path('simulated-emails');
-            
+
             if (!File::exists($emailsDir)) {
                 return $this->respondWithSuccess('No emails to delete', 200);
             }
-            
+
             $files = File::files($emailsDir);
-            
+
             foreach ($files as $file) {
                 File::delete($file->getPathname());
             }
-            
+
             return $this->respondWithSuccess('All emails deleted successfully', 200);
         } catch (\Exception $e) {
             return $this->respondWithError('Error deleting emails: ' . $e->getMessage(), 500);
