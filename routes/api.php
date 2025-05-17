@@ -49,12 +49,67 @@ Route::prefix('simulated-emails')->group(function () {
     Route::delete('/', [SimulatedEmailController::class, 'destroyAll'])->name('simulated-emails.destroy-all');
 });
 
+// Debug route for simulated emails
+Route::get('/debug/simulated-emails', function() {
+    $emailsDir = storage_path('simulated-emails');
+    $files = \Illuminate\Support\Facades\File::files($emailsDir);
+
+    $emails = [];
+    foreach ($files as $file) {
+        $emails[] = [
+            'filename' => $file->getFilename(),
+            'size' => $file->getSize(),
+            'created_at' => date('Y-m-d H:i:s', $file->getMTime()),
+            'content' => \Illuminate\Support\Facades\File::get($file->getPathname()),
+        ];
+    }
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Debug: Simulated emails retrieved directly',
+        'data' => [
+            'emails_directory' => $emailsDir,
+            'directory_exists' => \Illuminate\Support\Facades\File::exists($emailsDir),
+            'email_count' => count($emails),
+            'emails' => $emails,
+        ]
+    ]);
+});
+
 // Verification Token Routes (Development Only)
 Route::prefix('verification-tokens')->group(function () {
     Route::get('/', [VerificationTokenController::class, 'index'])->name('verification-tokens.index');
     Route::get('/{token}', [VerificationTokenController::class, 'show'])->name('verification-tokens.show');
     Route::delete('/{token}', [VerificationTokenController::class, 'destroy'])->name('verification-tokens.destroy');
     Route::delete('/', [VerificationTokenController::class, 'destroyAll'])->name('verification-tokens.destroy-all');
+});
+
+// Debug route for verification tokens
+Route::get('/debug/verification-tokens', function() {
+    $tokens = \App\Models\EmailVerificationToken::with('user')->get();
+
+    $tokenData = $tokens->map(function ($token) {
+        return [
+            'id' => $token->id,
+            'user_id' => $token->user_id,
+            'username' => $token->user->username,
+            'email' => $token->email,
+            'token' => $token->token,
+            'verification_code' => $token->verification_code,
+            'created_at' => $token->created_at->format('Y-m-d H:i:s'),
+            'expires_at' => $token->expires_at->format('Y-m-d H:i:s'),
+            'is_expired' => $token->isExpired(),
+        ];
+    });
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Debug: Verification tokens retrieved directly',
+        'data' => [
+            'token_count' => $tokens->count(),
+            'tokens' => $tokenData,
+        ]
+    ]);
 });
 
 // Public Resource Routes
