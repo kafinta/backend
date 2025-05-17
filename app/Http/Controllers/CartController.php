@@ -261,12 +261,11 @@ class CartController extends ImprovedController
     public function transferGuestCart(Request $request)
     {
         try {
-            $validator = Validator::make($request->all(), [
-                'session_id' => 'required|string'
-            ]);
+            // Get session ID from cookie or request
+            $sessionId = $this->extractSessionId($request);
 
-            if ($validator->fails()) {
-                return $this->respondWithError($validator->errors(), 422);
+            if (!$sessionId) {
+                return $this->respondWithSuccess('No guest cart found', 200);
             }
 
             if (!Auth::check()) {
@@ -274,7 +273,7 @@ class CartController extends ImprovedController
             }
 
             $userCart = $this->cartService->transferGuestCart(
-                $request->input('session_id'),
+                $sessionId,
                 Auth::id()
             );
 
@@ -285,9 +284,15 @@ class CartController extends ImprovedController
             // Get updated cart contents
             $cartContents = $this->cartService->getCartContents();
 
-            return $this->respondWithSuccess('Guest cart transferred successfully', 200, [
+            // Create response
+            $response = $this->respondWithSuccess('Guest cart transferred successfully', 200, [
                 'cart' => $cartContents
             ]);
+
+            // Clear the cart_session_id cookie
+            $response->cookie('cart_session_id', '', -1);
+
+            return $response;
         } catch (\Exception $e) {
             return $this->respondWithError('Error transferring guest cart: ' . $e->getMessage(), 500);
         }
