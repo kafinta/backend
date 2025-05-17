@@ -73,63 +73,78 @@
 </head>
 <body>
     <h1>Simulated Emails</h1>
-    
+
     <div class="actions">
         <button id="refresh-btn">Refresh</button>
         <button id="clear-all-btn">Clear All Emails</button>
     </div>
-    
+
     <div id="email-list" class="email-list">
         <div class="no-emails">Loading emails...</div>
     </div>
-    
+
     <script>
+        // Initial emails data from server
+        const initialEmails = @if(isset($initialEmails)) {!! $initialEmails !!} @else null @endif;
+
         // Function to fetch and display emails
         function fetchEmails() {
+            // If we have initial data, use it
+            if (initialEmails) {
+                displayEmails(initialEmails);
+                return;
+            }
+
+            // Otherwise fetch from API
             fetch('/api/simulated-emails')
                 .then(response => response.json())
                 .then(data => {
-                    const emailList = document.getElementById('email-list');
-                    emailList.innerHTML = '';
-                    
-                    if (data.success && data.data.emails.length > 0) {
-                        data.data.emails.forEach(email => {
-                            const emailItem = document.createElement('div');
-                            emailItem.className = 'email-item';
-                            
-                            // Extract user ID and timestamp from filename
-                            const filenameParts = email.filename.split('_');
-                            const userId = filenameParts[1] || 'Unknown';
-                            
-                            emailItem.innerHTML = `
-                                <h3>Email to User #${userId}</h3>
-                                <p><strong>Created:</strong> ${email.created_at}</p>
-                                <p><strong>Filename:</strong> ${email.filename}</p>
-                                <a href="${email.url}" target="_blank">View Email</a>
-                                <button class="delete-btn" data-filename="${email.filename}">Delete</button>
-                            `;
-                            
-                            emailList.appendChild(emailItem);
-                        });
-                        
-                        // Add event listeners to delete buttons
-                        document.querySelectorAll('.delete-btn').forEach(btn => {
-                            btn.addEventListener('click', function() {
-                                const filename = this.getAttribute('data-filename');
-                                deleteEmail(filename);
-                            });
-                        });
-                    } else {
-                        emailList.innerHTML = '<div class="no-emails">No simulated emails found</div>';
-                    }
+                    displayEmails(data);
                 })
                 .catch(error => {
                     console.error('Error fetching emails:', error);
-                    document.getElementById('email-list').innerHTML = 
+                    document.getElementById('email-list').innerHTML =
                         '<div class="no-emails">Error loading emails</div>';
                 });
         }
-        
+
+        // Function to display emails
+        function displayEmails(data) {
+            const emailList = document.getElementById('email-list');
+            emailList.innerHTML = '';
+
+            if (data.success && data.data.emails.length > 0) {
+                data.data.emails.forEach(email => {
+                    const emailItem = document.createElement('div');
+                    emailItem.className = 'email-item';
+
+                    // Extract user ID and timestamp from filename
+                    const filenameParts = email.filename.split('_');
+                    const userId = filenameParts[1] || 'Unknown';
+
+                    emailItem.innerHTML = `
+                        <h3>Email to User #${userId}</h3>
+                        <p><strong>Created:</strong> ${email.created_at}</p>
+                        <p><strong>Filename:</strong> ${email.filename}</p>
+                        <a href="${email.url}" target="_blank">View Email</a>
+                        <button class="delete-btn" data-filename="${email.filename}">Delete</button>
+                    `;
+
+                    emailList.appendChild(emailItem);
+                });
+
+                // Add event listeners to delete buttons
+                document.querySelectorAll('.delete-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const filename = this.getAttribute('data-filename');
+                        deleteEmail(filename);
+                    });
+                });
+            } else {
+                emailList.innerHTML = '<div class="no-emails">No simulated emails found</div>';
+            }
+        }
+
         // Function to delete a specific email
         function deleteEmail(filename) {
             if (confirm(`Are you sure you want to delete the email "${filename}"?`)) {
@@ -150,7 +165,7 @@
                 });
             }
         }
-        
+
         // Function to clear all emails
         function clearAllEmails() {
             if (confirm('Are you sure you want to delete all simulated emails?')) {
@@ -171,11 +186,11 @@
                 });
             }
         }
-        
+
         // Add event listeners
         document.getElementById('refresh-btn').addEventListener('click', fetchEmails);
         document.getElementById('clear-all-btn').addEventListener('click', clearAllEmails);
-        
+
         // Fetch emails on page load
         document.addEventListener('DOMContentLoaded', fetchEmails);
     </script>
