@@ -19,29 +19,38 @@ class VerificationTokenController extends ImprovedController
         try {
             $tokens = EmailVerificationToken::with('user')
                 ->orderBy('created_at', 'desc')
-                ->get()
-                ->map(function ($token) {
-                    return [
-                        'id' => $token->id,
-                        'user_id' => $token->user_id,
-                        'username' => $token->user->username,
-                        'email' => $token->email,
-                        'token' => $token->token,
-                        'verification_url' => route('verify.email', ['token' => $token->token]),
-                        'created_at' => $token->created_at->format('Y-m-d H:i:s'),
-                        'expires_at' => $token->expires_at->format('Y-m-d H:i:s'),
-                        'is_expired' => $token->isExpired(),
-                    ];
-                });
-            
+                ->get();
+
+            \Log::info('Found verification tokens', ['count' => $tokens->count()]);
+
+            $tokenData = $tokens->map(function ($token) {
+                return [
+                    'id' => $token->id,
+                    'user_id' => $token->user_id,
+                    'username' => $token->user->username,
+                    'email' => $token->email,
+                    'token' => $token->token,
+                    'verification_code' => $token->verification_code,
+                    'verification_url' => route('verify.email', ['token' => $token->token]),
+                    'created_at' => $token->created_at->format('Y-m-d H:i:s'),
+                    'expires_at' => $token->expires_at->format('Y-m-d H:i:s'),
+                    'is_expired' => $token->isExpired(),
+                ];
+            });
+
             return $this->respondWithSuccess('Verification tokens retrieved successfully', 200, [
-                'tokens' => $tokens,
+                'tokens' => $tokenData,
+                'token_count' => $tokens->count(),
             ]);
         } catch (\Exception $e) {
+            \Log::error('Error retrieving verification tokens', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return $this->respondWithError('Error retrieving verification tokens: ' . $e->getMessage(), 500);
         }
     }
-    
+
     /**
      * Get a specific verification token
      *
@@ -52,11 +61,11 @@ class VerificationTokenController extends ImprovedController
     {
         try {
             $verificationToken = EmailVerificationToken::where('token', $token)->first();
-            
+
             if (!$verificationToken) {
                 return $this->respondWithError('Verification token not found', 404);
             }
-            
+
             $tokenData = [
                 'id' => $verificationToken->id,
                 'user_id' => $verificationToken->user_id,
@@ -68,7 +77,7 @@ class VerificationTokenController extends ImprovedController
                 'expires_at' => $verificationToken->expires_at->format('Y-m-d H:i:s'),
                 'is_expired' => $verificationToken->isExpired(),
             ];
-            
+
             return $this->respondWithSuccess('Verification token retrieved successfully', 200, [
                 'token' => $tokenData,
             ]);
@@ -76,7 +85,7 @@ class VerificationTokenController extends ImprovedController
             return $this->respondWithError('Error retrieving verification token: ' . $e->getMessage(), 500);
         }
     }
-    
+
     /**
      * Delete a specific verification token
      *
@@ -87,19 +96,19 @@ class VerificationTokenController extends ImprovedController
     {
         try {
             $verificationToken = EmailVerificationToken::where('token', $token)->first();
-            
+
             if (!$verificationToken) {
                 return $this->respondWithError('Verification token not found', 404);
             }
-            
+
             $verificationToken->delete();
-            
+
             return $this->respondWithSuccess('Verification token deleted successfully', 200);
         } catch (\Exception $e) {
             return $this->respondWithError('Error deleting verification token: ' . $e->getMessage(), 500);
         }
     }
-    
+
     /**
      * Delete all verification tokens
      *
@@ -109,7 +118,7 @@ class VerificationTokenController extends ImprovedController
     {
         try {
             DB::table('email_verification_tokens')->delete();
-            
+
             return $this->respondWithSuccess('All verification tokens deleted successfully', 200);
         } catch (\Exception $e) {
             return $this->respondWithError('Error deleting verification tokens: ' . $e->getMessage(), 500);
