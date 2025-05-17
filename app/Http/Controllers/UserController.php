@@ -456,16 +456,15 @@ class UserController extends ImprovedController
     {
         try {
             $validator = Validator::make($request->all(), [
-                'code' => 'required|string|size:6',
-                'email' => 'required|email'
+                'code' => 'required|string|size:6'
             ]);
 
             if ($validator->fails()) {
                 return $this->respondWithError($validator->errors()->first(), 422);
             }
 
-            // Verify the code
-            $result = $this->emailService->verifyCode($request->code, $request->email);
+            // Verify the code without requiring email
+            $result = $this->emailService->verifyCodeOnly($request->code);
 
             if (!$result['success']) {
                 return $this->respondWithError($result['message'], 400);
@@ -477,8 +476,7 @@ class UserController extends ImprovedController
         } catch (\Exception $e) {
             Log::error('Email code verification error', [
                 'error' => $e->getMessage(),
-                'code' => $request->code ?? null,
-                'email' => $request->email ?? null
+                'code' => $request->code ?? null
             ]);
 
             return $this->respondWithError('Error verifying email code: ' . $e->getMessage(), 500);
