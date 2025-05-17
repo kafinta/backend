@@ -71,14 +71,20 @@ class UserController extends ImprovedController
 
             DB::commit();
 
-            $token = $user->createToken('auth_token')->plainTextToken;
-            return $this->respondWithSuccess("Account Created Successfully", 200, [
+            // Create a token but don't return it (for backward compatibility)
+            $user->createToken('auth_token')->plainTextToken;
+
+            // Create a response with cookie
+            $response = $this->respondWithSuccess("Account Created Successfully", 200, [
                 'user' => new UserAccountResource($user),
-                'auth_token' => $token,
-                'token_type' => 'Bearer',
                 'email_verification_required' => true,
                 'verification_email_sent' => $emailSent,
             ]);
+
+            // Set cookie for authentication
+            $response->cookie('laravel_session', session()->getId(), 60 * 24, null, null, true, true, false, 'lax');
+
+            return $response;
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -117,14 +123,23 @@ class UserController extends ImprovedController
             RateLimiter::clear($throttleKey);
 
 
+            // Create a token but don't return it (for backward compatibility)
             $tokenExpiration = $request->remember_me ? now()->addDays(30) : now()->addDay();
-            $token = $user->createToken('auth_token', ['*'], $tokenExpiration)->plainTextToken;
+            $user->createToken('auth_token', ['*'], $tokenExpiration)->plainTextToken;
 
-            return $this->respondWithSuccess("Login successful", 200, [
+            // Set session lifetime based on remember_me
+            $minutes = $request->remember_me ? 60 * 24 * 30 : 60 * 24;
+            config(['session.lifetime' => $minutes]);
+
+            // Create a response with cookie
+            $response = $this->respondWithSuccess("Login successful", 200, [
                 'user' => new UserAccountResource($user),
-                'auth_token' => $token,
-                'token_type' => 'Bearer'
             ]);
+
+            // Set cookie for authentication
+            $response->cookie('laravel_session', session()->getId(), $minutes, null, null, true, true, false, 'lax');
+
+            return $response;
 
         } catch (\Exception $e) {
             return $this->respondWithError($e->getMessage(), 500);
@@ -190,8 +205,22 @@ class UserController extends ImprovedController
 
     public function logout(Request $request)
     {
+        // Revoke the token that was used to authenticate the current request
         $request->user()->currentAccessToken()->delete();
-        return $this->respondWithSuccess("Logout successful", 200);
+
+        // Invalidate the session
+        $request->session()->invalidate();
+
+        // Regenerate the CSRF token
+        $request->session()->regenerateToken();
+
+        // Create a response
+        $response = $this->respondWithSuccess("Logout successful", 200);
+
+        // Clear the cookie
+        $response->cookie('laravel_session', '', -1);
+
+        return $response;
     }
 
     public function validateUserInfo()
