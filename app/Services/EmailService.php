@@ -335,6 +335,69 @@ HTML;
     }
 
     /**
+     * Verify a user's email using only the verification code
+     * This is a more user-friendly approach that doesn't require the email
+     *
+     * @param string $code
+     * @return array
+     */
+    public function verifyCodeOnly(string $code): array
+    {
+        // Find the token using just the verification code
+        // Since verification codes are randomly generated 6-digit numbers,
+        // they should be unique enough for the short time they're valid
+        $verificationToken = EmailVerificationToken::where('verification_code', $code)
+            ->latest()
+            ->first();
+
+        // Check if token exists
+        if (!$verificationToken) {
+            return [
+                'success' => false,
+                'message' => 'Invalid verification code',
+            ];
+        }
+
+        // Check if token is expired
+        if ($verificationToken->isExpired()) {
+            // Delete the email file for expired token
+            $this->deleteEmailFile($verificationToken);
+
+            // Delete the token
+            $verificationToken->delete();
+
+            return [
+                'success' => false,
+                'message' => 'Verification code has expired',
+            ];
+        }
+
+        // Get the user
+        $user = $verificationToken->user;
+
+        // Update user's email if it's different
+        if ($user->email !== $verificationToken->email) {
+            $user->email = $verificationToken->email;
+        }
+
+        // Mark email as verified
+        $user->email_verified_at = now();
+        $user->save();
+
+        // Delete the email file
+        $this->deleteEmailFile($verificationToken);
+
+        // Delete the token
+        $verificationToken->delete();
+
+        return [
+            'success' => true,
+            'message' => 'Email verified successfully',
+            'user' => $user,
+        ];
+    }
+
+    /**
      * Resend verification email
      *
      * @param User $user
