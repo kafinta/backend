@@ -74,15 +74,12 @@ class UserController extends ImprovedController
             // Create a token but don't return it (for backward compatibility)
             $user->createToken('auth_token')->plainTextToken;
 
-            // Create a response with cookie
+            // Create a response
             $response = $this->respondWithSuccess("Account Created Successfully", 200, [
                 'user' => new UserAccountResource($user),
                 'email_verification_required' => true,
                 'verification_email_sent' => $emailSent,
             ]);
-
-            // Set cookie for authentication
-            $response->cookie('laravel_session', session()->getId(), 60 * 24, null, null, true, true, false, 'lax');
 
             return $response;
 
@@ -131,13 +128,10 @@ class UserController extends ImprovedController
             $minutes = $request->remember_me ? 60 * 24 * 30 : 60 * 24;
             config(['session.lifetime' => $minutes]);
 
-            // Create a response with cookie
+            // Create a response
             $response = $this->respondWithSuccess("Login successful", 200, [
                 'user' => new UserAccountResource($user),
             ]);
-
-            // Set cookie for authentication
-            $response->cookie('laravel_session', session()->getId(), $minutes, null, null, true, true, false, 'lax');
 
             return $response;
 
@@ -216,9 +210,6 @@ class UserController extends ImprovedController
 
         // Create a response
         $response = $this->respondWithSuccess("Logout successful", 200);
-
-        // Clear the cookie
-        $response->cookie('laravel_session', '', -1);
 
         return $response;
     }
