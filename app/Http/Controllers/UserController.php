@@ -71,14 +71,21 @@ class UserController extends ImprovedController
 
             DB::commit();
 
-            // Create a token but don't return it (for backward compatibility)
-            $user->createToken('auth_token')->plainTextToken;
+            // Start a new session and regenerate the ID
+            request()->session()->regenerate();
+
+            // Log the user in using the web guard explicitly
+            Auth::guard('web')->login($user);
+
+            // Create a token for API access
+            $token = $user->createToken('auth_token')->plainTextToken;
 
             // Create a response
             $response = $this->respondWithSuccess("Account Created Successfully", 200, [
                 'user' => new UserAccountResource($user),
                 'email_verification_required' => true,
                 'verification_email_sent' => $emailSent,
+                'token' => $token, // Include token in response for API access
             ]);
 
             return $response;
@@ -120,17 +127,24 @@ class UserController extends ImprovedController
             RateLimiter::clear($throttleKey);
 
 
-            // Create a token but don't return it (for backward compatibility)
-            $tokenExpiration = $request->remember_me ? now()->addDays(30) : now()->addDay();
-            $user->createToken('auth_token', ['*'], $tokenExpiration)->plainTextToken;
-
             // Set session lifetime based on remember_me
             $minutes = $request->remember_me ? 60 * 24 * 30 : 60 * 24;
             config(['session.lifetime' => $minutes]);
 
+            // Start a new session and regenerate the ID
+            $request->session()->regenerate();
+
+            // Log the user in using the web guard explicitly
+            Auth::guard('web')->login($user, $request->remember_me);
+
+            // Create a token for API access
+            $tokenExpiration = $request->remember_me ? now()->addDays(30) : now()->addDay();
+            $token = $user->createToken('auth_token', ['*'], $tokenExpiration)->plainTextToken;
+
             // Create a response
             $response = $this->respondWithSuccess("Login successful", 200, [
                 'user' => new UserAccountResource($user),
+                'token' => $token, // Include token in response for API access
             ]);
 
             return $response;
@@ -199,19 +213,33 @@ class UserController extends ImprovedController
 
     public function logout(Request $request)
     {
-        // Revoke the token that was used to authenticate the current request
-        $request->user()->currentAccessToken()->delete();
+        try {
+            // Revoke all tokens if using token-based auth
+            if ($request->user()) {
+                $request->user()->tokens()->delete();
+            }
 
-        // Invalidate the session
-        $request->session()->invalidate();
+            // Log the user out of the session
+            Auth::guard('web')->logout();
 
-        // Regenerate the CSRF token
-        $request->session()->regenerateToken();
+            // Invalidate the session
+            $request->session()->invalidate();
 
-        // Create a response
-        $response = $this->respondWithSuccess("Logout successful", 200);
+            // Regenerate the CSRF token
+            $request->session()->regenerateToken();
 
-        return $response;
+            // Create a response
+            $response = $this->respondWithSuccess("Logout successful", 200);
+
+            return $response;
+        } catch (\Exception $e) {
+            Log::error('Logout error', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return $this->respondWithError('Error during logout: ' . $e->getMessage(), 500);
+        }
     }
 
     public function validateUserInfo()
