@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\SellerController;
@@ -30,7 +31,7 @@ Route::middleware(['throttle:6,1'])->prefix('user')->group(function () {
     Route::post('/signup', [UserController::class, 'register']);
 
     // Protected routes
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum,web'])->group(function () {
         Route::post('/resend-verification-email', [UserController::class, 'resendVerificationEmail']);
         Route::get('/email-verification-status', [UserController::class, 'checkEmailVerification']);
     });
@@ -112,6 +113,42 @@ Route::get('/debug/verification-tokens', function() {
     ]);
 });
 
+// Debug route for auth testing
+Route::get('/debug/auth-test', function() {
+    return response()->json([
+        'success' => true,
+        'message' => 'Public route accessible',
+        'authenticated' => auth()->check(),
+        'user' => auth()->check() ? auth()->user()->only(['id', 'email', 'username']) : null,
+        'session_id' => session()->getId(),
+        'cookies' => request()->cookies->all(),
+        'auth_driver' => Auth::getDefaultDriver(),
+        'guards' => array_keys(config('auth.guards'))
+    ]);
+});
+
+// Debug route for CSRF token
+Route::get('/debug/csrf', function() {
+    return response()->json([
+        'success' => true,
+        'message' => 'CSRF token generated',
+        'token' => csrf_token(),
+        'session_id' => session()->getId(),
+        'cookies' => request()->cookies->all()
+    ]);
+});
+
+// Protected debug route for auth testing
+Route::middleware(['auth:sanctum,web'])->get('/debug/auth-protected', function() {
+    return response()->json([
+        'success' => true,
+        'message' => 'Protected route accessible - you are authenticated!',
+        'user' => auth()->user()->only(['id', 'email', 'username']),
+        'session_id' => session()->getId(),
+        'cookies' => request()->cookies->all()
+    ]);
+});
+
 // Public Resource Routes
 Route::apiResources([
     'categories' => CategoryController::class,
@@ -147,8 +184,8 @@ Route::prefix('cart')->group(function () {
     Route::delete('/', [CartController::class, 'clearCart'])->name('cart.clear');
 });
 
-// Protected Routes
-Route::middleware('auth:sanctum')->group(function () {
+// Protected Routes - accessible via both session and token auth
+Route::middleware(['auth:sanctum,web'])->group(function () {
     // User Auth Routes
     Route::post('/user/logout', [UserController::class, 'logout']);
 
