@@ -138,6 +138,95 @@ Route::get('/debug/csrf', function() {
     ]);
 });
 
+// Debug route for cookie settings
+Route::get('/debug/cookie-settings', function() {
+    $sessionConfig = config('session');
+    $corsConfig = config('cors');
+    $sanctumConfig = config('sanctum');
+
+    // Clean up sensitive or verbose data
+    unset($sessionConfig['lottery'], $sessionConfig['files']);
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Cookie and CORS settings',
+        'session_config' => $sessionConfig,
+        'cors_config' => $corsConfig,
+        'sanctum_config' => [
+            'stateful_domains' => $sanctumConfig['stateful'],
+            'supports_credentials' => $corsConfig['supports_credentials'],
+            'same_site' => $sessionConfig['same_site'],
+            'secure' => $sessionConfig['secure'],
+            'domain' => $sessionConfig['domain']
+        ],
+        'request_info' => [
+            'origin' => request()->header('Origin'),
+            'host' => request()->getHost(),
+            'port' => request()->getPort(),
+            'url' => request()->url(),
+            'full_url' => request()->fullUrl()
+        ]
+    ]);
+});
+
+// Test route for setting a test cookie
+Route::get('/debug/set-test-cookie', function() {
+    $response = response()->json([
+        'success' => true,
+        'message' => 'Test cookie set',
+        'session_id' => session()->getId(),
+        'cookies' => request()->cookies->all()
+    ]);
+
+    // Set a test cookie with the same settings as the session cookie
+    $response->cookie(
+        'test_cookie',
+        'test_value',
+        60, // 1 hour
+        config('session.path'),
+        config('session.domain'),
+        config('session.secure'),
+        config('session.http_only'),
+        false,
+        config('session.same_site')
+    );
+
+    return $response;
+});
+
+// Test route for setting cookies with different SameSite values
+Route::get('/debug/cookie-test/{same_site?}', function($sameSite = null) {
+    $sameSite = $sameSite ?: config('session.same_site');
+    $secure = request()->query('secure') !== 'false'; // Default to true unless explicitly set to false
+
+    $response = response()->json([
+        'success' => true,
+        'message' => 'Test cookies set with different configurations',
+        'settings' => [
+            'same_site' => $sameSite,
+            'secure' => $secure,
+            'domain' => config('session.domain'),
+            'path' => config('session.path')
+        ],
+        'session_id' => session()->getId()
+    ]);
+
+    // Set cookies with different configurations
+    $response->cookie(
+        'test_cookie_' . $sameSite . ($secure ? '_secure' : '_insecure'),
+        'test_value_' . time(),
+        60, // 1 hour
+        config('session.path'),
+        config('session.domain'),
+        $secure, // Secure flag
+        false, // Not HTTP only so JavaScript can read it
+        false,
+        $sameSite
+    );
+
+    return $response;
+});
+
 // Protected debug route for auth testing
 Route::middleware(['auth:sanctum,web'])->get('/debug/auth-protected', function() {
     return response()->json([
