@@ -11,6 +11,7 @@ class EmailService
 {
     /**
      * Generate a verification token for a user's email
+     * Returns data including a verification URL that points to the frontend application
      *
      * @param User $user
      * @param string|null $email
@@ -44,8 +45,8 @@ class EmailService
             'expires_at' => now()->addHours(24), // Token expires in 24 hours
         ]);
 
-        // Generate verification URL
-        $verificationUrl = route('verify.email', ['token' => $token]);
+        // Generate verification URL pointing to the frontend
+        $verificationUrl = "http://localhost:3000/auth/verify-token?token=" . $token;
 
         return [
             'token' => $token,
@@ -133,7 +134,8 @@ class EmailService
      * Create an HTML email for verification
      *
      * @param User $user
-     * @param string $verificationUrl
+     * @param string $verificationUrl Frontend URL for email verification
+     * @param string|null $verificationCode
      * @return string
      */
     private function createHtmlEmail(User $user, string $verificationUrl, string $verificationCode = null): string
