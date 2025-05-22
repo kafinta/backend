@@ -30,7 +30,7 @@ return new class extends Migration
             $table->string('paypal_email')->nullable();
             $table->timestamp('payment_info_completed_at')->nullable();
             $table->string('phone_number');
-            $table->string('id_type')->comment('passport, national_id, nin')->nullable();
+            $table->string('id_type')->comment('passport, national_id, nin')->nullable()->default(null);
             $table->string('id_number')->nullable();
             $table->string('id_document')->nullable();
             $table->decimal('rating', 3, 2)->nullable();
