@@ -552,7 +552,7 @@ class SellerController extends ImprovedController
             $filename = sprintf(
                 '%s_ID_%s.%s',
                 Str::slug($seller->business_name),
-                $seller->id_type,
+                $seller->id_type ?? 'document',
                 pathinfo($path, PATHINFO_EXTENSION)
             );
 
@@ -584,6 +584,7 @@ class SellerController extends ImprovedController
                 'business_name' => '',
                 'business_address' => '',
                 'phone_number' => '',
+                'id_type' => null,  // Add this with null value
                 'onboarding_progress' => 0
             ]);
         }
