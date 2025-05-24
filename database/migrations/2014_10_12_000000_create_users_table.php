@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('phone_number')->nullable();
             $table->string('profile_picture')->nullable();
             $table->timestamp('email_verified_at')->nullable();
-            $table->string('password');
+            $table->string('password')->nullable();
 
             // OAuth fields
             $table->string('provider')->nullable();
@@ -41,9 +41,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->dropIndex(['provider', 'provider_id']);
-            $table->dropIndex(['provider_id']);
-        });
+        Schema::dropIfExists('users');
     }
 };
