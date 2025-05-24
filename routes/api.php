@@ -18,6 +18,7 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\SellerOrderController;
 use App\Http\Controllers\SimulatedEmailController;
 use App\Http\Controllers\VerificationTokenController;
+use App\Http\Controllers\SocialAuthController;
 
 /*
 |--------------------------------------------------------------------------
@@ -44,6 +45,27 @@ Route::middleware(['throttle:6,1'])->group(function () {
     Route::post('/reset-password/code', [UserController::class, 'resetPasswordWithCode'])->name('password.reset.code');
     Route::post('/verify-reset-token', [UserController::class, 'verifyResetToken'])->name('password.verify.token');
     Route::post('/verify-reset-code', [UserController::class, 'verifyResetCode'])->name('password.verify.code');
+});
+
+// OAuth Routes (Public)
+Route::middleware(['throttle:10,1'])->prefix('auth')->group(function () {
+    // Get supported OAuth providers
+    Route::get('/providers', [SocialAuthController::class, 'getSupportedProviders'])->name('oauth.providers');
+
+    // OAuth redirect (for web-based flow)
+    Route::get('/{provider}/redirect', [SocialAuthController::class, 'redirectToProvider'])->name('oauth.redirect');
+
+    // OAuth callback (for web-based flow)
+    Route::get('/{provider}/callback', [SocialAuthController::class, 'handleProviderCallback'])->name('oauth.callback');
+
+    // OAuth token authentication (for mobile/SPA)
+    Route::post('/oauth/token', [SocialAuthController::class, 'authenticateWithToken'])->name('oauth.token');
+});
+
+// OAuth Protected Routes
+Route::middleware(['auth:sanctum,web'])->prefix('auth')->group(function () {
+    // Unlink OAuth provider
+    Route::post('/unlink-provider', [SocialAuthController::class, 'unlinkProvider'])->name('oauth.unlink');
 });
 
 // Email Verification Routes (Public)
