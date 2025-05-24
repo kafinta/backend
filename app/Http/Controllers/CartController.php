@@ -66,7 +66,7 @@ class CartController extends ImprovedController
 
             // Set a cookie with the session ID for future requests
             if (!Auth::check() && isset($cartContents['session_id'])) {
-                $cookie = cookie('cart_session_id', $cartContents['session_id'], 60 * 24 * 30); // 30 days
+                $cookie = cookie('cart_session_id', $cartContents['session_id'], 60 * 24 * 30, null, null, null, true); // 30 days, HTTP-only
                 return $this->respondWithSuccess('Cart retrieved successfully', 200, $cartContents)->withCookie($cookie);
             }
 
@@ -127,7 +127,7 @@ class CartController extends ImprovedController
 
             // Add session ID cookie for guest users
             if (!Auth::check() && isset($cartContents['session_id'])) {
-                $cookie = cookie('cart_session_id', $cartContents['session_id'], 60 * 24 * 30); // 30 days
+                $cookie = cookie('cart_session_id', $cartContents['session_id'], 60 * 24 * 30, null, null, null, true); // 30 days, HTTP-only
                 $response->withCookie($cookie);
             }
 
@@ -173,7 +173,7 @@ class CartController extends ImprovedController
 
             // Add session ID cookie for guest users
             if (!Auth::check() && isset($cartContents['session_id'])) {
-                $cookie = cookie('cart_session_id', $cartContents['session_id'], 60 * 24 * 30); // 30 days
+                $cookie = cookie('cart_session_id', $cartContents['session_id'], 60 * 24 * 30, null, null, null, true); // 30 days, HTTP-only
                 $response->withCookie($cookie);
             }
 
@@ -208,7 +208,7 @@ class CartController extends ImprovedController
 
             // Add session ID cookie for guest users
             if (!Auth::check() && isset($cartContents['session_id'])) {
-                $cookie = cookie('cart_session_id', $cartContents['session_id'], 60 * 24 * 30); // 30 days
+                $cookie = cookie('cart_session_id', $cartContents['session_id'], 60 * 24 * 30, null, null, null, true); // 30 days, HTTP-only
                 $response->withCookie($cookie);
             }
 
@@ -242,7 +242,7 @@ class CartController extends ImprovedController
 
             // Add session ID cookie for guest users
             if (!Auth::check() && isset($cartContents['session_id'])) {
-                $cookie = cookie('cart_session_id', $cartContents['session_id'], 60 * 24 * 30); // 30 days
+                $cookie = cookie('cart_session_id', $cartContents['session_id'], 60 * 24 * 30, null, null, null, true); // 30 days, HTTP-only
                 $response->withCookie($cookie);
             }
 
@@ -359,3 +359,4 @@ class CartController extends ImprovedController
         }
     }
 }
+
