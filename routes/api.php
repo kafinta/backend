@@ -49,6 +49,48 @@ Route::middleware(['throttle:6,1'])->group(function () {
 
 // OAuth Routes (Public)
 Route::middleware(['throttle:10,1'])->prefix('auth')->group(function () {
+    // Test route to verify Socialite is working
+    Route::get('/test-socialite', function () {
+        try {
+            $providers = ['google', 'facebook', 'apple'];
+            return response()->json([
+                'success' => true,
+                'message' => 'Socialite is working',
+                'data' => [
+                    'socialite_class_exists' => class_exists(\Laravel\Socialite\Facades\Socialite::class),
+                    'supported_providers' => $providers
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Socialite error: ' . $e->getMessage()
+            ]);
+        }
+    });
+
+    // Test route to verify Google OAuth configuration
+    Route::get('/test-google-config', function () {
+        try {
+            $config = config('services.google');
+            return response()->json([
+                'success' => true,
+                'message' => 'Google OAuth configuration',
+                'data' => [
+                    'client_id_set' => !empty($config['client_id']),
+                    'client_secret_set' => !empty($config['client_secret']),
+                    'redirect_uri' => $config['redirect'],
+                    'can_create_driver' => true
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Google OAuth config error: ' . $e->getMessage()
+            ]);
+        }
+    });
+
     // Get supported OAuth providers
     Route::get('/providers', [SocialAuthController::class, 'getSupportedProviders'])->name('oauth.providers');
 
