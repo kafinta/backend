@@ -122,5 +122,37 @@ Route::get('/password-reset-tokens', function () {
     ]);
 })->name('password-reset-tokens.web');
 
+// OAuth Users Interface (Development Only)
+Route::get('/oauth-users', function () {
+    $users = \App\Models\User::whereNotNull('provider')
+        ->with('roles')
+        ->orderBy('created_at', 'desc')
+        ->get()
+        ->map(function ($user) {
+            return [
+                'id' => $user->id,
+                'username' => $user->username,
+                'email' => $user->email,
+                'provider' => $user->provider,
+                'provider_display' => $user->getProviderDisplayName(),
+                'provider_id' => $user->provider_id,
+                'has_password' => $user->hasPassword(),
+                'email_verified_at' => $user->email_verified_at?->format('Y-m-d H:i:s'),
+                'created_at' => $user->created_at->format('Y-m-d H:i:s'),
+                'roles' => $user->roles->pluck('name')->join(', '),
+                'profile_picture' => $user->profile_picture,
+            ];
+        });
+
+    return view('oauth-users.index', [
+        'initialUsers' => json_encode([
+            'success' => true,
+            'data' => [
+                'users' => $users
+            ]
+        ])
+    ]);
+})->name('oauth-users.web');
+
 Route::post('/user/auth/login', [App\Http\Controllers\UserController::class, 'login']);
 Route::post('/user/auth/signup', [App\Http\Controllers\UserController::class, 'register']);
