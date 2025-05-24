@@ -501,4 +501,208 @@ class UserController extends ImprovedController
             return $this->respondWithError('Error verifying email code: ' . $e->getMessage(), 500);
         }
     }
+
+    /**
+     * Send password reset email
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function forgotPassword(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'email' => 'required|email'
+            ]);
+
+            if ($validator->fails()) {
+                return $this->respondWithError($validator->errors()->first(), 422);
+            }
+
+            // Find the user by email
+            $user = User::where('email', $request->email)->first();
+
+            if (!$user) {
+                // For security reasons, don't reveal if email exists or not
+                return $this->respondWithSuccess('If an account with that email exists, a password reset link has been sent.', 200);
+            }
+
+            // Generate password reset token and send email
+            $tokenData = $this->emailService->generatePasswordResetToken($user);
+            $emailSent = $this->emailService->sendPasswordResetEmail(
+                $user,
+                $tokenData['reset_url'],
+                $tokenData['reset_code']
+            );
+
+            if (!$emailSent) {
+                return $this->respondWithError('Failed to send password reset email', 500);
+            }
+
+            return $this->respondWithSuccess('If an account with that email exists, a password reset link has been sent.', 200, [
+                'reset_email_sent' => true,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error sending password reset email', [
+                'email' => $request->email,
+                'error' => $e->getMessage()
+            ]);
+            return $this->respondWithError('Error sending password reset email: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Reset password using token
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function resetPasswordWithToken(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'token' => 'required|string',
+                'password' => 'required|string|min:8|confirmed'
+            ]);
+
+            if ($validator->fails()) {
+                return $this->respondWithError($validator->errors()->first(), 422);
+            }
+
+            // Reset the password using the token
+            $result = $this->emailService->resetPasswordWithToken(
+                $request->token,
+                $request->password
+            );
+
+            if (!$result['success']) {
+                return $this->respondWithError($result['message'], 400);
+            }
+
+            return $this->respondWithSuccess('Password reset successfully', 200, [
+                'password_reset' => true
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error resetting password with token', [
+                'error' => $e->getMessage()
+            ]);
+            return $this->respondWithError('Error resetting password: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Reset password using reset code
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function resetPasswordWithCode(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'code' => 'required|string|size:6',
+                'password' => 'required|string|min:8|confirmed'
+            ]);
+
+            if ($validator->fails()) {
+                return $this->respondWithError($validator->errors()->first(), 422);
+            }
+
+            // Reset the password using the code
+            $result = $this->emailService->resetPasswordWithCode(
+                $request->code,
+                $request->password
+            );
+
+            if (!$result['success']) {
+                return $this->respondWithError($result['message'], 400);
+            }
+
+            return $this->respondWithSuccess('Password reset successfully', 200, [
+                'password_reset' => true
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error resetting password with code', [
+                'error' => $e->getMessage()
+            ]);
+            return $this->respondWithError('Error resetting password: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Verify password reset token (without resetting password)
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function verifyResetToken(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'token' => 'required|string'
+            ]);
+
+            if ($validator->fails()) {
+                return $this->respondWithError($validator->errors()->first(), 422);
+            }
+
+            // Verify the token
+            $result = $this->emailService->verifyPasswordResetToken($request->token);
+
+            if (!$result['success']) {
+                return $this->respondWithError($result['message'], 400);
+            }
+
+            return $this->respondWithSuccess('Valid reset token', 200, [
+                'token_valid' => true,
+                'email' => $result['email']
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error verifying reset token', [
+                'error' => $e->getMessage()
+            ]);
+            return $this->respondWithError('Error verifying reset token: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Verify password reset code (without resetting password)
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function verifyResetCode(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'code' => 'required|string|size:6'
+            ]);
+
+            if ($validator->fails()) {
+                return $this->respondWithError($validator->errors()->first(), 422);
+            }
+
+            // Verify the code
+            $result = $this->emailService->verifyPasswordResetCode($request->code);
+
+            if (!$result['success']) {
+                return $this->respondWithError($result['message'], 400);
+            }
+
+            return $this->respondWithSuccess('Valid reset code', 200, [
+                'code_valid' => true,
+                'email' => $result['email']
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error verifying reset code', [
+                'error' => $e->getMessage()
+            ]);
+            return $this->respondWithError('Error verifying reset code: ' . $e->getMessage(), 500);
+        }
+    }
 }
