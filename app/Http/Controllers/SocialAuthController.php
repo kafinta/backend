@@ -33,7 +33,18 @@ class SocialAuthController extends ImprovedController
                 return $this->respondWithError('Invalid OAuth provider', 400);
             }
 
-            $redirectUrl = Socialite::driver($provider)->redirect()->getTargetUrl();
+            $driver = \Laravel\Socialite\Facades\Socialite::driver($provider);
+
+            // Set scopes based on provider
+            if ($provider === 'google') {
+                $driver->scopes(['openid', 'profile', 'email']);
+            } elseif ($provider === 'facebook') {
+                $driver->scopes(['email', 'public_profile']);
+            } elseif ($provider === 'apple') {
+                $driver->scopes(['name', 'email']);
+            }
+
+            $redirectUrl = $driver->redirect()->getTargetUrl();
 
             return $this->respondWithSuccess('Redirect URL generated', 200, [
                 'redirect_url' => $redirectUrl
@@ -63,8 +74,48 @@ class SocialAuthController extends ImprovedController
                 return $this->respondWithError('Invalid OAuth provider', 400);
             }
 
+            // Log the callback request for debugging
+            Log::info('OAuth callback received', [
+                'provider' => $provider,
+                'query_params' => $request->query(),
+                'all_params' => $request->all()
+            ]);
+
+            // Check if we have the required parameters
+            if (!$request->has('code')) {
+                Log::error('OAuth callback missing authorization code', [
+                    'provider' => $provider,
+                    'params' => $request->all()
+                ]);
+                return $this->respondWithError('Authorization code not provided', 400);
+            }
+
+            if ($request->has('error')) {
+                Log::error('OAuth callback received error', [
+                    'provider' => $provider,
+                    'error' => $request->get('error'),
+                    'error_description' => $request->get('error_description')
+                ]);
+                return $this->respondWithError('OAuth authorization failed: ' . $request->get('error_description', $request->get('error')), 400);
+            }
+
             // Get user from OAuth provider
-            $socialiteUser = Socialite::driver($provider)->user();
+            try {
+                $socialiteUser = \Laravel\Socialite\Facades\Socialite::driver($provider)->user();
+                Log::info('Socialite user retrieved successfully', [
+                    'provider' => $provider,
+                    'user_id' => $socialiteUser->getId(),
+                    'email' => $socialiteUser->getEmail(),
+                    'name' => $socialiteUser->getName()
+                ]);
+            } catch (\Exception $socialiteException) {
+                Log::error('Socialite user retrieval failed', [
+                    'provider' => $provider,
+                    'error' => $socialiteException->getMessage(),
+                    'trace' => $socialiteException->getTraceAsString()
+                ]);
+                throw $socialiteException;
+            }
 
             if (!$socialiteUser->getEmail()) {
                 return $this->respondWithError('Email is required for registration', 400);
@@ -100,10 +151,11 @@ class SocialAuthController extends ImprovedController
             Log::error('OAuth callback error', [
                 'provider' => $provider,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
+                'request_params' => $request->all()
             ]);
 
-            return $this->respondWithError('OAuth authentication failed', 500);
+            return $this->respondWithError('OAuth authentication failed: ' . $e->getMessage(), 500);
         }
     }
 
@@ -133,7 +185,7 @@ class SocialAuthController extends ImprovedController
             }
 
             // Get user from OAuth provider using access token
-            $socialiteUser = Socialite::driver($provider)->userFromToken($accessToken);
+            $socialiteUser = \Laravel\Socialite\Facades\Socialite::driver($provider)->userFromToken($accessToken);
 
             if (!$socialiteUser->getEmail()) {
                 return $this->respondWithError('Email is required for registration', 400);
