@@ -37,6 +37,15 @@ Route::middleware(['throttle:6,1'])->prefix('user')->group(function () {
     });
 });
 
+// Password Reset Routes (Public)
+Route::middleware(['throttle:6,1'])->group(function () {
+    Route::post('/forgot-password', [UserController::class, 'forgotPassword'])->name('password.email');
+    Route::post('/reset-password/token', [UserController::class, 'resetPasswordWithToken'])->name('password.reset.token');
+    Route::post('/reset-password/code', [UserController::class, 'resetPasswordWithCode'])->name('password.reset.code');
+    Route::post('/verify-reset-token', [UserController::class, 'verifyResetToken'])->name('password.verify.token');
+    Route::post('/verify-reset-code', [UserController::class, 'verifyResetCode'])->name('password.verify.code');
+});
+
 // Email Verification Routes (Public)
 Route::post('/verify-email/token', [UserController::class, 'verifyEmailToken'])->name('verify.email.token');
 Route::get('/verify-email/{token}', [UserController::class, 'verifyEmailToken'])->name('verify.email');
