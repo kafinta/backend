@@ -96,5 +96,31 @@ Route::get('/verification-tokens', function () {
     ]);
 })->name('verification-tokens.web');
 
+// Password Reset Tokens Interface (Development Only)
+Route::get('/password-reset-tokens', function () {
+    $tokens = \Illuminate\Support\Facades\DB::table('password_reset_tokens')
+        ->orderBy('created_at', 'desc')
+        ->get()
+        ->map(function ($token) {
+            return [
+                'email' => $token->email,
+                'reset_code' => $token->reset_code,
+                'reset_url' => "http://localhost:3000/auth/reset-password?token=" . $token->token,
+                'created_at' => $token->created_at,
+                'expires_at' => \Carbon\Carbon::parse($token->created_at)->addMinutes(60)->format('Y-m-d H:i:s'),
+                'is_expired' => \Carbon\Carbon::parse($token->created_at)->addMinutes(60)->isPast(),
+            ];
+        });
+
+    return view('password-reset-tokens.index', [
+        'initialTokens' => json_encode([
+            'success' => true,
+            'data' => [
+                'tokens' => $tokens
+            ]
+        ])
+    ]);
+})->name('password-reset-tokens.web');
+
 Route::post('/user/auth/login', [App\Http\Controllers\UserController::class, 'login']);
 Route::post('/user/auth/signup', [App\Http\Controllers\UserController::class, 'register']);
