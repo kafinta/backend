@@ -33,9 +33,7 @@ class Seller extends Model
         // Agreement fields
         'agreement_accepted',
         'agreement_version',
-        'agreement_ip_address',
-        // Progress tracking fields
-        'onboarding_progress'
+        'agreement_ip_address'
     ];
 
     protected $casts = [
