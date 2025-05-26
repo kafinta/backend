@@ -104,12 +104,9 @@ class SellerController extends ImprovedController
                 'business_description' => 'nullable|string',
                 'business_address' => 'required|string',
                 'phone_number' => 'required|string',
-                // Business category fields
+                // Business category fields - simplified
                 'business_category' => 'required|string|max:255',
-                'business_subcategory' => 'nullable|string|max:255',
-                'years_in_business' => 'nullable|integer|min:0',
                 'business_website' => 'nullable|url|max:255',
-                'business_social_media' => 'nullable|string|max:255',
             ]);
 
             if ($validator->fails()) {
@@ -129,12 +126,9 @@ class SellerController extends ImprovedController
                 $seller->phone_number = $request->phone_number;
             }
 
-            // Update business category information
+            // Update business category information - simplified
             $seller->business_category = $request->business_category;
-            $seller->business_subcategory = $request->business_subcategory;
-            $seller->years_in_business = $request->years_in_business;
             $seller->business_website = $request->business_website;
-            $seller->business_social_media = $request->business_social_media;
 
             // Mark profile as completed
             $seller->profile_completed_at = now();
@@ -327,7 +321,7 @@ class SellerController extends ImprovedController
 
     /**
      * Complete the seller onboarding process
-     * Requires at least 80% completion and all critical steps
+     * Requires all required steps to be completed
      *
      * @return \Illuminate\Http\JsonResponse
      */
@@ -341,28 +335,16 @@ class SellerController extends ImprovedController
                 return $this->respondWithError('Seller profile not found', 404);
             }
 
-            // Calculate current progress
-            $progress = $this->calculateProgress($seller);
+            // Check if all required steps are completed
+            if (!$this->areRequiredStepsCompleted($seller)) {
+                $missingSteps = [];
+                if (!$seller->email_verified_at) $missingSteps[] = 'email verification';
+                if (!$seller->phone_verified_at) $missingSteps[] = 'phone verification';
+                if (!$seller->profile_completed_at || !$seller->business_category) $missingSteps[] = 'business profile';
+                if (!$seller->agreement_completed_at) $missingSteps[] = 'seller agreement';
 
-            // Check for critical steps
-            $missingCriticalSteps = [];
-            if (!$seller->email_verified_at) $missingCriticalSteps[] = 'email verification';
-            if (!$seller->phone_verified_at) $missingCriticalSteps[] = 'phone verification';
-            if (!$seller->profile_completed_at || !$seller->business_category) $missingCriticalSteps[] = 'business profile';
-            if (!$seller->agreement_completed_at) $missingCriticalSteps[] = 'seller agreement';
-
-            // If missing critical steps, return detailed error
-            if (!empty($missingCriticalSteps)) {
                 return $this->respondWithError(
-                    'Critical steps must be completed: ' . implode(', ', $missingCriticalSteps),
-                    422
-                );
-            }
-
-            // Check if minimum progress threshold is met
-            if ($progress < 80) {
-                return $this->respondWithError(
-                    'At least 80% of onboarding must be completed (current: ' . $progress . '%)',
+                    'Required steps must be completed: ' . implode(', ', $missingSteps),
                     422
                 );
             }
@@ -382,20 +364,19 @@ class SellerController extends ImprovedController
             auth()->user()->roles()->syncWithoutDetaching([$sellerRole->id]);
 
             // Determine if any optional steps are still pending
-            $pendingSteps = [];
-            if (!$seller->kyc_verified_at) $pendingSteps[] = 'KYC verification';
-            if (!$seller->payment_info_completed_at) $pendingSteps[] = 'payment information';
+            $pendingOptionalSteps = [];
+            if (!$seller->kyc_verified_at) $pendingOptionalSteps[] = 'KYC verification';
+            if (!$seller->payment_info_completed_at) $pendingOptionalSteps[] = 'payment information';
 
-            $message = 'Seller onboarding completed successfully';
-            if (!empty($pendingSteps)) {
-                $message .= '. Note: You still have pending steps to complete: ' . implode(', ', $pendingSteps);
+            $message = 'Seller onboarding completed successfully! You can now start selling.';
+            if (!empty($pendingOptionalSteps)) {
+                $message .= ' You can complete these optional steps later: ' . implode(', ', $pendingOptionalSteps);
             }
 
             return $this->respondWithSuccess($message, 200, [
                 'seller' => $seller,
                 'is_seller' => true,
-                'progress' => $progress,
-                'pending_steps' => $pendingSteps
+                'pending_optional_steps' => $pendingOptionalSteps
             ]);
         } catch (\Exception $e) {
             Log::error('Onboarding completion error', [
@@ -418,79 +399,96 @@ class SellerController extends ImprovedController
             // Get or create seller record
             $seller = $this->getOrCreateSeller(auth()->id());
 
-            // Calculate progress
-            $progress = $this->calculateProgress($seller);
-
-            // Get step details with weights
-            $stepDetails = [
+            // Get step details with benefits and motivations
+            $requiredSteps = [
                 [
                     'id' => 'email_verification',
                     'name' => 'Email Verification',
-                    'weight' => 15,
                     'completed' => $seller->email_verified_at ? true : false,
-                    'is_critical' => true
+                    'required' => true,
+                    'benefit' => 'Secure your account and receive important notifications',
+                    'estimated_time' => '2 minutes'
                 ],
                 [
                     'id' => 'phone_verification',
                     'name' => 'Phone Verification',
-                    'weight' => 10,
                     'completed' => $seller->phone_verified_at ? true : false,
-                    'is_critical' => true
+                    'required' => true,
+                    'benefit' => 'Build trust with customers and enable SMS notifications',
+                    'estimated_time' => '3 minutes'
                 ],
                 [
                     'id' => 'profile_completion',
                     'name' => 'Business Profile',
-                    'weight' => 25,
                     'completed' => ($seller->profile_completed_at && $seller->business_category) ? true : false,
-                    'is_critical' => true
+                    'required' => true,
+                    'benefit' => 'Help customers find and trust your business',
+                    'estimated_time' => '5 minutes'
                 ],
                 [
                     'id' => 'agreement_acceptance',
                     'name' => 'Seller Agreement',
-                    'weight' => 30,
                     'completed' => $seller->agreement_completed_at ? true : false,
-                    'is_critical' => true
-                ],
+                    'required' => true,
+                    'benefit' => 'Understand your rights and responsibilities as a seller',
+                    'estimated_time' => '3 minutes'
+                ]
+            ];
+
+            $optionalSteps = [
                 [
                     'id' => 'kyc_verification',
                     'name' => 'KYC Verification',
-                    'weight' => 10,
                     'completed' => $seller->kyc_verified_at ? true : false,
-                    'is_critical' => false
+                    'required' => false,
+                    'benefit' => 'Increase customer trust and unlock higher selling limits',
+                    'estimated_time' => '10 minutes'
                 ],
                 [
                     'id' => 'payment_information',
                     'name' => 'Payment Information',
-                    'weight' => 10,
                     'completed' => $seller->payment_info_completed_at ? true : false,
-                    'is_critical' => false
+                    'required' => false,
+                    'benefit' => 'Start receiving payments from your sales',
+                    'estimated_time' => '5 minutes'
                 ]
             ];
 
             // Check if seller can complete onboarding
             $canComplete = $this->canCompleteOnboarding($seller);
 
-            // If can't complete, determine what's missing
-            $missingRequirements = [];
+            // Get missing required steps
+            $missingRequiredSteps = [];
             if (!$canComplete) {
-                // Check for critical steps
-                if (!$seller->email_verified_at) $missingRequirements[] = 'Email verification is required';
-                if (!$seller->phone_verified_at) $missingRequirements[] = 'Phone verification is required';
-                if (!$seller->profile_completed_at || !$seller->business_category) $missingRequirements[] = 'Business profile must be completed';
-                if (!$seller->agreement_completed_at) $missingRequirements[] = 'Seller agreement must be accepted';
-
-                // Check progress threshold
-                if ($progress < 80) $missingRequirements[] = 'At least 80% completion is required (current: ' . $progress . '%)';
+                if (!$seller->email_verified_at) $missingRequiredSteps[] = 'Email verification';
+                if (!$seller->phone_verified_at) $missingRequiredSteps[] = 'Phone verification';
+                if (!$seller->profile_completed_at || !$seller->business_category) $missingRequiredSteps[] = 'Business profile';
+                if (!$seller->agreement_completed_at) $missingRequiredSteps[] = 'Seller agreement';
             }
 
+            // Enhanced progress visualization
+            $requiredCompleted = count(array_filter($requiredSteps, fn($step) => $step['completed']));
+            $optionalCompleted = count(array_filter($optionalSteps, fn($step) => $step['completed']));
+            $totalCompleted = $requiredCompleted + $optionalCompleted;
+            $totalSteps = count($requiredSteps) + count($optionalSteps);
+
             return $this->respondWithSuccess('Onboarding progress retrieved', 200, [
-                'progress' => $progress,
+                'can_complete' => $canComplete,
+                'required_steps' => $requiredSteps,
+                'optional_steps' => $optionalSteps,
+                'missing_required_steps' => $missingRequiredSteps,
                 'completed_steps' => $this->getCompletedSteps($seller),
                 'next_steps' => $this->getNextSteps($seller),
-                'can_complete' => $canComplete,
-                'missing_requirements' => $missingRequirements,
-                'step_details' => $stepDetails,
-                'completion_threshold' => 80
+                // Enhanced progress visualization
+                'progress_summary' => [
+                    'required_completed' => $requiredCompleted,
+                    'required_total' => count($requiredSteps),
+                    'optional_completed' => $optionalCompleted,
+                    'optional_total' => count($optionalSteps),
+                    'total_completed' => $totalCompleted,
+                    'total_steps' => $totalSteps,
+                    'completion_percentage' => round(($totalCompleted / $totalSteps) * 100)
+                ]
             ]);
         } catch (\Exception $e) {
             Log::error('Progress retrieval error', [
@@ -584,8 +582,7 @@ class SellerController extends ImprovedController
                 'business_name' => '',
                 'business_address' => '',
                 'phone_number' => '',
-                'id_type' => null,  // Add this with null value
-                'onboarding_progress' => 0
+                'id_type' => null
             ]);
         }
 
@@ -593,56 +590,30 @@ class SellerController extends ImprovedController
     }
 
     /**
-     * Calculate seller onboarding progress with weighted steps
+     * Check if all required onboarding steps are completed
      *
      * @param Seller $seller
-     * @return int
+     * @return bool
      */
-    protected function calculateProgress(Seller $seller): int
+    protected function areRequiredStepsCompleted(Seller $seller): bool
     {
-        $progress = 0;
-
-        // Critical steps with higher weights
-        if ($seller->email_verified_at) $progress += 15; // 15% - Critical for communication
-        if ($seller->phone_verified_at) $progress += 10; // 10% - Important for security
-        if ($seller->profile_completed_at && $seller->business_category) $progress += 25; // 25% - Essential for marketplace presence
-        if ($seller->agreement_completed_at) $progress += 30; // 30% - Legally required
-
-        // Less critical steps with lower weights
-        if ($seller->kyc_verified_at) $progress += 10; // 10% - Can be completed later
-        if ($seller->payment_info_completed_at) $progress += 10; // 10% - Only needed when receiving payments
-
-        // Update progress in database
-        $seller->onboarding_progress = $progress;
-        $seller->save();
-
-        return $progress;
+        return $seller->email_verified_at &&
+               $seller->phone_verified_at &&
+               $seller->profile_completed_at &&
+               $seller->business_category &&
+               $seller->agreement_completed_at;
     }
 
     /**
-     * Check if seller can complete onboarding (80% or more completion)
-     *
-     * Critical steps (email, phone, profile, agreement) must be completed
-     * At least 80% of total progress must be achieved
+     * Check if seller can complete onboarding
+     * Only required steps need to be completed
      *
      * @param Seller $seller
      * @return bool
      */
     protected function canCompleteOnboarding(Seller $seller): bool
     {
-        // Critical steps must be completed regardless of percentage
-        $criticalStepsCompleted =
-            $seller->email_verified_at &&
-            $seller->phone_verified_at &&
-            $seller->profile_completed_at &&
-            $seller->business_category &&
-            $seller->agreement_completed_at;
-
-        // Calculate current progress
-        $progress = $this->calculateProgress($seller);
-
-        // Require at least 80% completion and all critical steps
-        return $criticalStepsCompleted && $progress >= 80;
+        return $this->areRequiredStepsCompleted($seller);
     }
 
     /**
