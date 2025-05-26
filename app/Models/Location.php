@@ -9,6 +9,11 @@ class Location extends Model
 {
     use HasFactory;
 
+    protected $fillable = [
+        'name',
+        'image_path',
+    ];
+
     public function products()
     {
         return $this->hasMany(Product::class);
@@ -18,9 +23,4 @@ class Location extends Model
     {
         return $this->belongsToMany(Subcategory::class, 'location_subcategory')->withTimestamps();
     }
-
-    protected $fillable = [
-        'name',
-        'image_path',
-    ];
 }
