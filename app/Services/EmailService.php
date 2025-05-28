@@ -48,7 +48,7 @@ class EmailService
         ]);
 
         // Generate verification URL pointing to the frontend
-        $verificationUrl = "http://localhost:3000/auth/verify-token?token=" . $token;
+        $verificationUrl = "http://localhost:3000/auth/verify?token=" . $token;
 
         return [
             'token' => $token,
