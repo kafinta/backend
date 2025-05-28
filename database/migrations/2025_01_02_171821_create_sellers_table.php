@@ -18,10 +18,16 @@ return new class extends Migration
             $table->text('business_description')->nullable();
             $table->string('business_address');
             $table->string('business_category')->nullable();
-            $table->string('business_subcategory')->nullable();
             $table->integer('years_in_business')->nullable();
             $table->string('business_website')->nullable();
-            $table->string('business_social_media')->nullable();
+            // Social media fields
+            $table->string('instagram_handle')->nullable();
+            $table->string('facebook_page')->nullable();
+            $table->string('twitter_handle')->nullable();
+            $table->string('linkedin_page')->nullable();
+            $table->string('tiktok_handle')->nullable();
+            $table->string('youtube_channel')->nullable();
+            $table->timestamp('social_media_completed_at')->nullable();
             $table->string('bank_name')->nullable();
             $table->string('bank_account_number')->nullable();
             $table->string('bank_account_name')->nullable();
