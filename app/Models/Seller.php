@@ -19,10 +19,15 @@ class Seller extends Model
         'rating',
         // Business category fields
         'business_category',
-        'business_subcategory',
         'years_in_business',
         'business_website',
-        'business_social_media',
+        // Social media fields
+        'instagram_handle',
+        'facebook_page',
+        'twitter_handle',
+        'linkedin_page',
+        'tiktok_handle',
+        'youtube_channel',
         // Payment information fields
         'bank_name',
         'bank_account_number',
@@ -47,6 +52,7 @@ class Seller extends Model
         'agreement_accepted_at' => 'datetime',
         'agreement_completed_at' => 'datetime',
         'payment_info_completed_at' => 'datetime',
+        'social_media_completed_at' => 'datetime',
         'onboarding_completed_at' => 'datetime'
     ];
 
