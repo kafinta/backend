@@ -427,6 +427,7 @@ Route::middleware(['auth:sanctum,web'])->group(function () {
         Route::post('/verify-kyc', [SellerController::class, 'verifyKYC'])->name('seller.verify-kyc');
         Route::post('/accept-agreement', [SellerController::class, 'acceptAgreement'])->name('seller.accept-agreement');
         Route::post('/update-payment-info', [SellerController::class, 'updatePaymentInfo'])->name('seller.update-payment-info');
+        Route::post('/update-social-media', [SellerController::class, 'updateSocialMedia'])->name('seller.update-social-media');
         Route::post('/complete-onboarding', [SellerController::class, 'completeOnboarding'])->name('seller.complete-onboarding');
         Route::get('/progress', [SellerController::class, 'getProgress'])->name('seller.progress');
     });
