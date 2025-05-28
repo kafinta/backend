@@ -422,6 +422,7 @@ class UserController extends ImprovedController
             }
 
             // Verify the token
+            // Email verification - could be more specific
             $result = $this->emailService->verifyToken($token);
 
             if (!$result['success']) {
