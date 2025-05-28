@@ -100,8 +100,6 @@ class SellerController extends ImprovedController
                 'business_name' => 'required|string|max:255',
                 'business_description' => 'nullable|string',
                 'business_address' => 'required|string',
-                'phone_number' => 'required|string',
-                // Business category fields - simplified
                 'business_category' => 'required|string|max:255',
                 'business_website' => 'nullable|url|max:255',
             ]);
@@ -118,12 +116,7 @@ class SellerController extends ImprovedController
             $seller->business_description = $request->business_description;
             $seller->business_address = $request->business_address;
 
-            // Only update phone if not already verified
-            if (!$seller->phone_verified_at) {
-                $seller->phone_number = $request->phone_number;
-            }
-
-            // Update business category information - simplified
+            // Update business information
             $seller->business_category = $request->business_category;
             $seller->business_website = $request->business_website;
 
@@ -437,6 +430,14 @@ class SellerController extends ImprovedController
                     'required' => false,
                     'benefit' => 'Start receiving payments from your sales',
                     'estimated_time' => '5 minutes'
+                ],
+                [
+                    'id' => 'social_media',
+                    'name' => 'Business Social Media',
+                    'completed' => $seller->social_media_completed_at ? true : false,
+                    'required' => false,
+                    'benefit' => 'Showcase your business and build customer trust through social presence',
+                    'estimated_time' => '3 minutes'
                 ]
             ];
 
@@ -622,6 +623,7 @@ class SellerController extends ImprovedController
         if ($seller->kyc_verified_at) $completedSteps[] = 'kyc_verification';
         if ($seller->agreement_completed_at) $completedSteps[] = 'agreement_acceptance';
         if ($seller->payment_info_completed_at) $completedSteps[] = 'payment_information';
+        if ($seller->social_media_completed_at) $completedSteps[] = 'social_media';
 
         return $completedSteps;
     }
@@ -643,7 +645,60 @@ class SellerController extends ImprovedController
         if (!$seller->kyc_verified_at) $nextSteps[] = 'kyc_verification';
         if (!$seller->agreement_completed_at) $nextSteps[] = 'agreement_acceptance';
         if (!$seller->payment_info_completed_at) $nextSteps[] = 'payment_information';
+        if (!$seller->social_media_completed_at) $nextSteps[] = 'social_media';
 
         return $nextSteps;
+    }
+
+    /**
+     * Update seller's social media information
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function updateSocialMedia(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'instagram_handle' => 'nullable|string|max:255',
+                'facebook_page' => 'nullable|url|max:255',
+                'twitter_handle' => 'nullable|string|max:255',
+                'linkedin_page' => 'nullable|url|max:255',
+                'tiktok_handle' => 'nullable|string|max:255',
+                'youtube_channel' => 'nullable|url|max:255',
+            ]);
+
+            if ($validator->fails()) {
+                return $this->respondWithError($validator->errors()->first(), 422);
+            }
+
+            // Get or create seller record
+            $seller = $this->getOrCreateSeller(auth()->id());
+
+            // Update social media information
+            $seller->instagram_handle = $request->instagram_handle;
+            $seller->facebook_page = $request->facebook_page;
+            $seller->twitter_handle = $request->twitter_handle;
+            $seller->linkedin_page = $request->linkedin_page;
+            $seller->tiktok_handle = $request->tiktok_handle;
+            $seller->youtube_channel = $request->youtube_channel;
+
+            // Mark social media as completed
+            $seller->social_media_completed_at = now();
+            $seller->save();
+
+            return $this->respondWithSuccess('Social media information updated successfully', 200, [
+                'seller' => $seller,
+                'social_media_completed_at' => $seller->social_media_completed_at
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Social media update error', [
+                'error' => $e->getMessage(),
+                'user_id' => auth()->id()
+            ]);
+
+            return $this->respondWithError('Error updating social media: ' . $e->getMessage(), 500);
+        }
     }
 }
