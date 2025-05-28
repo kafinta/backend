@@ -73,12 +73,9 @@ class SellerController extends ImprovedController
                 $user->save();
             }
 
-            // Calculate progress
-            $progress = $this->calculateProgress($seller);
-
             return $this->respondWithSuccess('Phone number verified successfully', 200, [
-                'progress' => $progress,
-                'next_steps' => $this->getNextSteps($seller)
+                'seller' => $seller,
+                'phone_verified_at' => $seller->phone_verified_at
             ]);
         } catch (\Exception $e) {
             Log::error('Phone verification error', [
@@ -134,13 +131,9 @@ class SellerController extends ImprovedController
             $seller->profile_completed_at = now();
             $seller->save();
 
-            // Calculate progress
-            $progress = $this->calculateProgress($seller);
-
             return $this->respondWithSuccess('Business profile updated successfully', 200, [
                 'seller' => $seller,
-                'progress' => $progress,
-                'next_steps' => $this->getNextSteps($seller)
+                'profile_completed_at' => $seller->profile_completed_at
             ]);
         } catch (\Exception $e) {
             Log::error('Profile update error', [
@@ -196,12 +189,9 @@ class SellerController extends ImprovedController
             $seller->kyc_verified_at = now();
             $seller->save();
 
-            // Calculate progress
-            $progress = $this->calculateProgress($seller);
-
             return $this->respondWithSuccess('KYC verification submitted successfully', 200, [
-                'progress' => $progress,
-                'next_steps' => $this->getNextSteps($seller)
+                'seller' => $seller,
+                'kyc_verified_at' => $seller->kyc_verified_at
             ]);
         } catch (\Exception $e) {
             Log::error('KYC verification error', [
@@ -242,12 +232,9 @@ class SellerController extends ImprovedController
             $seller->agreement_completed_at = now();
             $seller->save();
 
-            // Calculate progress
-            $progress = $this->calculateProgress($seller);
-
             return $this->respondWithSuccess('Seller agreement accepted successfully', 200, [
-                'progress' => $progress,
-                'next_steps' => $this->getNextSteps($seller)
+                'seller' => $seller,
+                'agreement_completed_at' => $seller->agreement_completed_at
             ]);
         } catch (\Exception $e) {
             Log::error('Agreement acceptance error', [
@@ -302,12 +289,9 @@ class SellerController extends ImprovedController
             $seller->payment_info_completed_at = now();
             $seller->save();
 
-            // Calculate progress
-            $progress = $this->calculateProgress($seller);
-
             return $this->respondWithSuccess('Payment information updated successfully', 200, [
-                'progress' => $progress,
-                'next_steps' => $this->getNextSteps($seller)
+                'seller' => $seller,
+                'payment_info_completed_at' => $seller->payment_info_completed_at
             ]);
         } catch (\Exception $e) {
             Log::error('Payment info update error', [
