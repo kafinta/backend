@@ -79,7 +79,7 @@ Route::get('/verification-tokens', function () {
                 'email' => $token->email,
                 'token' => $token->token,
                 'verification_code' => $token->verification_code,
-                'verification_url' => "http://localhost:3000/auth/verify-token?token=" . $token->token,
+                'verification_url' => "http://localhost:3000/auth/verify?token=" . $token->token,
                 'created_at' => $token->created_at->format('Y-m-d H:i:s'),
                 'expires_at' => $token->expires_at->format('Y-m-d H:i:s'),
                 'is_expired' => $token->isExpired(),
