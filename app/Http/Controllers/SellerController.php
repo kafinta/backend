@@ -330,15 +330,16 @@ class SellerController extends ImprovedController
         try {
             // Get seller record
             $seller = Seller::where('user_id', auth()->id())->first();
+            $user = auth()->user();
 
             if (!$seller) {
                 return $this->respondWithError('Seller profile not found', 404);
             }
 
             // Check if all required steps are completed
-            if (!$this->areRequiredStepsCompleted($seller)) {
+            if (!$this->areRequiredStepsCompleted($seller, $user)) {
                 $missingSteps = [];
-                if (!$seller->email_verified_at) $missingSteps[] = 'email verification';
+                if (!$user->email_verified_at) $missingSteps[] = 'email verification';
                 if (!$seller->phone_verified_at) $missingSteps[] = 'phone verification';
                 if (!$seller->profile_completed_at || !$seller->business_category) $missingSteps[] = 'business profile';
                 if (!$seller->agreement_completed_at) $missingSteps[] = 'seller agreement';
@@ -398,13 +399,14 @@ class SellerController extends ImprovedController
         try {
             // Get or create seller record
             $seller = $this->getOrCreateSeller(auth()->id());
+            $user = auth()->user();
 
             // Get step details with benefits and motivations
             $requiredSteps = [
                 [
                     'id' => 'email_verification',
                     'name' => 'Email Verification',
-                    'completed' => $seller->email_verified_at ? true : false,
+                    'completed' => $user->email_verified_at ? true : false,
                     'required' => true,
                     'benefit' => 'Secure your account and receive important notifications',
                     'estimated_time' => '2 minutes'
@@ -455,16 +457,19 @@ class SellerController extends ImprovedController
             ];
 
             // Check if seller can complete onboarding
-            $canComplete = $this->canCompleteOnboarding($seller);
+            $canComplete = $this->canCompleteOnboarding($seller, $user);
 
             // Get missing required steps
             $missingRequiredSteps = [];
             if (!$canComplete) {
-                if (!$seller->email_verified_at) $missingRequiredSteps[] = 'Email verification';
+                if (!$user->email_verified_at) $missingRequiredSteps[] = 'Email verification';
                 if (!$seller->phone_verified_at) $missingRequiredSteps[] = 'Phone verification';
                 if (!$seller->profile_completed_at || !$seller->business_category) $missingRequiredSteps[] = 'Business profile';
                 if (!$seller->agreement_completed_at) $missingRequiredSteps[] = 'Seller agreement';
             }
+
+            // Get completed steps
+            $completedSteps = $this->getCompletedSteps($seller, $user);
 
             // Enhanced progress visualization
             $requiredCompleted = count(array_filter($requiredSteps, fn($step) => $step['completed']));
@@ -477,10 +482,8 @@ class SellerController extends ImprovedController
                 'required_steps' => $requiredSteps,
                 'optional_steps' => $optionalSteps,
                 'missing_required_steps' => $missingRequiredSteps,
-                'completed_steps' => $this->getCompletedSteps($seller),
-                'next_steps' => $this->getNextSteps($seller),
-                // Enhanced progress visualization
-                'progress_summary' => [
+                'completed_steps' => $completedSteps,
+                'completion_summary' => [
                     'required_completed' => $requiredCompleted,
                     'required_total' => count($requiredSteps),
                     'optional_completed' => $optionalCompleted,
@@ -593,11 +596,12 @@ class SellerController extends ImprovedController
      * Check if all required onboarding steps are completed
      *
      * @param Seller $seller
+     * @param \App\Models\User $user
      * @return bool
      */
-    protected function areRequiredStepsCompleted(Seller $seller): bool
+    protected function areRequiredStepsCompleted(Seller $seller, $user): bool
     {
-        return $seller->email_verified_at &&
+        return $user->email_verified_at &&
                $seller->phone_verified_at &&
                $seller->profile_completed_at &&
                $seller->business_category &&
@@ -609,24 +613,26 @@ class SellerController extends ImprovedController
      * Only required steps need to be completed
      *
      * @param Seller $seller
+     * @param \App\Models\User $user
      * @return bool
      */
-    protected function canCompleteOnboarding(Seller $seller): bool
+    protected function canCompleteOnboarding(Seller $seller, $user): bool
     {
-        return $this->areRequiredStepsCompleted($seller);
+        return $this->areRequiredStepsCompleted($seller, $user);
     }
 
     /**
      * Get completed steps
      *
      * @param Seller $seller
+     * @param \App\Models\User $user
      * @return array
      */
-    protected function getCompletedSteps(Seller $seller): array
+    protected function getCompletedSteps(Seller $seller, $user): array
     {
         $completedSteps = [];
 
-        if ($seller->email_verified_at) $completedSteps[] = 'email_verification';
+        if ($user->email_verified_at) $completedSteps[] = 'email_verification';
         if ($seller->phone_verified_at) $completedSteps[] = 'phone_verification';
         if ($seller->profile_completed_at) $completedSteps[] = 'profile_completion';
         if ($seller->kyc_verified_at) $completedSteps[] = 'kyc_verification';
@@ -640,13 +646,14 @@ class SellerController extends ImprovedController
      * Get next steps to complete
      *
      * @param Seller $seller
+     * @param \App\Models\User $user
      * @return array
      */
-    protected function getNextSteps(Seller $seller): array
+    protected function getNextSteps(Seller $seller, $user): array
     {
         $nextSteps = [];
 
-        if (!$seller->email_verified_at) $nextSteps[] = 'email_verification';
+        if (!$user->email_verified_at) $nextSteps[] = 'email_verification';
         if (!$seller->phone_verified_at) $nextSteps[] = 'phone_verification';
         if (!$seller->profile_completed_at || !$seller->business_category) $nextSteps[] = 'profile_completion';
         if (!$seller->kyc_verified_at) $nextSteps[] = 'kyc_verification';
