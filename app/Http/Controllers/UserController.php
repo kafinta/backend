@@ -422,14 +422,17 @@ class UserController extends ImprovedController
             }
 
             // Verify the token
-            // Email verification - could be more specific
             $result = $this->emailService->verifyToken($token);
 
             if (!$result['success']) {
                 return $this->respondWithError($result['message'], 400);
             }
 
+            // Get the verified user from the result
+            $user = $result['user'];
+
             return $this->respondWithSuccess('Email verified successfully', 200, [
+                'user' => new UserAccountResource($user),
                 'email_verified' => true
             ]);
         } catch (\Exception $e) {
@@ -490,7 +493,11 @@ class UserController extends ImprovedController
                 return $this->respondWithError($result['message'], 400);
             }
 
+            // Get the verified user from the result
+            $user = $result['user'];
+
             return $this->respondWithSuccess('Email verified successfully', 200, [
+                'user' => new UserAccountResource($user),
                 'email_verified' => true
             ]);
         } catch (\Exception $e) {
