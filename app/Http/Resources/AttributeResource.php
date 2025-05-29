@@ -17,12 +17,10 @@ class AttributeResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
-            'type' => $this->type,
             'is_variant_generator' => $this->is_variant_generator,
+            'help_text' => $this->help_text,
+            'sort_order' => $this->sort_order,
             'values' => AttributeValueResource::collection($this->whenLoaded('values')),
-            'selected_value' => $this->when(isset($this->pivot?->selected_value), function() {
-                return new AttributeValueResource($this->selectedValue);
-            })
         ];
     }
 }
