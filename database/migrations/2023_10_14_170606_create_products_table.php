@@ -20,7 +20,14 @@ return new class extends Migration
             $table->foreignId('subcategory_id')->constrained()->onDelete('cascade');
             $table->foreignId('location_id')->nullable()->constrained()->onDelete('set null');
             $table->boolean('is_active')->default(true);
+            $table->enum('status', ['draft', 'active', 'inactive', 'out_of_stock'])->default('draft');
+            $table->boolean('is_featured')->default(false);
             $table->timestamps();
+
+            // Add performance indexes
+            $table->index('subcategory_id', 'idx_product_subcategory');
+            $table->index('status', 'idx_products_status');
+            $table->index('is_featured', 'idx_products_featured');
         });
     }
 

@@ -19,6 +19,9 @@ return new class extends Migration
 
             // Prevent duplicate attribute values for the same variant
             $table->unique(['variant_id', 'attribute_value_id']);
+
+            // Add performance index for lookups
+            $table->index(['variant_id', 'attribute_value_id'], 'idx_variant_attribute_values_lookup');
         });
     }
 
