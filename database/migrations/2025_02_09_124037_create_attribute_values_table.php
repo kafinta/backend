@@ -20,6 +20,10 @@ return new class extends Migration
 
             // Ensure unique value within an attribute
             $table->unique(['attribute_id', 'name']);
+
+            // Add performance indexes
+            $table->index('attribute_id', 'idx_attribute_values_attribute');
+            $table->index('name', 'idx_attribute_values_name');
         });
     }
 

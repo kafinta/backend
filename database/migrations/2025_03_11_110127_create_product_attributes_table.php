@@ -25,6 +25,9 @@ return new class extends Migration
 
             // Prevent duplicate attribute values for the same product
             $table->unique(['product_id', 'attribute_value_id']);
+
+            // Add performance index for lookups
+            $table->index(['product_id', 'attribute_value_id'], 'idx_product_attribute_values_lookup');
         });
     }
 

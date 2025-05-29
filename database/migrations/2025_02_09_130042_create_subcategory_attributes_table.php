@@ -17,9 +17,14 @@ return new class extends Migration
             $table->foreignId('attribute_id')->constrained()->onDelete('cascade');
             $table->boolean('is_required')->default(false);
             $table->integer('display_order')->default(0);
+            $table->integer('sort_order')->default(0); // Additional sorting within subcategory
+            $table->text('help_text')->nullable(); // Subcategory-specific help text
             $table->timestamps();
 
             $table->unique(['subcategory_id', 'attribute_id'], 'subcat_attr_unique');
+
+            // Add performance indexes
+            $table->index(['subcategory_id', 'attribute_id'], 'idx_subcategory_attributes_lookup');
         });
 
         Schema::create('subcategory_attribute_values', function (Blueprint $table) {
