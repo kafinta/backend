@@ -147,36 +147,104 @@ class SellerController extends ImprovedController
     public function verifyKYC(Request $request)
     {
         try {
-            $validator = Validator::make($request->all(), [
-                'id_type' => 'required|in:passport,national_id,nin',
+            // Debug: Log the incoming request data
+            Log::info('KYC Request Data', [
+                'all_data' => $request->all(),
+                'files' => $request->allFiles(),
+                'id_type' => $request->input('id_type'),
+                'id_number' => $request->input('id_number'),
+                'has_id_document' => $request->hasFile('id_document'),
+                'content_type' => $request->header('Content-Type'),
+                'method' => $request->method(),
+                'is_multipart' => str_contains($request->header('Content-Type', ''), 'multipart/form-data')
+            ]);
+
+            // Try to manually parse the multipart data if Laravel isn't parsing it
+            if (empty($request->all()) && str_contains($request->header('Content-Type', ''), 'multipart/form-data')) {
+                return $this->respondWithError('Laravel is not parsing multipart form data correctly. Please check your request format.', 422);
+            }
+
+            // Check if id_type exists in different ways
+            Log::info('ID Type Debug', [
+                'exists_in_all' => array_key_exists('id_type', $request->all()),
+                'exists_via_input' => $request->has('id_type'),
+                'value_via_input' => $request->input('id_type'),
+                'value_via_get' => $request->get('id_type'),
+                'all_keys' => array_keys($request->all())
+            ]);
+
+            // Clean the input data (trim whitespace)
+            $cleanedData = $request->all();
+            if (isset($cleanedData['id_type'])) {
+                $cleanedData['id_type'] = trim($cleanedData['id_type']);
+            }
+            if (isset($cleanedData['id_number'])) {
+                $cleanedData['id_number'] = trim($cleanedData['id_number']);
+            }
+
+            // Manual validation first to debug the issue
+            if (!$request->has('id_type') || empty(trim($request->input('id_type')))) {
+                Log::error('ID Type validation failed', [
+                    'has_id_type' => $request->has('id_type'),
+                    'id_type_value' => $request->input('id_type'),
+                    'all_data' => $request->all()
+                ]);
+                return $this->respondWithError('ID type is required', 422);
+            }
+
+            if (!$request->hasFile('id_document')) {
+                return $this->respondWithError('ID document is required', 422);
+            }
+
+            $validator = Validator::make($cleanedData, [
+                'id_type' => 'required|string|max:255',
                 'id_number' => 'nullable|string',
-                'id_document' => 'required|file|mimes:jpeg,png,jpg,pdf|max:2048',
+                'id_document' => 'sometimes|array|min:1|max:2',
+                'id_document.*' => 'file|mimes:jpeg,png,jpg,pdf|max:2048',
             ]);
 
             if ($validator->fails()) {
+                Log::error('Validation failed', [
+                    'errors' => $validator->errors()->toArray(),
+                    'data' => $cleanedData
+                ]);
                 return $this->respondWithError($validator->errors()->first(), 422);
             }
 
             // Get or create seller record
             $seller = $this->getOrCreateSeller(auth()->id());
 
-            // Handle file upload
-            $documentPath = null;
+            // Handle file upload(s)
+            $documentPaths = [];
             if ($request->hasFile('id_document')) {
-                $documentPath = $this->fileService->uploadFile(
-                    $request->file('id_document'),
-                    'seller-documents'
-                );
+                $files = $request->file('id_document');
 
-                if (!$documentPath) {
-                    return $this->respondWithError('Failed to upload document', 500);
+                // Handle both single file and array of files
+                if (!is_array($files)) {
+                    $files = [$files];
+                }
+
+                foreach ($files as $file) {
+                    $documentPath = $this->fileService->uploadFile(
+                        $file,
+                        'seller-documents'
+                    );
+
+                    if (!$documentPath) {
+                        return $this->respondWithError('Failed to upload document', 500);
+                    }
+
+                    $documentPaths[] = $documentPath;
                 }
             }
 
+            // For backward compatibility, store the first document in the main field
+            $primaryDocumentPath = !empty($documentPaths) ? $documentPaths[0] : null;
+
             // Update KYC information
-            $seller->id_type = $request->id_type;
-            $seller->id_number = $request->id_number;
-            $seller->id_document = $documentPath;
+            $seller->id_type = $cleanedData['id_type'];
+            $seller->id_number = $cleanedData['id_number'] ?? null;
+            $seller->id_document = $primaryDocumentPath;
 
             // Mark KYC as verified
             $seller->kyc_verified_at = now();
