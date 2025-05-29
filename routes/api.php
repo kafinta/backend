@@ -323,6 +323,7 @@ Route::apiResources([
 // Additional Public Routes
 Route::prefix('attributes')->group(function () {
     Route::get('/subcategory/{subcategoryId}', [AttributeController::class, 'getAttributesForSubcategory']);
+    Route::post('/validate/{subcategoryId}', [AttributeController::class, 'validateAttributeCombination']);
 });
 
 // Public Checkout Routes
