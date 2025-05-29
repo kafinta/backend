@@ -17,7 +17,9 @@ class Product extends Model
         'price',
         'subcategory_id',
         'user_id',
-        'location_id'
+        'location_id',
+        'status',
+        'is_featured'
     ];
 
     /**
@@ -47,7 +49,8 @@ class Product extends Model
 
     protected $casts = [
         'price' => 'decimal:2',
-        // 'is_active' => 'boolean',
+        'is_active' => 'boolean',
+        'is_featured' => 'boolean',
     ];
 
     public function subcategory()
@@ -161,6 +164,50 @@ class Product extends Model
         }
 
         return $this;
+    }
+
+    /**
+     * Scope for active products
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('status', 'active');
+    }
+
+    /**
+     * Scope for featured products
+     */
+    public function scopeFeatured($query)
+    {
+        return $query->where('is_featured', true);
+    }
+
+    /**
+     * Scope for draft products
+     */
+    public function scopeDraft($query)
+    {
+        return $query->where('status', 'draft');
+    }
+
+    /**
+     * Scope for products by status
+     */
+    public function scopeByStatus($query, $status)
+    {
+        return $query->where('status', $status);
+    }
+
+    /**
+     * Check if product is publishable
+     */
+    public function isPublishable()
+    {
+        return $this->name &&
+               $this->description &&
+               $this->price > 0 &&
+               $this->subcategory_id &&
+               $this->images()->exists();
     }
 
     public function generateVariants()
