@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\ImprovedController;
+use App\Http\Resources\LocationResource;
 use App\Models\Location;
 use Illuminate\Http\Request;
 
@@ -10,13 +11,13 @@ class LocationController extends ImprovedController
 {
     public function index() {
         $locations = Location::all();
-        return $this->respondWithSuccess("Locations Fetched Successfully", 200, $locations);
+        return $this->respondWithSuccess("Locations Fetched Successfully", 200, LocationResource::collection($locations));
     }
 
     public function show($id)
     {
         $location = Location::findOrFail($id);
-        return $this->respondWithSuccess("Location Fetched Successfully", 200, $location);
+        return $this->respondWithSuccess("Location Fetched Successfully", 200, new LocationResource($location));
     }
 
     public function store(Request $request)
@@ -42,7 +43,7 @@ class LocationController extends ImprovedController
             $validatedData['image_path'] = '/storage/locations/' . $imageName;
         }
         $location = Location::create($validatedData);
-        return $this->respondWithSuccess('Location created successfully', 201, $location);
+        return $this->respondWithSuccess('Location created successfully', 201, new LocationResource($location));
     }
 
     public function update(Request $request, $id)
@@ -79,7 +80,7 @@ class LocationController extends ImprovedController
         }
 
         $location->update($validatedData);
-        return $this->respondWithSuccess('Location updated successfully', 200, $location);
+        return $this->respondWithSuccess('Location updated successfully', 200, new LocationResource($location));
     }
 
     public function destroy($id)
