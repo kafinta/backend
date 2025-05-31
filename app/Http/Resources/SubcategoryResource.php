@@ -17,8 +17,12 @@ class SubcategoryResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
+            'image_path' => $this->image_path,
+            'category' => $this->when($this->relationLoaded('category'), function () {
+                return new CategoryResource($this->category);
+            }),
+            'locations' => LocationResource::collection($this->whenLoaded('locations')),
             'attributes' => AttributeResource::collection($this->whenLoaded('attributes')),
-            // Add other fields as needed
         ];
     }
 }

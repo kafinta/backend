@@ -7,6 +7,7 @@ use App\Models\Location;
 use App\Models\Attribute;
 use App\Models\AttributeValue;
 use App\Http\Resources\AttributeResource;
+use App\Http\Resources\SubcategoryResource;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\ImprovedController;
 use Illuminate\Http\Request;
@@ -45,20 +46,7 @@ class SubcategoryController extends ImprovedController
         $data = [
             'category' => $categoryName,
             'location' => $locationName,
-            'subcategories' => $subcategories->map(function ($subcategory) {
-                return [
-                    'id' => $subcategory->id,
-                    'name' => $subcategory->name,
-                    'image_path' => $subcategory->image_path,
-                    'category' => $subcategory->category->name,
-                    'locations' => $subcategory->locations->map(function ($location) {
-                        return [
-                            'id' => $location->id,
-                            'name' => $location->name
-                        ];
-                    })
-                ];
-            })
+            'subcategories' => SubcategoryResource::collection($subcategories)
         ];
 
         return $this->respondWithSuccess('Subcategories fetched successfully', 200, $data);
@@ -67,11 +55,8 @@ class SubcategoryController extends ImprovedController
     public function show($id)
     {
         try {
-            $subcategory = Subcategory::with('locations')->findOrFail($id);
-            return $this->respondWithSuccess('Subcategory fetched successfully', 200, [
-                'subcategory' => $this->formatSubcategory($subcategory),
-                'locations' => $subcategory->locations
-            ]);
+            $subcategory = Subcategory::with(['attributes.values', 'category', 'locations'])->findOrFail($id);
+            return $this->respondWithSuccess('Subcategory fetched successfully', 200, new SubcategoryResource($subcategory));
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return $this->respondWithError('Subcategory not found', 404);
         }
@@ -107,7 +92,7 @@ class SubcategoryController extends ImprovedController
             $subcategory->locations()->attach($request->input('locations'));
         }
 
-        return $this->respondWithSuccess('Subcategory created successfully', 201, $subcategory);
+        return $this->respondWithSuccess('Subcategory created successfully', 201, new SubcategoryResource($subcategory->load(['category', 'locations'])));
     }
 
     public function update(Request $request, $id)
@@ -153,7 +138,7 @@ class SubcategoryController extends ImprovedController
             $subcategory->locations()->sync($request->input('locations')); // Sync locations
         }
 
-        return $this->respondWithSuccess('Subcategory updated successfully', 200, $subcategory);
+        return $this->respondWithSuccess('Subcategory updated successfully', 200, new SubcategoryResource($subcategory->load(['category', 'locations'])));
     }
 
     public function destroy($id)
@@ -173,18 +158,7 @@ class SubcategoryController extends ImprovedController
     }
 
 
-    private function formatSubcategory($subcategory)
-    {
-        // Load attributes with their values using proper relationships
-        $attributes = $subcategory->attributes()->with('values')->get();
 
-        return [
-            'id' => $subcategory->id,
-            'name' => $subcategory->name,
-            'image_path' => $subcategory->image_path,
-            'attributes' => AttributeResource::collection($attributes)
-        ];
-    }
 
     protected function validationFailedResponse($validator)
     {
