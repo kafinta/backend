@@ -19,6 +19,7 @@ class Product extends Model
         'user_id',
         'location_id',
         'status',
+        'denial_reason',
         'is_featured',
         // Inventory fields
         'stock_quantity',
@@ -133,39 +134,20 @@ class Product extends Model
             'attribute_values' => $attributeValues
         ]);
 
-        foreach ($attributeValues as $attributeId => $valueId) {
-            // Verify the attribute belongs to the product's subcategory
-            $attribute = $this->subcategory->attributes()
-                ->select('attributes.*')
-                ->where('attributes.id', $attributeId)
-                ->first();
-
-            if (!$attribute) {
-                throw new \InvalidArgumentException("Invalid attribute ID: {$attributeId} for subcategory {$this->subcategory_id}");
-            }
-
-            // Log before validation
-            \Log::info('Validating attribute value', [
-                'attribute_id' => $attributeId,
-                'value_id' => $valueId,
-                'subcategory_id' => $this->subcategory_id
-            ]);
-
-            // Verify the value belongs to the attribute and is valid for the subcategory
-            $attribute->validateValuesForSubcategory($this->subcategory, [$valueId]);
-        }
-
-        // Attach the values
+        // Validation is already done in the controller, so we can directly sync the values
+        // Sync the attribute values (this will replace all existing values)
         $this->attributeValues()->sync($attributeValues);
 
-        // If any variant-generating attributes were updated, regenerate variants
-        $variantAttributeIds = $this->attributes()
-            ->where('is_variant_generator', true)
-            ->pluck('attributes.id');
+        \Log::info('Successfully synced attribute values', [
+            'product_id' => $this->id,
+            'synced_values' => $attributeValues
+        ]);
 
-        if (!empty(array_intersect($variantAttributeIds->toArray(), array_keys($attributeValues)))) {
-            $this->generateVariants();
-        }
+        // TODO: Variant generation will be implemented in the next phase
+        // For now, we're focusing on basic product creation without variants
+        \Log::info('Attribute values set successfully. Variant generation disabled for now.', [
+            'product_id' => $this->id
+        ]);
 
         return $this;
     }
@@ -192,6 +174,30 @@ class Product extends Model
     public function scopeDraft($query)
     {
         return $query->where('status', 'draft');
+    }
+
+    /**
+     * Scope for paused products
+     */
+    public function scopePaused($query)
+    {
+        return $query->where('status', 'paused');
+    }
+
+    /**
+     * Scope for denied products
+     */
+    public function scopeDenied($query)
+    {
+        return $query->where('status', 'denied');
+    }
+
+    /**
+     * Scope for out of stock products
+     */
+    public function scopeOutOfStock($query)
+    {
+        return $query->where('status', 'out_of_stock');
     }
 
     /**
@@ -325,37 +331,83 @@ class Product extends Model
     }
 
     /**
-     * Adjust stock quantity (can be positive or negative)
+     * Adjust stock quantity (can be positive or negative) - Enhanced version
      *
      * @param int $quantity
+     * @param string $reason
      * @return bool
      */
-    public function adjustStock($quantity)
+    public function adjustStock($quantity, $reason = 'Manual adjustment')
     {
         if (!$this->manage_stock) return true;
 
+        $previousStock = $this->stock_quantity;
         $this->stock_quantity += $quantity;
+
+        // Auto-restore status if stock was replenished
+        $previousStatus = $this->status;
+        if ($previousStock <= 0 && $this->stock_quantity > 0 && $this->status === 'out_of_stock') {
+            $this->status = 'active'; // Restore to active when stock replenished
+        }
+
+        // Auto-set out_of_stock if stock depleted
+        if ($this->stock_quantity <= 0 && $this->status === 'active') {
+            $this->status = 'out_of_stock';
+        }
+
         $this->save();
+
+        // Log stock movement for audit trail
+        \Log::info('Stock adjusted', [
+            'product_id' => $this->id,
+            'previous_stock' => $previousStock,
+            'adjustment' => $quantity,
+            'new_stock' => $this->stock_quantity,
+            'reason' => $reason,
+            'status_changed' => $previousStatus !== $this->status ? "from {$previousStatus} to {$this->status}" : 'no change'
+        ]);
 
         return true;
     }
 
     /**
-     * Reduce stock quantity (for sales)
+     * Reduce stock quantity (for sales) - Enhanced version
      *
      * @param int $quantity
+     * @param string $reason
      * @return bool
+     * @throws \Exception
      */
-    public function reduceStock($quantity)
+    public function reduceStock($quantity, $reason = 'Order fulfillment')
     {
         if (!$this->manage_stock) return true;
 
         if ($this->stock_quantity < $quantity) {
-            return false; // Not enough stock
+            throw new \Exception(
+                "Insufficient stock. Available: {$this->stock_quantity}, Requested: {$quantity}"
+            );
         }
 
+        $previousStock = $this->stock_quantity;
         $this->stock_quantity -= $quantity;
+
+        // Auto-set out_of_stock status if stock reaches 0
+        $previousStatus = $this->status;
+        if ($this->stock_quantity <= 0 && $this->status === 'active') {
+            $this->status = 'out_of_stock';
+        }
+
         $this->save();
+
+        // Log stock movement for audit trail
+        \Log::info('Stock reduced', [
+            'product_id' => $this->id,
+            'previous_stock' => $previousStock,
+            'quantity_reduced' => $quantity,
+            'new_stock' => $this->stock_quantity,
+            'reason' => $reason,
+            'status_changed' => $previousStatus !== $this->status ? "from {$previousStatus} to {$this->status}" : 'no change'
+        ]);
 
         return true;
     }

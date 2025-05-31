@@ -39,6 +39,85 @@ class Variant extends Model
         'manage_stock' => 'boolean',
     ];
 
+    // ===== ATTRIBUTE COMBINATION METHODS =====
+
+    /**
+     * Set attribute values for this variant with uniqueness validation
+     *
+     * @param array $attributeValues Array of ['attribute_id' => value_id] pairs
+     * @return void
+     * @throws \Exception
+     */
+    public function setAttributeValues(array $attributeValues)
+    {
+        // Validate uniqueness before setting
+        $this->validateUniqueAttributeCombination($attributeValues);
+
+        // Detach all existing attributes
+        $this->attributeValues()->detach();
+
+        // Attach new attributes
+        foreach ($attributeValues as $attributeId => $valueId) {
+            $this->attributeValues()->attach($valueId, [
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+        }
+    }
+
+    /**
+     * Get attribute combination as sorted array for comparison
+     *
+     * @return array
+     */
+    public function getAttributeCombination()
+    {
+        return $this->attributeValues()
+            ->orderBy('attribute_id')
+            ->pluck('attribute_values.id', 'attribute_id')
+            ->toArray();
+    }
+
+    /**
+     * Validate that attribute combination is unique within the product
+     *
+     * @param array $attributeValues
+     * @return void
+     * @throws \Exception
+     */
+    protected function validateUniqueAttributeCombination(array $attributeValues)
+    {
+        // Sort by attribute_id for consistent comparison
+        ksort($attributeValues);
+
+        // Check against parent product's attributes
+        $productAttributes = $this->product->attributeValues()
+            ->orderBy('attribute_id')
+            ->pluck('attribute_values.id', 'attribute_id')
+            ->toArray();
+
+        if ($productAttributes === $attributeValues) {
+            throw new \Exception('Variant cannot have the same attribute combination as the parent product');
+        }
+
+        // Check against other variants of the same product
+        $existingVariants = $this->product->variants()
+            ->where('id', '!=', $this->id) // Exclude current variant for updates
+            ->with('attributeValues')
+            ->get();
+
+        foreach ($existingVariants as $variant) {
+            $variantAttributes = $variant->attributeValues()
+                ->orderBy('attribute_id')
+                ->pluck('attribute_values.id', 'attribute_id')
+                ->toArray();
+
+            if ($variantAttributes === $attributeValues) {
+                throw new \Exception("Variant cannot have the same attribute combination as variant '{$variant->name}'");
+            }
+        }
+    }
+
     // ===== INVENTORY MANAGEMENT METHODS =====
 
     /**
@@ -53,17 +132,29 @@ class Variant extends Model
     }
 
     /**
-     * Adjust stock quantity (can be positive or negative)
+     * Adjust stock quantity (can be positive or negative) - Enhanced version
      *
      * @param int $quantity
+     * @param string $reason
      * @return bool
      */
-    public function adjustStock($quantity)
+    public function adjustStock($quantity, $reason = 'Manual adjustment')
     {
         if (!$this->manage_stock) return true;
 
+        $previousStock = $this->stock_quantity;
         $this->stock_quantity += $quantity;
         $this->save();
+
+        // Log stock movement for audit trail
+        \Log::info('Variant stock adjusted', [
+            'variant_id' => $this->id,
+            'product_id' => $this->product_id,
+            'previous_stock' => $previousStock,
+            'adjustment' => $quantity,
+            'new_stock' => $this->stock_quantity,
+            'reason' => $reason
+        ]);
 
         return true;
     }
