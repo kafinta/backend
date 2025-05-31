@@ -19,7 +19,10 @@ class Product extends Model
         'user_id',
         'location_id',
         'status',
-        'is_featured'
+        'is_featured',
+        // Inventory fields
+        'stock_quantity',
+        'manage_stock'
     ];
 
     /**
@@ -51,6 +54,7 @@ class Product extends Model
         'price' => 'decimal:2',
         'is_active' => 'boolean',
         'is_featured' => 'boolean',
+        'manage_stock' => 'boolean',
     ];
 
     public function subcategory()
@@ -305,5 +309,64 @@ class Product extends Model
 
         // Use a default stock or minimum stock from values
         return max(0, $stockAdjustment ?? $this->default_stock);
+    }
+
+    // ===== INVENTORY MANAGEMENT METHODS =====
+
+    /**
+     * Check if product is in stock
+     *
+     * @param int $quantity
+     * @return bool
+     */
+    public function isInStock($quantity = 1)
+    {
+        return !$this->manage_stock || $this->stock_quantity >= $quantity;
+    }
+
+    /**
+     * Adjust stock quantity (can be positive or negative)
+     *
+     * @param int $quantity
+     * @return bool
+     */
+    public function adjustStock($quantity)
+    {
+        if (!$this->manage_stock) return true;
+
+        $this->stock_quantity += $quantity;
+        $this->save();
+
+        return true;
+    }
+
+    /**
+     * Reduce stock quantity (for sales)
+     *
+     * @param int $quantity
+     * @return bool
+     */
+    public function reduceStock($quantity)
+    {
+        if (!$this->manage_stock) return true;
+
+        if ($this->stock_quantity < $quantity) {
+            return false; // Not enough stock
+        }
+
+        $this->stock_quantity -= $quantity;
+        $this->save();
+
+        return true;
+    }
+
+    /**
+     * Check if product is out of stock
+     *
+     * @return bool
+     */
+    public function isOutOfStock()
+    {
+        return $this->manage_stock && $this->stock_quantity <= 0;
     }
 }
