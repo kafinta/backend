@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\ImprovedController;
+use App\Http\Resources\CheckoutResource;
+use App\Http\Resources\OrderResource;
 use App\Services\CartService;
 use App\Services\OrderService;
 use Illuminate\Http\Request;
@@ -41,16 +43,20 @@ class CheckoutController extends ImprovedController
                 return $this->respondWithError('Your cart is empty', 400);
             }
 
-            // For now, we're just returning the cart contents
-            // In the future, we can calculate shipping and tax here
-            return $this->respondWithSuccess('Order totals calculated', 200, [
+            // Create checkout data object for resource
+            $checkoutData = (object) [
                 'subtotal' => $cartContents['total_price'],
                 'tax' => 0,
                 'shipping' => 0,
                 'total' => $cartContents['total_price'],
                 'items' => $cartContents['items'],
-                'item_count' => $cartContents['item_count']
-            ]);
+                'item_count' => $cartContents['item_count'],
+                'total_quantity' => $cartContents['total_quantity'] ?? 0,
+                'can_checkout' => true,
+                'checkout_errors' => []
+            ];
+
+            return $this->respondWithSuccess('Order totals calculated', 200, new CheckoutResource($checkoutData));
         } catch (\Exception $e) {
             return $this->respondWithError('Error calculating totals: ' . $e->getMessage(), 500);
         }
@@ -89,12 +95,15 @@ class CheckoutController extends ImprovedController
 
             $order = $this->orderService->createOrder($request->all(), $sessionId);
 
-            return $this->respondWithSuccess('Order placed successfully', 201, [
-                'order' => $order,
-                'order_number' => $order->order_number,
-                'total' => $order->total,
-                'status' => $order->status
-            ]);
+            // Load relationships for resource
+            $order->load(['orderItems.product', 'orderItems.variant']);
+
+            // Add computed fields
+            $order->item_count = $order->orderItems->count();
+            $order->total_quantity = $order->orderItems->sum('quantity');
+            $order->can_cancel = $order->status === 'pending';
+
+            return $this->respondWithSuccess('Order placed successfully', 201, new OrderResource($order));
         } catch (\Exception $e) {
             return $this->respondWithError('Error placing order: ' . $e->getMessage(), 500);
         }
