@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
 use App\Http\Resources\AttributeResource;
 use Illuminate\Support\Facades\Log;
-use App\Services\MultistepFormService;
+
 
 // Events
 use App\Events\Product\AttributeAdded;
@@ -20,11 +20,9 @@ use App\Events\Product\ValidationFailed;
 
 class ProductAttributeService
 {
-    protected $formService;
-
-    public function __construct(MultistepFormService $formService = null)
+    public function __construct()
     {
-        $this->formService = $formService ?? app(MultistepFormService::class);
+        // Constructor simplified - no longer needs MultistepFormService
     }
 
     /**
@@ -418,127 +416,11 @@ class ProductAttributeService
             ->implode(' - ');
     }
 
-    /**
-     * Handle the attribute step in product creation
-     */
-    public function handleAttributeStep(array $validatedData)
-    {
-        try {
-            if (!isset($validatedData['session_id'])) {
-                throw new \InvalidArgumentException('Session ID is required');
-            }
 
-            // Get the form data
-            $formData = $this->formService->getFormData($validatedData['session_id']);
 
-            if (!$formData || !isset($formData['data']['basic_info'])) {
-                throw new \InvalidArgumentException('Please complete step 1 first');
-            }
 
-            // Get the subcategory from form data
-            $subcategory = Subcategory::with('attributes')
-                ->findOrFail($formData['data']['basic_info']['subcategory_id']);
 
-            return $this->processAttributeStep($validatedData, $formData, $subcategory);
-        } catch (\Exception $e) {
-            Log::error('Error in handleAttributeStep', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'session_id' => $validatedData['session_id'] ?? null,
-                'attributes' => $validatedData['attributes'] ?? []
-            ]);
-            throw $e;
-        }
-    }
 
-    /**
-     * Handle the attribute step in product update
-     */
-    public function handleUpdateAttributeStep(array $validatedData, Product $product)
-    {
-        try {
-            if (!isset($validatedData['session_id'])) {
-                throw new \InvalidArgumentException('Session ID is required');
-            }
-
-            // Get the form data
-            $formData = $this->formService->getFormData($validatedData['session_id']);
-
-            if (!$formData || !isset($formData['data']['basic_info'])) {
-                throw new \InvalidArgumentException('Please complete step 1 first');
-            }
-
-            // Get the subcategory from the product
-            $subcategory = $product->subcategory;
-
-            // Add product ID to the validated data
-            $validatedData['product_id'] = $product->id;
-
-            return $this->processAttributeStep($validatedData, $formData, $subcategory);
-        } catch (\Exception $e) {
-            Log::error('Error in handleUpdateAttributeStep', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'product_id' => $product->id,
-                'session_id' => $validatedData['session_id'] ?? null,
-                'attributes' => $validatedData['attributes'] ?? []
-            ]);
-            throw $e;
-        }
-    }
-
-    /**
-     * Process attribute step data for both creation and update
-     */
-    protected function processAttributeStep(array $validatedData, array $formData, Subcategory $subcategory)
-    {
-        // Validate attribute values
-        $rawAttributes = $this->validateAttributeValues(
-            $validatedData['attributes'],
-            $subcategory
-        );
-
-        // Group values by attribute
-        $groupedAttributes = [];
-        foreach ($subcategory->attributes as $attribute) {
-            // Find the value for this attribute
-            $attributeValue = collect($rawAttributes)
-                ->where('attribute_id', $attribute->id)
-                ->first();
-
-            if ($attributeValue) {
-                // Load the value details
-                $value = $attribute->values()
-                    ->where('id', $attributeValue['value_id'])
-                    ->first();
-
-                if ($value) {
-                    $groupedAttributes[] = [
-                        'id' => $attribute->id,
-                        'name' => $attribute->name,
-                        'value' => [
-                            'id' => $value->id,
-                            'name' => $value->name,
-                            'representation' => $value->representation
-                        ]
-                    ];
-                }
-            }
-        }
-
-        // Update form data with attributes and raw_attributes
-        $formData['data']['attributes'] = $groupedAttributes;
-        $formData['data']['raw_attributes'] = $rawAttributes;
-
-        // Save updated form data
-        $this->formService->saveFormData($validatedData['session_id'], $formData);
-
-        return [
-            'success' => true,
-            'session_id' => $validatedData['session_id'],
-            'attributes' => $groupedAttributes
-        ];
-    }
 
     /**
      * Validate attribute values for a subcategory
