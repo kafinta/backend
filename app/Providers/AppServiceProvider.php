@@ -7,7 +7,7 @@ use Illuminate\Routing\UrlGenerator;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use App\Services\FileService;
-use App\Services\MultistepFormService;
+use App\Services\EmailService;
 use App\Services\ProductImageService;
 use App\Services\ProductService;
 use App\Services\ProductAttributeService;
@@ -30,9 +30,9 @@ class AppServiceProvider extends ServiceProvider
             return new FileService();
         });
 
-        // Form services
-        $this->app->singleton(MultistepFormService::class, function ($app) {
-            return new MultistepFormService($app->make(FileService::class));
+        // Email service
+        $this->app->singleton(EmailService::class, function ($app) {
+            return new EmailService();
         });
 
         // Product services
@@ -41,7 +41,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         $this->app->singleton(ProductAttributeService::class, function ($app) {
-            return new ProductAttributeService($app->make(MultistepFormService::class));
+            return new ProductAttributeService();
         });
 
         $this->app->singleton(ProductService::class, function ($app) {
