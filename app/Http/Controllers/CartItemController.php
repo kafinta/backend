@@ -1,37 +1,101 @@
 <?php
 
 namespace App\Http\Controllers;
-use App\Http\Controllers\Controller;
+
 use App\Http\Controllers\ImprovedController;
+use App\Http\Resources\CartItemResource;
+use App\Models\CartItem;
+use App\Services\CartService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
 
 class CartItemController extends ImprovedController
 {
-    public function showAllCartItems()
+    protected $cartService;
+
+    public function __construct(CartService $cartService)
     {
-        $cartItems = CartItem::all();
-        return response()->json('cart items', compact('cartItems'));
+        $this->cartService = $cartService;
     }
 
-    public function showCartItem($id)
+    /**
+     * Display all cart items for the current user/session
+     */
+    public function index(Request $request)
     {
-        $cartItem = CartItem::find($id);
-        return response()->json('cart item', compact('cartItem'));
+        try {
+            $sessionId = $this->extractSessionId($request);
+            $cart = $this->cartService->getCurrentCart($sessionId);
+
+            $cartItems = $cart->cartItems()->with(['product', 'variant'])->get();
+
+            return $this->respondWithSuccess('Cart items retrieved successfully', 200, CartItemResource::collection($cartItems));
+        } catch (\Exception $e) {
+            return $this->respondWithError('Error retrieving cart items: ' . $e->getMessage(), 500);
+        }
     }
 
-    public function addCartItem(Request $request)
+    /**
+     * Display a specific cart item
+     */
+    public function show(Request $request, $id)
     {
-        // Validate and store the new cart item
+        try {
+            $sessionId = $this->extractSessionId($request);
+            $cart = $this->cartService->getCurrentCart($sessionId);
+
+            $cartItem = $cart->cartItems()->with(['product', 'variant'])->findOrFail($id);
+
+            return $this->respondWithSuccess('Cart item retrieved successfully', 200, new CartItemResource($cartItem));
+        } catch (\Exception $e) {
+            if (str_contains($e->getMessage(), 'No query results for model')) {
+                return $this->respondWithError('Cart item not found', 404);
+            }
+            return $this->respondWithError('Error retrieving cart item: ' . $e->getMessage(), 500);
+        }
     }
 
-    public function updateCartItem(Request $request, $id)
+    /**
+     * Add a new cart item (alias for CartController::addToCart)
+     */
+    public function store(Request $request)
     {
-        // Validate and update the cart item
+        // Redirect to CartController::addToCart for consistency
+        $cartController = new \App\Http\Controllers\CartController($this->cartService);
+        return $cartController->addToCart($request);
     }
 
-    public function deleteCartItem($id)
+    /**
+     * Update a cart item (alias for CartController::updateCartItem)
+     */
+    public function update(Request $request, $id)
     {
-        $cartItem = CartItem::find($id);
-        $cartItem->delete();
+        // Redirect to CartController::updateCartItem for consistency
+        $cartController = new \App\Http\Controllers\CartController($this->cartService);
+        return $cartController->updateCartItem($request, $id);
+    }
+
+    /**
+     * Delete a cart item (alias for CartController::deleteCartItem)
+     */
+    public function destroy(Request $request, $id)
+    {
+        // Redirect to CartController::deleteCartItem for consistency
+        $cartController = new \App\Http\Controllers\CartController($this->cartService);
+        return $cartController->deleteCartItem($request, $id);
+    }
+
+    /**
+     * Extract session ID from request (same logic as CartController)
+     */
+    private function extractSessionId(Request $request)
+    {
+        if (Auth::check()) {
+            return null; // User is authenticated, no session ID needed
+        }
+
+        // Try to get session ID from cookie first, then from request
+        return $request->cookie('cart_session_id') ?? $request->input('session_id');
     }
 }
