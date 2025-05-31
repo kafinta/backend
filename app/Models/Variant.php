@@ -12,8 +12,10 @@ class Variant extends Model
     protected $fillable = [
         'product_id',
         'name',
-        'price'
-        // We'll add 'sku' and 'stock' in a future update
+        'price',
+        // Inventory fields
+        'stock_quantity',
+        'manage_stock'
     ];
 
     public function product()
@@ -32,16 +34,68 @@ class Variant extends Model
         return $this->morphMany(Image::class, 'imageable');
     }
 
+    protected $casts = [
+        'price' => 'decimal:2',
+        'manage_stock' => 'boolean',
+    ];
+
+    // ===== INVENTORY MANAGEMENT METHODS =====
+
     /**
-     * Check if the variant is in stock
-     * Note: Currently always returns true as we're not tracking stock yet
+     * Check if variant is in stock
+     *
+     * @param int $quantity
+     * @return bool
+     */
+    public function isInStock($quantity = 1)
+    {
+        return !$this->manage_stock || $this->stock_quantity >= $quantity;
+    }
+
+    /**
+     * Adjust stock quantity (can be positive or negative)
+     *
+     * @param int $quantity
+     * @return bool
+     */
+    public function adjustStock($quantity)
+    {
+        if (!$this->manage_stock) return true;
+
+        $this->stock_quantity += $quantity;
+        $this->save();
+
+        return true;
+    }
+
+    /**
+     * Reduce stock quantity (for sales)
+     *
+     * @param int $quantity
+     * @return bool
+     */
+    public function reduceStock($quantity)
+    {
+        if (!$this->manage_stock) return true;
+
+        if ($this->stock_quantity < $quantity) {
+            return false; // Not enough stock
+        }
+
+        $this->stock_quantity -= $quantity;
+        $this->save();
+
+        return true;
+    }
+
+    /**
+     * Check if variant is out of stock
      *
      * @return bool
      */
-    public function isInStock()
+    public function isOutOfStock()
     {
-        // We'll implement proper stock tracking in a future update
-        return true;
+        return $this->manage_stock && $this->stock_quantity <= 0;
     }
 
     /**
