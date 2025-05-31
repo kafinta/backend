@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\ImprovedController;
+use App\Http\Resources\ImageResource;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use App\Models\Image;
@@ -13,7 +14,7 @@ class ImageController extends ImprovedController
 
     public function index() {
         $images = Image::all();
-        return $this->respondWithSuccess("Images Fetched Successfully", 200, $images);
+        return $this->respondWithSuccess("Images Fetched Successfully", 200, ImageResource::collection($images));
     }
 
     public function store(Request $request, $parentModel)
