@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\ImprovedController;
+use App\Http\Resources\CartResource;
+use App\Http\Resources\CartItemResource;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Product;
@@ -62,15 +64,26 @@ class CartController extends ImprovedController
     {
         try {
             $sessionId = $this->extractSessionId($request);
+            $cart = $this->cartService->getCurrentCart($sessionId);
+
+            // Load cart items with relationships for resource
+            $cart->load(['cartItems.product', 'cartItems.variant']);
+
+            // Get cart contents with totals
             $cartContents = $this->cartService->getCartContents($sessionId);
+
+            // Add totals and counts to cart model for resource
+            $cart->totals = $cartContents['totals'] ?? null;
+            $cart->item_count = $cartContents['item_count'] ?? 0;
+            $cart->total_quantity = $cartContents['total_quantity'] ?? 0;
 
             // Set a cookie with the session ID for future requests
             if (!Auth::check() && isset($cartContents['session_id'])) {
                 $cookie = cookie('cart_session_id', $cartContents['session_id'], 60 * 24 * 30, null, null, null, true); // 30 days, HTTP-only
-                return $this->respondWithSuccess('Cart retrieved successfully', 200, $cartContents)->withCookie($cookie);
+                return $this->respondWithSuccess('Cart retrieved successfully', 200, new CartResource($cart))->withCookie($cookie);
             }
 
-            return $this->respondWithSuccess('Cart retrieved successfully', 200, $cartContents);
+            return $this->respondWithSuccess('Cart retrieved successfully', 200, new CartResource($cart));
         } catch (\Exception $e) {
             return $this->respondWithError('Error retrieving cart: ' . $e->getMessage(), 500);
         }
@@ -116,14 +129,14 @@ class CartController extends ImprovedController
                 $message = 'Product added to cart';
             }
 
+            // Load relationships for resource
+            $cartItem->load(['product', 'variant']);
+
             // Get updated cart contents
             $cartContents = $this->cartService->getCartContents($sessionId);
 
             // Set a cookie with the session ID for future requests
-            $response = $this->respondWithSuccess($message, 200, [
-                'cart_item' => $cartItem,
-                'cart' => $cartContents
-            ]);
+            $response = $this->respondWithSuccess($message, 200, new CartItemResource($cartItem));
 
             // Add session ID cookie for guest users
             if (!Auth::check() && isset($cartContents['session_id'])) {
@@ -162,14 +175,14 @@ class CartController extends ImprovedController
                 $sessionId
             );
 
+            // Load relationships for resource
+            $cartItem->load(['product', 'variant']);
+
             // Get updated cart contents
             $cartContents = $this->cartService->getCartContents($sessionId);
 
             // Set a cookie with the session ID for future requests
-            $response = $this->respondWithSuccess('Cart item updated successfully', 200, [
-                'cart_item' => $cartItem,
-                'cart' => $cartContents
-            ]);
+            $response = $this->respondWithSuccess('Cart item updated successfully', 200, new CartItemResource($cartItem));
 
             // Add session ID cookie for guest users
             if (!Auth::check() && isset($cartContents['session_id'])) {
@@ -198,13 +211,20 @@ class CartController extends ImprovedController
             $sessionId = $this->extractSessionId($request);
             $this->cartService->removeCartItem($cartItemId, $sessionId);
 
-            // Get updated cart contents
+            // Get updated cart with relationships
+            $cart = $this->cartService->getCurrentCart($sessionId);
+            $cart->load(['cartItems.product', 'cartItems.variant']);
+
+            // Get cart contents with totals
             $cartContents = $this->cartService->getCartContents($sessionId);
 
+            // Add totals to cart for resource
+            $cart->totals = $cartContents['totals'] ?? null;
+            $cart->item_count = $cartContents['item_count'] ?? 0;
+            $cart->total_quantity = $cartContents['total_quantity'] ?? 0;
+
             // Set a cookie with the session ID for future requests
-            $response = $this->respondWithSuccess('Cart item removed successfully', 200, [
-                'cart' => $cartContents
-            ]);
+            $response = $this->respondWithSuccess('Cart item removed successfully', 200, new CartResource($cart));
 
             // Add session ID cookie for guest users
             if (!Auth::check() && isset($cartContents['session_id'])) {
@@ -232,13 +252,20 @@ class CartController extends ImprovedController
             $sessionId = $this->extractSessionId($request);
             $this->cartService->clearCart($sessionId);
 
-            // Get updated cart contents (empty but with session ID)
+            // Get updated cart (empty but with session ID)
+            $cart = $this->cartService->getCurrentCart($sessionId);
+            $cart->load(['cartItems.product', 'cartItems.variant']);
+
+            // Get cart contents with totals
             $cartContents = $this->cartService->getCartContents($sessionId);
 
+            // Add totals to cart for resource
+            $cart->totals = $cartContents['totals'] ?? null;
+            $cart->item_count = $cartContents['item_count'] ?? 0;
+            $cart->total_quantity = $cartContents['total_quantity'] ?? 0;
+
             // Set a cookie with the session ID for future requests
-            $response = $this->respondWithSuccess('Cart cleared successfully', 200, [
-                'cart' => $cartContents
-            ]);
+            $response = $this->respondWithSuccess('Cart cleared successfully', 200, new CartResource($cart));
 
             // Add session ID cookie for guest users
             if (!Auth::check() && isset($cartContents['session_id'])) {
@@ -281,13 +308,20 @@ class CartController extends ImprovedController
                 return $this->respondWithSuccess('No guest cart found or cart was empty', 200);
             }
 
-            // Get updated cart contents
+            // Get updated cart with relationships
+            $cart = $this->cartService->getCurrentCart();
+            $cart->load(['cartItems.product', 'cartItems.variant']);
+
+            // Get cart contents with totals
             $cartContents = $this->cartService->getCartContents();
 
+            // Add totals to cart for resource
+            $cart->totals = $cartContents['totals'] ?? null;
+            $cart->item_count = $cartContents['item_count'] ?? 0;
+            $cart->total_quantity = $cartContents['total_quantity'] ?? 0;
+
             // Create response
-            $response = $this->respondWithSuccess('Guest cart transferred successfully', 200, [
-                'cart' => $cartContents
-            ]);
+            $response = $this->respondWithSuccess('Guest cart transferred successfully', 200, new CartResource($cart));
 
             // Clear the cart_session_id cookie
             $response->cookie('cart_session_id', '', -1);
