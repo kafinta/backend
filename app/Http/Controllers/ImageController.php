@@ -13,7 +13,7 @@ class ImageController extends ImprovedController
 
     public function index() {
         $images = Image::all();
-        return response()->json($images);
+        return $this->respondWithSuccess("Images Fetched Successfully", 200, $images);
     }
 
     public function store(Request $request, $parentModel)
@@ -24,7 +24,7 @@ class ImageController extends ImprovedController
 
         // Handle both single 'image' and array 'images'
         $imageFile = $request->hasFile('image') ? $request->file('image') : $request->file('images');
-        
+
         // Validate image
         if (!$imageFile->isValid()) {
             throw new \Exception('Invalid image file');
@@ -33,10 +33,10 @@ class ImageController extends ImprovedController
         try {
             // Get the model type for the storage path
             $modelType = strtolower(class_basename($parentModel));
-            
+
             // Store the image file
             $path = $imageFile->store($modelType, 'public');
-            
+
             // Create image record
             $imageRecord = $parentModel->images()->create([
                 'path' => '/storage/' . $path,
@@ -72,10 +72,10 @@ class ImageController extends ImprovedController
 
             // Get the model type for the storage path
             $modelType = strtolower(class_basename($image->imageable_type));
-            
+
             // Store new image
             $path = $newImage->store($modelType, 'public');
-            
+
             // Update image record
             $image->update([
                 'path' => '/storage/' . $path
@@ -92,25 +92,48 @@ class ImageController extends ImprovedController
 
     public function destroy($id)
     {
-        $image = Image::findOrFail($id);
-        $path = str_replace('/storage/', '', $image->path); // Remove /storage/ prefix to get relative path
-        $this->deleteImage($path);
-        $image->delete();
+        try {
+            $image = Image::findOrFail($id);
 
-        return response()->json(['message' => 'Image deleted successfully']);
+            // Check ownership - user must own the parent model (product, variant, etc.)
+            $parentModel = $image->imageable;
+
+            if (!$parentModel) {
+                return $this->respondWithError('Parent model not found', 404);
+            }
+
+            // Check if user owns the parent model or is admin
+            $user = auth()->user();
+            if (!$user->hasRole('admin') && $parentModel->user_id !== $user->id) {
+                return $this->respondWithError('Unauthorized', 403);
+            }
+
+            // Delete the file
+            $path = str_replace('/storage/', '', $image->path);
+            $this->deleteImage($path);
+
+            // Delete the database record
+            $image->delete();
+
+            return $this->respondWithSuccess('Image deleted successfully', 200);
+
+        } catch (\Exception $e) {
+            \Log::error('Image deletion failed: ' . $e->getMessage());
+            return $this->respondWithError('Failed to delete image: ' . $e->getMessage(), 500);
+        }
     }
 
     private function uploadImage($image)
     {
-        try {            
+        try {
             if (!$image->isValid()) {
                 throw new \Exception('Invalid image file');
             }
-            
+
             $filename = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
-            
+
             $path = $image->storeAs('products', $filename);
-            
+
             return '/storage/' . $path;
 
         } catch (\Exception $e) {
@@ -125,7 +148,7 @@ class ImageController extends ImprovedController
             Storage::disk('public')->delete($path);
             return true;
         }
-        
+
         if ($path && file_exists(public_path($path))) {
             unlink(public_path($path));
             return true;
