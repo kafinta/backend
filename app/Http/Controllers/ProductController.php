@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
-use App\Http\Resources\ProductCreationResource;
+use App\Http\Resources\ProductResource;
 
 class ProductController extends ImprovedController
 {
@@ -122,44 +122,7 @@ class ProductController extends ImprovedController
                 }
             ]);
 
-            // Format attributes
-            $attributeValues = $product->attributeValues;
-            $formattedAttributes = [];
-
-            foreach ($attributeValues as $value) {
-                if ($value->attribute) {
-                    $valueName = $value->name;
-                    if ($valueName === null) {
-                        if (is_array($value->representation) && isset($value->representation['value'])) {
-                            $valueName = $value->representation['value'];
-                        } else {
-                            $valueName = 'Unknown';
-                        }
-                    }
-
-                    $formattedAttributes[] = [
-                        'id' => $value->attribute->id,
-                        'name' => $value->attribute->name,
-                        'value' => [
-                            'id' => $value->id,
-                            'name' => $valueName,
-                            'representation' => $value->representation
-                        ]
-                    ];
-                }
-            }
-
-            $product->unsetRelation('attributeValues');
-            $product->attributes = $formattedAttributes;
-
-            if ($product->user && $product->user->seller) {
-                $product->seller_name = $product->user->seller->business_name;
-            }
-            $product->unsetRelation('user');
-
-            return $this->respondWithSuccess('Product retrieved successfully', 200, [
-                'product' => $product
-            ]);
+            return $this->respondWithSuccess('Product retrieved successfully', 200, new ProductResource($product));
         } catch (\Exception $e) {
             Log::error('Error retrieving product', [
                 'error' => $e->getMessage(),
@@ -237,7 +200,7 @@ class ProductController extends ImprovedController
             return $this->respondWithSuccess(
                 'Basic product information and inventory saved successfully',
                 201,
-                new ProductCreationResource($product->load(['subcategory', 'location']))
+                new ProductResource($product->load(['subcategory', 'location']))
             );
 
         } catch (\Exception $e) {
@@ -298,7 +261,7 @@ class ProductController extends ImprovedController
             return $this->respondWithSuccess(
                 'Basic product information updated successfully',
                 200,
-                new ProductCreationResource($product->load(['subcategory', 'location']))
+                new ProductResource($product->load(['subcategory', 'location']))
             );
 
         } catch (\Exception $e) {
@@ -371,7 +334,7 @@ class ProductController extends ImprovedController
             return $this->respondWithSuccess(
                 'Product attributes updated successfully',
                 200,
-                new ProductCreationResource($product->load(['attributeValues.attribute', 'subcategory', 'location']))
+                new ProductResource($product->load(['attributeValues.attribute', 'subcategory', 'location']))
             );
 
         } catch (\Exception $e) {
@@ -405,7 +368,7 @@ class ProductController extends ImprovedController
             return $this->respondWithSuccess(
                 'Images uploaded successfully',
                 200,
-                new ProductCreationResource($product->load(['images', 'subcategory', 'location', 'attributeValues.attribute']))
+                new ProductResource($product->load(['images', 'subcategory', 'location', 'attributeValues.attribute']))
             );
 
         } catch (\Exception $e) {
@@ -447,7 +410,7 @@ class ProductController extends ImprovedController
             return $this->respondWithSuccess(
                 'Product published successfully',
                 200,
-                new ProductCreationResource($product->load(['images', 'attributeValues.attribute', 'subcategory', 'location']))
+                new ProductResource($product->load(['images', 'attributeValues.attribute', 'subcategory', 'location']))
             );
 
         } catch (\Exception $e) {
@@ -517,7 +480,7 @@ class ProductController extends ImprovedController
             return $this->respondWithSuccess(
                 $message,
                 200,
-                new ProductCreationResource($product->load(['images', 'attributeValues.attribute', 'subcategory', 'location']))
+                new ProductResource($product->load(['images', 'attributeValues.attribute', 'subcategory', 'location']))
             );
 
         } catch (\Exception $e) {
