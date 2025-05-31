@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\ImprovedController;
+use App\Http\Resources\CategoryResource;
 use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -14,21 +15,20 @@ class CategoryController extends ImprovedController
     public function index()
     {
         $categories = Category::all();
-        return $this->respondWithSuccess('Categories fetched successfully', 200, $categories);
-
+        return $this->respondWithSuccess('Categories fetched successfully', 200, CategoryResource::collection($categories));
     }
 
     public function getSpecificNumberOfCategories($number)
     {
         $categories = Category::take($number)->get();
-        return $this->respondWithSuccess('Categories fetched successfully', 200, $categories);
+        return $this->respondWithSuccess('Categories fetched successfully', 200, CategoryResource::collection($categories));
     }
 
     public function show($id)
     {
         try {
             $category = Category::with('subcategories')->findOrFail($id);
-            return $this->respondWithSuccess('Category fetched successfully', 200, $category);
+            return $this->respondWithSuccess('Category fetched successfully', 200, new CategoryResource($category));
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return $this->respondWithError('Category not found', 404);
         }
@@ -57,7 +57,7 @@ class CategoryController extends ImprovedController
             $validatedData['image_path'] = '/storage/categories/' . $imageName;
         }
         $category = Category::create($validatedData);
-        return $this->respondWithSuccess('Category created successfully', 201, $category);
+        return $this->respondWithSuccess('Category created successfully', 201, new CategoryResource($category));
     }
 
     public function update(Request $request, $id)
@@ -94,7 +94,7 @@ class CategoryController extends ImprovedController
         }
 
         $category->update($validatedData);
-        return $this->respondWithSuccess('Category updated successfully', 200, $category);
+        return $this->respondWithSuccess('Category updated successfully', 200, new CategoryResource($category));
     }
 
     public function destroy($id)
