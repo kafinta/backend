@@ -16,7 +16,7 @@ The Product Management System provides a comprehensive, step-by-step approach fo
 - **ProductController** - Main product management logic
 - **ProductImageService** - Handles image uploads and management
 - **ImageController** - Generic image deletion with ownership validation
-- **ProductCreationResource** - Standardized API responses
+- **ProductResource** - Standardized API responses
 
 ## API Endpoints
 
