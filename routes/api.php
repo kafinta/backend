@@ -20,6 +20,7 @@ use App\Http\Controllers\SimulatedEmailController;
 use App\Http\Controllers\VerificationTokenController;
 use App\Http\Controllers\SocialAuthController;
 use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\NotificationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -438,6 +439,30 @@ Route::middleware(['auth:sanctum,web'])->group(function () {
 
             // Update the status of the seller's items in an order
             Route::put('/{id}/status', [SellerOrderController::class, 'updateStatus'])->name('seller.orders.update-status');
+        });
+
+        // Notification Management Routes
+        Route::prefix('notifications')->group(function () {
+            // List user notifications with pagination
+            Route::get('/', [NotificationController::class, 'index'])->name('notifications.index');
+
+            // Get unread notification count
+            Route::get('/unread-count', [NotificationController::class, 'getUnreadCount'])->name('notifications.unread-count');
+
+            // Mark specific notification as read
+            Route::post('/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.mark-read');
+
+            // Mark all notifications as read
+            Route::post('/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
+
+            // Delete specific notification
+            Route::delete('/{id}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
+
+            // Get user notification preferences
+            Route::get('/preferences', [NotificationController::class, 'getPreferences'])->name('notifications.preferences.get');
+
+            // Update user notification preferences
+            Route::put('/preferences', [NotificationController::class, 'updatePreferences'])->name('notifications.preferences.update');
         });
     });
 
