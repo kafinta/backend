@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\ImprovedController;
 use App\Models\Product;
 use App\Models\Variant;
 use App\Services\InventoryService;
@@ -26,9 +27,9 @@ class InventoryController extends ImprovedController
             $sellerId = auth()->id();
             $summary = $this->inventoryService->getInventorySummary($sellerId);
 
-            return $this->successResponse($summary, 'Inventory summary retrieved successfully');
+            return $this->respondWithSuccess('Inventory summary retrieved successfully', 200, $summary);
         } catch (\Exception $e) {
-            return $this->errorResponse('Failed to get inventory summary: ' . $e->getMessage());
+            return $this->respondWithError('Failed to get inventory summary: ' . $e->getMessage(), 500);
         }
     }
 
@@ -41,9 +42,9 @@ class InventoryController extends ImprovedController
             $sellerId = auth()->id();
             $products = $this->inventoryService->getOutOfStockProducts($sellerId);
 
-            return $this->successResponse($products, 'Out of stock products retrieved successfully');
+            return $this->respondWithSuccess('Out of stock products retrieved successfully', 200, $products);
         } catch (\Exception $e) {
-            return $this->errorResponse('Failed to get out of stock products: ' . $e->getMessage());
+            return $this->respondWithError('Failed to get out of stock products: ' . $e->getMessage(), 500);
         }
     }
 
@@ -56,9 +57,9 @@ class InventoryController extends ImprovedController
             $sellerId = auth()->id();
             $variants = $this->inventoryService->getOutOfStockVariants($sellerId);
 
-            return $this->successResponse($variants, 'Out of stock variants retrieved successfully');
+            return $this->respondWithSuccess('Out of stock variants retrieved successfully', 200, $variants);
         } catch (\Exception $e) {
-            return $this->errorResponse('Failed to get out of stock variants: ' . $e->getMessage());
+            return $this->respondWithError('Failed to get out of stock variants: ' . $e->getMessage(), 500);
         }
     }
 
@@ -70,7 +71,7 @@ class InventoryController extends ImprovedController
         try {
             // Check if user owns this product
             if ($product->user_id !== auth()->id()) {
-                return $this->errorResponse('Unauthorized', 403);
+                return $this->respondWithError('Unauthorized', 403);
             }
 
             $validator = Validator::make($request->all(), [
@@ -79,26 +80,30 @@ class InventoryController extends ImprovedController
             ]);
 
             if ($validator->fails()) {
-                return $this->errorResponse('Validation failed', 422, $validator->errors());
+                return $this->respondWithError($validator->errors(), 422);
             }
 
             $quantity = $request->input('quantity');
             $reason = $request->input('reason', 'Manual adjustment');
 
-            $result = $product->adjustStock($quantity);
+            $result = $product->adjustStock($quantity, $reason);
 
             if ($result) {
-                return $this->successResponse([
-                    'product_id' => $product->id,
-                    'new_stock_quantity' => $product->fresh()->stock_quantity,
-                    'adjustment' => $quantity,
-                    'reason' => $reason
-                ], 'Stock adjusted successfully');
+                return $this->respondWithSuccess(
+                    'Stock adjusted successfully',
+                    200,
+                    [
+                        'product_id' => $product->id,
+                        'new_stock_quantity' => $product->fresh()->stock_quantity,
+                        'adjustment' => $quantity,
+                        'reason' => $reason
+                    ]
+                );
             } else {
-                return $this->errorResponse('Failed to adjust stock');
+                return $this->respondWithError('Failed to adjust stock', 500);
             }
         } catch (\Exception $e) {
-            return $this->errorResponse('Failed to adjust product stock: ' . $e->getMessage());
+            return $this->respondWithError('Failed to adjust product stock: ' . $e->getMessage(), 500);
         }
     }
 
@@ -110,7 +115,7 @@ class InventoryController extends ImprovedController
         try {
             // Check if user owns this variant's product
             if ($variant->product->user_id !== auth()->id()) {
-                return $this->errorResponse('Unauthorized', 403);
+                return $this->respondWithError('Unauthorized', 403);
             }
 
             $validator = Validator::make($request->all(), [
@@ -119,26 +124,30 @@ class InventoryController extends ImprovedController
             ]);
 
             if ($validator->fails()) {
-                return $this->errorResponse('Validation failed', 422, $validator->errors());
+                return $this->respondWithError($validator->errors(), 422);
             }
 
             $quantity = $request->input('quantity');
             $reason = $request->input('reason', 'Manual adjustment');
 
-            $result = $variant->adjustStock($quantity);
+            $result = $variant->adjustStock($quantity, $reason);
 
             if ($result) {
-                return $this->successResponse([
-                    'variant_id' => $variant->id,
-                    'new_stock_quantity' => $variant->fresh()->stock_quantity,
-                    'adjustment' => $quantity,
-                    'reason' => $reason
-                ], 'Stock adjusted successfully');
+                return $this->respondWithSuccess(
+                    'Stock adjusted successfully',
+                    200,
+                    [
+                        'variant_id' => $variant->id,
+                        'new_stock_quantity' => $variant->fresh()->stock_quantity,
+                        'adjustment' => $quantity,
+                        'reason' => $reason
+                    ]
+                );
             } else {
-                return $this->errorResponse('Failed to adjust stock');
+                return $this->respondWithError('Failed to adjust stock', 500);
             }
         } catch (\Exception $e) {
-            return $this->errorResponse('Failed to adjust variant stock: ' . $e->getMessage());
+            return $this->respondWithError('Failed to adjust variant stock: ' . $e->getMessage(), 500);
         }
     }
 
@@ -156,22 +165,22 @@ class InventoryController extends ImprovedController
             ]);
 
             if ($validator->fails()) {
-                return $this->errorResponse('Validation failed', 422, $validator->errors());
+                return $this->respondWithError($validator->errors(), 422);
             }
 
             $adjustments = $request->input('adjustments');
-            
+
             // Verify ownership of all items before processing
             foreach ($adjustments as $adjustment) {
                 if ($adjustment['type'] === 'product') {
                     $product = Product::find($adjustment['id']);
                     if (!$product || $product->user_id !== auth()->id()) {
-                        return $this->errorResponse('Unauthorized access to product ID: ' . $adjustment['id'], 403);
+                        return $this->respondWithError('Unauthorized access to product ID: ' . $adjustment['id'], 403);
                     }
                 } else {
                     $variant = Variant::find($adjustment['id']);
                     if (!$variant || $variant->product->user_id !== auth()->id()) {
-                        return $this->errorResponse('Unauthorized access to variant ID: ' . $adjustment['id'], 403);
+                        return $this->respondWithError('Unauthorized access to variant ID: ' . $adjustment['id'], 403);
                     }
                 }
             }
@@ -179,14 +188,18 @@ class InventoryController extends ImprovedController
             $result = $this->inventoryService->bulkStockAdjustment($adjustments);
 
             if ($result) {
-                return $this->successResponse([
-                    'processed_count' => count($adjustments)
-                ], 'Bulk stock adjustment completed successfully');
+                return $this->respondWithSuccess(
+                    'Bulk stock adjustment completed successfully',
+                    200,
+                    [
+                        'processed_count' => count($adjustments)
+                    ]
+                );
             } else {
-                return $this->errorResponse('Failed to process bulk adjustment');
+                return $this->respondWithError('Failed to process bulk adjustment', 500);
             }
         } catch (\Exception $e) {
-            return $this->errorResponse('Failed to process bulk adjustment: ' . $e->getMessage());
+            return $this->respondWithError('Failed to process bulk adjustment: ' . $e->getMessage(), 500);
         }
     }
 
@@ -198,7 +211,7 @@ class InventoryController extends ImprovedController
         try {
             // Check if user owns this product
             if ($product->user_id !== auth()->id()) {
-                return $this->errorResponse('Unauthorized', 403);
+                return $this->respondWithError('Unauthorized', 403);
             }
 
             $validator = Validator::make($request->all(), [
@@ -207,24 +220,28 @@ class InventoryController extends ImprovedController
             ]);
 
             if ($validator->fails()) {
-                return $this->errorResponse('Validation failed', 422, $validator->errors());
+                return $this->respondWithError($validator->errors(), 422);
             }
 
             $product->manage_stock = $request->input('manage_stock');
-            
+
             if ($request->has('stock_quantity')) {
                 $product->stock_quantity = $request->input('stock_quantity');
             }
 
             $product->save();
 
-            return $this->successResponse([
-                'product_id' => $product->id,
-                'manage_stock' => $product->manage_stock,
-                'stock_quantity' => $product->stock_quantity
-            ], 'Stock management settings updated successfully');
+            return $this->respondWithSuccess(
+                'Stock management settings updated successfully',
+                200,
+                [
+                    'product_id' => $product->id,
+                    'manage_stock' => $product->manage_stock,
+                    'stock_quantity' => $product->stock_quantity
+                ]
+            );
         } catch (\Exception $e) {
-            return $this->errorResponse('Failed to update stock management: ' . $e->getMessage());
+            return $this->respondWithError('Failed to update stock management: ' . $e->getMessage(), 500);
         }
     }
 }
