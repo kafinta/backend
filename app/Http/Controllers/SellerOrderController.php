@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\OrderResource;
 use App\Services\SellerOrderService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -32,9 +33,10 @@ class SellerOrderController extends ImprovedController
         try {
             $orders = $this->sellerOrderService->getSellerOrders();
 
-            return $this->respondWithSuccess('Seller orders retrieved successfully', 200, [
-                'orders' => $orders
-            ]);
+            // Load additional relationships for resource
+            $orders->load(['orderItems.product', 'orderItems.variant', 'user']);
+
+            return $this->respondWithSuccess('Seller orders retrieved successfully', 200, OrderResource::collection($orders));
         } catch (\Exception $e) {
             return $this->respondWithError('Error retrieving seller orders: ' . $e->getMessage(), 500);
         }
@@ -51,10 +53,14 @@ class SellerOrderController extends ImprovedController
         try {
             $order = $this->sellerOrderService->getSellerOrder($id);
 
-            return $this->respondWithSuccess('Seller order retrieved successfully', 200, [
-                'order' => $order,
-                'items' => $order->orderItems
-            ]);
+            // Load relationships for resource
+            $order->load(['orderItems.product', 'orderItems.variant', 'user']);
+
+            // Add computed fields
+            $order->item_count = $order->orderItems->count();
+            $order->total_quantity = $order->orderItems->sum('quantity');
+
+            return $this->respondWithSuccess('Seller order retrieved successfully', 200, new OrderResource($order));
         } catch (\Exception $e) {
             if (str_contains($e->getMessage(), 'No query results for model')) {
                 return $this->respondWithError('Order not found', 404);
@@ -84,10 +90,14 @@ class SellerOrderController extends ImprovedController
 
             $order = $this->sellerOrderService->updateOrderStatus($id, $request->input('status'));
 
-            return $this->respondWithSuccess('Order status updated successfully', 200, [
-                'order' => $order,
-                'items' => $order->orderItems
-            ]);
+            // Load relationships for resource
+            $order->load(['orderItems.product', 'orderItems.variant', 'user']);
+
+            // Add computed fields
+            $order->item_count = $order->orderItems->count();
+            $order->total_quantity = $order->orderItems->sum('quantity');
+
+            return $this->respondWithSuccess('Order status updated successfully', 200, new OrderResource($order));
         } catch (\Exception $e) {
             if (str_contains($e->getMessage(), 'No query results for model')) {
                 return $this->respondWithError('Order not found', 404);
