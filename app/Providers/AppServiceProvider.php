@@ -72,6 +72,10 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(SellerOrderService::class, function ($app) {
             return new SellerOrderService();
         });
+
+        $this->app->singleton(NotificationService::class, function ($app) {
+            return new NotificationService($app->make(EmailService::class));
+        });
     }
 
     /**
