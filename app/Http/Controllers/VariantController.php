@@ -107,7 +107,9 @@ class VariantController extends ImprovedController
             $validator = Validator::make($request->all(), [
                 'name' => 'required|string|max:255',
                 'price' => 'required|numeric|min:0',
-                'attributes' => 'required|array',
+                'manage_stock' => 'sometimes|boolean',
+                'stock_quantity' => 'sometimes|integer|min:0',
+                'attributes' => 'required|array|min:1',
                 'attributes.*.attribute_id' => 'required|exists:attributes,id',
                 'attributes.*.value_id' => 'required|exists:attribute_values,id',
                 'images' => 'sometimes|array',
@@ -118,15 +120,7 @@ class VariantController extends ImprovedController
                 return $this->respondWithError($validator->errors(), 422);
             }
 
-            // The attributes are already in the correct format
-            $attributeValues = $request->input('attributes');
-
-            $variant = $this->variantService->createVariant(
-                $product,
-                $request->input('name'),
-                $request->input('price'),
-                $attributeValues
-            );
+            $variant = $this->variantService->createVariant($product, $validator->validated());
 
             // Process images if provided
             if ($request->hasFile('images')) {
@@ -149,8 +143,7 @@ class VariantController extends ImprovedController
                 'product_id' => $productId,
                 'error' => $e->getMessage()
             ]);
-
-            return $this->respondWithError($e->getMessage(), 500);
+            return $this->respondWithError('Error creating variant: ' . $e->getMessage(), 500);
         }
     }
 
@@ -175,6 +168,8 @@ class VariantController extends ImprovedController
             $validator = Validator::make($request->all(), [
                 'name' => 'sometimes|string|max:255',
                 'price' => 'sometimes|numeric|min:0',
+                'manage_stock' => 'sometimes|boolean',
+                'stock_quantity' => 'sometimes|integer|min:0',
                 'attributes' => 'sometimes|array',
                 'attributes.*.attribute_id' => 'required_with:attributes|exists:attributes,id',
                 'attributes.*.value_id' => 'required_with:attributes|exists:attribute_values,id',
@@ -182,22 +177,13 @@ class VariantController extends ImprovedController
                 'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
                 'delete_image_ids' => 'sometimes|array',
                 'delete_image_ids.*' => 'required_with:delete_image_ids|exists:images,id'
-                // We'll add SKU and stock validation in a future update
             ]);
 
             if ($validator->fails()) {
                 return $this->respondWithError($validator->errors(), 422);
             }
 
-            $updateData = $validator->validated();
-
-            // Process attribute values if provided
-            if (isset($updateData['attributes'])) {
-                $updateData['attribute_values'] = $updateData['attributes'];
-                unset($updateData['attributes']);
-            }
-
-            $variant = $this->variantService->updateVariant($variant, $updateData);
+            $variant = $this->variantService->updateVariant($variant, $validator->validated());
 
             // Process images if provided
             if ($request->hasFile('images')) {

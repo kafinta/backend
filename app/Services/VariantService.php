@@ -15,40 +15,39 @@ class VariantService
      * Create a variant for a product with specific attribute values
      *
      * @param Product $product The product to create a variant for
-     * @param string $name The name of the variant
-     * @param float $price The price of the variant
-     * @param array $attributeValues Array of attribute and value pairs
+     * @param array $data Variant data including name, price, stock info, and attributes
      * @return Variant
      */
-    public function createVariant(Product $product, string $name, float $price, array $attributeValues)
+    public function createVariant(Product $product, array $data)
     {
         try {
             DB::beginTransaction();
 
-            // Create the variant
+            // Validate required fields
+            $this->validateVariantData($data);
+
+            // Validate attributes belong to product's subcategory
+            $this->validateAttributesForSubcategory($product, $data['attributes']);
+
+            // Create the variant with inventory fields
             $variant = $product->variants()->create([
-                'name' => $name,
-                'price' => $price
+                'name' => $data['name'],
+                'price' => $data['price'],
+                'manage_stock' => $data['manage_stock'] ?? true,
+                'stock_quantity' => $data['stock_quantity'] ?? 0
             ]);
 
-            // Process attribute values
-            foreach ($attributeValues as $attributeValue) {
-                // Verify that the attribute value belongs to the attribute
-                $valueExists = DB::table('attribute_values')
-                    ->where('id', $attributeValue['value_id'])
-                    ->where('attribute_id', $attributeValue['attribute_id'])
-                    ->exists();
-
-                if (!$valueExists) {
-                    throw new \Exception('Invalid attribute value combination');
-                }
-
-                // Attach the attribute value to the variant
-                $variant->attributeValues()->attach($attributeValue['value_id']);
+            // Convert attribute pairs to the format expected by setAttributeValues
+            $attributeValues = [];
+            foreach ($data['attributes'] as $attributePair) {
+                $attributeValues[$attributePair['attribute_id']] = $attributePair['value_id'];
             }
 
-            // Load the attribute values relationship with their attributes
-            $variant->load('attributeValues.attribute');
+            // Set attributes with uniqueness validation
+            $variant->setAttributeValues($attributeValues);
+
+            // Load relationships for response
+            $variant->load(['attributeValues.attribute', 'images']);
 
             // Format the variant attributes
             $variant = $this->formatVariantAttributes($variant);
@@ -66,6 +65,63 @@ class VariantService
         }
     }
 
+    /**
+     * Validate variant data
+     *
+     * @param array $data
+     * @throws \Exception
+     */
+    protected function validateVariantData(array $data)
+    {
+        if (empty($data['name'])) {
+            throw new \Exception('Variant name is required');
+        }
+
+        if (!isset($data['price']) || $data['price'] < 0) {
+            throw new \Exception('Valid variant price is required');
+        }
+
+        if (empty($data['attributes']) || !is_array($data['attributes'])) {
+            throw new \Exception('Variant attributes are required');
+        }
+
+        // Validate attribute structure
+        foreach ($data['attributes'] as $attribute) {
+            if (!isset($attribute['attribute_id']) || !isset($attribute['value_id'])) {
+                throw new \Exception('Each attribute must have attribute_id and value_id');
+            }
+        }
+    }
+
+    /**
+     * Validate that attributes belong to product's subcategory
+     *
+     * @param Product $product
+     * @param array $attributes
+     * @throws \Exception
+     */
+    protected function validateAttributesForSubcategory(Product $product, array $attributes)
+    {
+        $subcategoryAttributeIds = $product->subcategory->attributes()->pluck('attributes.id')->toArray();
+
+        foreach ($attributes as $attribute) {
+            // Check if attribute belongs to subcategory
+            if (!in_array($attribute['attribute_id'], $subcategoryAttributeIds)) {
+                throw new \Exception("Attribute ID {$attribute['attribute_id']} does not belong to subcategory '{$product->subcategory->name}'");
+            }
+
+            // Check if value belongs to attribute
+            $valueExists = DB::table('attribute_values')
+                ->where('id', $attribute['value_id'])
+                ->where('attribute_id', $attribute['attribute_id'])
+                ->exists();
+
+            if (!$valueExists) {
+                throw new \Exception("Value ID {$attribute['value_id']} does not belong to attribute ID {$attribute['attribute_id']}");
+            }
+        }
+    }
+
     // We've removed the automatic variant generation methods since we're using manual variant creation
 
     /**
@@ -80,13 +136,25 @@ class VariantService
         try {
             DB::beginTransaction();
 
-            // Update variant fields
+            // Update basic variant fields
             $updateFields = [];
             if (isset($data['name'])) {
                 $updateFields['name'] = $data['name'];
             }
             if (isset($data['price'])) {
+                if ($data['price'] < 0) {
+                    throw new \Exception('Price cannot be negative');
+                }
                 $updateFields['price'] = $data['price'];
+            }
+            if (isset($data['manage_stock'])) {
+                $updateFields['manage_stock'] = $data['manage_stock'];
+            }
+            if (isset($data['stock_quantity'])) {
+                if ($data['stock_quantity'] < 0) {
+                    throw new \Exception('Stock quantity cannot be negative');
+                }
+                $updateFields['stock_quantity'] = $data['stock_quantity'];
             }
 
             if (!empty($updateFields)) {
@@ -94,29 +162,22 @@ class VariantService
             }
 
             // Update attribute values if provided
-            if (isset($data['attribute_values']) && is_array($data['attribute_values'])) {
-                // First detach all existing attribute values
-                $variant->attributeValues()->detach();
+            if (isset($data['attributes']) && is_array($data['attributes'])) {
+                // Validate attributes belong to product's subcategory
+                $this->validateAttributesForSubcategory($variant->product, $data['attributes']);
 
-                // Then attach the new attribute values
-                foreach ($data['attribute_values'] as $attributeValue) {
-                    // Verify that the attribute value belongs to the attribute
-                    $valueExists = DB::table('attribute_values')
-                        ->where('id', $attributeValue['value_id'])
-                        ->where('attribute_id', $attributeValue['attribute_id'])
-                        ->exists();
-
-                    if (!$valueExists) {
-                        throw new \Exception('Invalid attribute value combination');
-                    }
-
-                    // Attach the attribute value to the variant
-                    $variant->attributeValues()->attach($attributeValue['value_id']);
+                // Convert attribute pairs to the format expected by setAttributeValues
+                $attributeValues = [];
+                foreach ($data['attributes'] as $attributePair) {
+                    $attributeValues[$attributePair['attribute_id']] = $attributePair['value_id'];
                 }
+
+                // Set attributes with uniqueness validation
+                $variant->setAttributeValues($attributeValues);
             }
 
-            // Reload the variant with its attribute values
-            $variant->load('attributeValues.attribute');
+            // Reload the variant with its attribute values and images
+            $variant->load(['attributeValues.attribute', 'images']);
 
             // Format the variant attributes
             $variant = $this->formatVariantAttributes($variant);
