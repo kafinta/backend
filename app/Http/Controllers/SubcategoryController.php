@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\Location;
 use App\Models\Attribute;
 use App\Models\AttributeValue;
+use App\Http\Resources\AttributeResource;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\ImprovedController;
 use Illuminate\Http\Request;
@@ -174,33 +175,14 @@ class SubcategoryController extends ImprovedController
 
     private function formatSubcategory($subcategory)
     {
-        $attributes = DB::table('attributes')
-            ->join('subcategory_attributes', 'attributes.id', '=', 'subcategory_attributes.attribute_id')
-            ->where('subcategory_attributes.subcategory_id', $subcategory->id)
-            ->select('attributes.id', 'attributes.name')
-            ->get();
+        // Load attributes with their values using proper relationships
+        $attributes = $subcategory->attributes()->with('values')->get();
 
         return [
             'id' => $subcategory->id,
             'name' => $subcategory->name,
             'image_path' => $subcategory->image_path,
-            'attributes' => $attributes->map(function ($attribute) {
-                $values = AttributeValue::where('attribute_id', $attribute->id)
-                    ->select('id', 'name')
-                    ->get()
-                    ->map(function ($value) {
-                        return [
-                            'id' => $value->id,
-                            'name' => $value->name
-                        ];
-                    })
-                    ->toArray();
-                return [
-                    'id' => $attribute->id,
-                    'name' => $attribute->name,
-                    'values' => $values
-                ];
-            })
+            'attributes' => AttributeResource::collection($attributes)
         ];
     }
 
