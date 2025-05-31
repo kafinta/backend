@@ -6,6 +6,7 @@ use App\Http\Controllers\ImprovedController;
 use App\Models\Product;
 use App\Models\Variant;
 use App\Services\VariantService;
+use App\Http\Resources\VariantResource;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
@@ -45,7 +46,7 @@ class VariantController extends ImprovedController
 
             $variants = $this->variantService->getVariantsForProduct($product);
 
-            return $this->respondWithSuccess('Variants retrieved successfully', 200, $variants);
+            return $this->respondWithSuccess('Variants retrieved successfully', 200, VariantResource::collection($variants));
         } catch (\Exception $e) {
             Log::error('Error retrieving variants', [
                 'product_id' => $productId,
@@ -76,7 +77,7 @@ class VariantController extends ImprovedController
             // Format the variant attributes using the service
             $variant = $this->variantService->formatVariantAttributes($variant);
 
-            return $this->respondWithSuccess('Variant retrieved successfully', 200, $variant);
+            return $this->respondWithSuccess('Variant retrieved successfully', 200, new VariantResource($variant));
         } catch (\Exception $e) {
             Log::error('Error retrieving variant', [
                 'variant_id' => $id,
@@ -137,7 +138,7 @@ class VariantController extends ImprovedController
                 $variant->load('images');
             }
 
-            return $this->respondWithSuccess('Variant created successfully', 201, $variant);
+            return $this->respondWithSuccess('Variant created successfully', 201, new VariantResource($variant));
         } catch (\Exception $e) {
             Log::error('Error creating variant', [
                 'product_id' => $productId,
@@ -213,7 +214,7 @@ class VariantController extends ImprovedController
             // Reload the variant with images
             $variant->load('images');
 
-            return $this->respondWithSuccess('Variant updated successfully', 200, $variant);
+            return $this->respondWithSuccess('Variant updated successfully', 200, new VariantResource($variant));
         } catch (\Exception $e) {
             Log::error('Error updating variant', [
                 'variant_id' => $id,
@@ -393,7 +394,7 @@ class VariantController extends ImprovedController
                 }
             }
 
-            return $this->respondWithSuccess(count($updatedVariants) . ' variants updated successfully', 200, $updatedVariants);
+            return $this->respondWithSuccess(count($updatedVariants) . ' variants updated successfully', 200, VariantResource::collection($updatedVariants));
         } catch (\Exception $e) {
             Log::error('Error batch updating variants', [
                 'error' => $e->getMessage()
