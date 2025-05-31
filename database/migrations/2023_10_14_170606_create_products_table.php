@@ -14,13 +14,15 @@ return new class extends Migration
         Schema::create('products', function (Blueprint $table) {
             $table->id();
             $table->string('name');
+            $table->string('slug')->unique();
             $table->text('description');
             $table->decimal('price', 8, 2);
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->foreignId('subcategory_id')->constrained()->onDelete('cascade');
             $table->foreignId('location_id')->nullable()->constrained()->onDelete('set null');
             $table->boolean('is_active')->default(true);
-            $table->enum('status', ['draft', 'active', 'inactive', 'out_of_stock'])->default('draft');
+            $table->enum('status', ['draft', 'active', 'paused', 'denied', 'out_of_stock'])->default('draft');
+            $table->text('denial_reason')->nullable();
             $table->boolean('is_featured')->default(false);
 
             // Inventory fields
