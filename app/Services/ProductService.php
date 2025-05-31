@@ -86,7 +86,11 @@ class ProductService
             }
 
             if (isset($filters['subcategory_id']) && !empty($filters['subcategory_id'])) {
-                $query->where('subcategory_id', $filters['subcategory_id']);
+                if (is_array($filters['subcategory_id'])) {
+                    $query->whereIn('subcategory_id', $filters['subcategory_id']);
+                } else {
+                    $query->where('subcategory_id', $filters['subcategory_id']);
+                }
             }
 
             if (isset($filters['min_price']) && is_numeric($filters['min_price'])) {
@@ -122,10 +126,55 @@ class ProductService
                 }
             }
 
+            // Apply stock status filtering
+            if (isset($filters['stock_status']) && !empty($filters['stock_status'])) {
+                switch ($filters['stock_status']) {
+                    case 'in_stock':
+                        $query->where(function($q) {
+                            $q->where('manage_stock', false)
+                              ->orWhere(function($sq) {
+                                  $sq->where('manage_stock', true)->where('stock_quantity', '>', 0);
+                              });
+                        });
+                        break;
+                    case 'out_of_stock':
+                        $query->where('manage_stock', true)->where('stock_quantity', 0);
+                        break;
+                    case 'low_stock':
+                        // Only allow low_stock filtering for authenticated sellers
+                        if (auth()->check() && auth()->user()->hasRole(['seller', 'admin'])) {
+                            $query->where('manage_stock', true)->where('stock_quantity', '>', 0)->where('stock_quantity', '<=', 5);
+                        }
+                        break;
+                }
+            }
+
+            // Apply attribute filtering
+            if (isset($filters['attributes']) && is_array($filters['attributes']) && !empty($filters['attributes'])) {
+                $attributeValueIds = $filters['attributes'];
+                $query->whereHas('attributeValues', function($q) use ($attributeValueIds) {
+                    $q->whereIn('attribute_value_id', $attributeValueIds);
+                }, '=', count($attributeValueIds)); // Ensure ALL attributes match
+            }
+
             // Apply sorting
             $sortBy = $filters['sort_by'] ?? 'created_at';
             $sortDirection = $filters['sort_direction'] ?? 'desc';
-            $query->orderBy($sortBy, $sortDirection);
+
+            // Handle relevance sorting for keyword searches
+            if ($sortBy === 'relevance' && isset($filters['keyword']) && !empty($filters['keyword'])) {
+                $keyword = $filters['keyword'];
+                $query->orderByRaw("
+                    CASE
+                        WHEN name LIKE ? THEN 1
+                        WHEN name LIKE ? THEN 2
+                        WHEN description LIKE ? THEN 3
+                        ELSE 4
+                    END, name ASC
+                ", ["{$keyword}%", "%{$keyword}%", "%{$keyword}%"]);
+            } else {
+                $query->orderBy($sortBy, $sortDirection);
+            }
 
             // Execute the query with pagination
             $products = $query->paginate($perPage);
@@ -808,17 +857,207 @@ class ProductService
     public function deleteProduct(Product $product): bool
     {
         return DB::transaction(function () use ($product) {
+            // Delete all variant images and their files
+            foreach ($product->variants as $variant) {
+                foreach ($variant->images as $image) {
+                    // Delete the file using FileService
+                    $this->fileService->deleteFile($image->path);
+                    $image->delete();
+                }
+
+                // Clean up variant attribute relationships
+                $variant->attributeValues()->detach();
+            }
+
+            // Delete product images and their files
             foreach ($product->images as $image) {
                 // Delete the file using FileService
                 $this->fileService->deleteFile($image->path);
                 $image->delete();
             }
 
+            // Clean up product attribute relationships
             $product->attributeValues()->detach();
+
+            // Delete the product (this will cascade delete variants due to foreign key constraint)
             $product->delete();
 
             return true;
         });
+    }
+
+    /**
+     * Get product statistics for a seller using optimized single query
+     */
+    public function getSellerProductStats(int $sellerId): array
+    {
+        // Use a single query with conditional aggregation for better performance
+        $stats = Product::where('user_id', $sellerId)
+            ->selectRaw("
+                COUNT(*) as total_products,
+                SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active_products,
+                SUM(CASE WHEN status = 'draft' THEN 1 ELSE 0 END) as draft_products,
+                SUM(CASE WHEN status = 'paused' THEN 1 ELSE 0 END) as paused_products,
+                SUM(CASE WHEN status = 'denied' THEN 1 ELSE 0 END) as denied_products,
+                SUM(CASE WHEN status = 'out_of_stock' THEN 1 ELSE 0 END) as out_of_stock_products,
+                SUM(CASE
+                    WHEN manage_stock = 0 THEN 1
+                    WHEN manage_stock = 1 AND stock_quantity > 0 THEN 1
+                    ELSE 0
+                END) as products_with_stock,
+                SUM(CASE
+                    WHEN manage_stock = 1 AND stock_quantity > 0 AND stock_quantity <= 5 THEN 1
+                    ELSE 0
+                END) as low_stock_products,
+                SUM(CASE
+                    WHEN manage_stock = 1 AND stock_quantity = 0 THEN 1
+                    ELSE 0
+                END) as zero_stock_products,
+                AVG(CASE WHEN manage_stock = 1 THEN stock_quantity ELSE NULL END) as avg_stock_quantity,
+                SUM(CASE WHEN manage_stock = 1 THEN stock_quantity ELSE 0 END) as total_stock_quantity
+            ")
+            ->first();
+
+        return [
+            'total_products' => (int) $stats->total_products,
+            'active_products' => (int) $stats->active_products,
+            'draft_products' => (int) $stats->draft_products,
+            'paused_products' => (int) $stats->paused_products,
+            'denied_products' => (int) $stats->denied_products,
+            'out_of_stock_products' => (int) $stats->out_of_stock_products,
+            'products_with_stock' => (int) $stats->products_with_stock,
+            'low_stock_products' => (int) $stats->low_stock_products,
+            'zero_stock_products' => (int) $stats->zero_stock_products,
+            'avg_stock_quantity' => round((float) $stats->avg_stock_quantity, 2),
+            'total_stock_quantity' => (int) $stats->total_stock_quantity,
+
+            // Additional calculated metrics
+            'completion_rate' => $stats->total_products > 0
+                ? round(($stats->active_products / $stats->total_products) * 100, 1)
+                : 0,
+            'stock_health' => $stats->products_with_stock > 0
+                ? round((($stats->products_with_stock - $stats->low_stock_products) / $stats->products_with_stock) * 100, 1)
+                : 100,
+        ];
+    }
+
+    /**
+     * Bulk update product status for a seller
+     */
+    public function bulkUpdateStatus(array $productIds, string $status, int $sellerId): array
+    {
+        return DB::transaction(function () use ($productIds, $status, $sellerId) {
+            // Verify all products belong to the seller
+            $products = Product::whereIn('id', $productIds)
+                              ->where('user_id', $sellerId)
+                              ->get();
+
+            if ($products->count() !== count($productIds)) {
+                throw new \Exception('Some products do not belong to you or do not exist');
+            }
+
+            // Update status
+            $updatedCount = Product::whereIn('id', $productIds)
+                                  ->where('user_id', $sellerId)
+                                  ->update(['status' => $status]);
+
+            return [
+                'updated_count' => $updatedCount,
+                'requested_count' => count($productIds),
+                'status' => $status
+            ];
+        });
+    }
+
+    /**
+     * Targeted product discovery with search or subcategory entry points
+     */
+    public function getTargetedProductListing(array $filters, int $perPage): array
+    {
+        // Get filtered products
+        $products = $this->searchProducts($filters, $perPage, false);
+
+        // Get filter metadata for frontend (only relevant filters)
+        $metadata = $this->getTargetedFilterMetadata($filters);
+
+        return [
+            'products' => $products,
+            'filters' => $metadata
+        ];
+    }
+
+    /**
+     * Get targeted metadata for frontend filtering UI (only relevant filters)
+     */
+    private function getTargetedFilterMetadata(array $filters): array
+    {
+        $metadata = [
+            'available_locations' => [],
+            'available_attributes' => [],
+            'price_range' => ['min' => 0, 'max' => 0]
+        ];
+
+        // Always provide locations for filtering
+        $metadata['available_locations'] = Location::orderBy('name')
+            ->get(['id', 'name', 'state', 'country']);
+
+        // Get available attributes based on selected subcategories
+        if (isset($filters['subcategory_id']) && !empty($filters['subcategory_id'])) {
+            $subcategoryIds = is_array($filters['subcategory_id'])
+                ? $filters['subcategory_id']
+                : [$filters['subcategory_id']];
+
+            $metadata['available_attributes'] = Attribute::whereHas('subcategories', function($query) use ($subcategoryIds) {
+                $query->whereIn('subcategory_id', $subcategoryIds);
+            })
+            ->with(['values' => function($query) {
+                $query->orderBy('name');
+            }])
+            ->orderBy('name')
+            ->get()
+            ->map(function($attribute) {
+                return [
+                    'id' => $attribute->id,
+                    'name' => $attribute->name,
+                    'values' => $attribute->values->map(function($value) {
+                        return [
+                            'id' => $value->id,
+                            'name' => $value->name,
+                            'representation' => $value->representation
+                        ];
+                    })
+                ];
+            });
+        }
+
+        // Get price range from current filtered results (more relevant than global range)
+        $priceQuery = Product::where('status', 'active');
+
+        // Apply same filters as main query to get relevant price range
+        if (isset($filters['keyword']) && !empty($filters['keyword'])) {
+            $keyword = $filters['keyword'];
+            $priceQuery->where(function($q) use ($keyword) {
+                $q->where('name', 'LIKE', "%{$keyword}%")
+                  ->orWhere('description', 'LIKE', "%{$keyword}%");
+            });
+        }
+
+        if (isset($filters['subcategory_id']) && !empty($filters['subcategory_id'])) {
+            if (is_array($filters['subcategory_id'])) {
+                $priceQuery->whereIn('subcategory_id', $filters['subcategory_id']);
+            } else {
+                $priceQuery->where('subcategory_id', $filters['subcategory_id']);
+            }
+        }
+
+        $priceStats = $priceQuery->selectRaw('MIN(price) as min_price, MAX(price) as max_price')->first();
+
+        $metadata['price_range'] = [
+            'min' => (float) ($priceStats->min_price ?? 0),
+            'max' => (float) ($priceStats->max_price ?? 0)
+        ];
+
+        return $metadata;
     }
 
     // We've removed the automatic variant generation methods since we're using manual variant creation
