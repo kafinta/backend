@@ -19,6 +19,7 @@ use App\Http\Controllers\SellerOrderController;
 use App\Http\Controllers\SimulatedEmailController;
 use App\Http\Controllers\VerificationTokenController;
 use App\Http\Controllers\SocialAuthController;
+use App\Http\Controllers\InventoryController;
 
 /*
 |--------------------------------------------------------------------------
@@ -360,33 +361,32 @@ Route::middleware(['auth:sanctum,web'])->group(function () {
         Route::get('/roles', [UserController::class, 'getRoles']);
     });
 
+    // Image Management Routes (Protected)
+    Route::prefix('images')->middleware(['role:seller|admin'])->group(function() {
+        Route::delete('/{imageId}', [\App\Http\Controllers\ImageController::class, 'destroy'])->name('images.destroy');
+    });
+
     // Product Management Routes (Protected)
     Route::prefix('products')->group(function () {
         // IMPORTANT: Specific routes must come before wildcard routes
-        // Session routes for product creation/editing
-        Route::get('/session', [ProductController::class, 'generateSessionId'])
-            ->middleware(['role:seller|admin'])
-            ->name('products.session');
-
-        Route::get('/form/{sessionId}', [ProductController::class, 'getFormData'])
-            ->middleware(['role:seller|admin'])
-            ->name('products.form');
-
         // Seller routes - require seller role
         Route::middleware(['role:seller|admin'])->group(function() {
-            // Multistep form routes for product creation/editing
-            Route::post('/steps', [ProductController::class, 'createStep'])->name('products.steps');
-            Route::post('/submit', [ProductController::class, 'submit'])->name('products.submit');
 
-            // Explicit route for updating a specific product
-            Route::post('/{product}/submit', [ProductController::class, 'submitUpdate'])->name('products.submit.update');
+            // Step-by-step product management (create AND update)
+            Route::post('/basic-info', [ProductController::class, 'createBasicInfo'])->name('products.basic-info.create');
+            Route::put('/{product}/basic-info', [ProductController::class, 'updateBasicInfo'])->name('products.basic-info.update');
+            Route::post('/{product}/attributes', [ProductController::class, 'addAttributes'])->name('products.attributes');
+            Route::post('/{product}/images', [ProductController::class, 'uploadImages'])->name('products.images');
+            Route::post('/{product}/publish', [ProductController::class, 'reviewAndPublish'])->name('products.publish');
 
-            // Direct routes (for compatibility and single-step operations)
-            Route::post('/', [ProductController::class, 'store'])->name('products.store');
-            Route::put('/{product}', [ProductController::class, 'update'])->name('products.update');
+            // Product management
             Route::delete('/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
-            Route::post('/{product}/images', [ProductController::class, 'uploadImages'])->name('products.images.upload');
-            Route::delete('/{product}/images/{imageId}', [ProductController::class, 'deleteImage'])->name('products.images.delete');
+            Route::patch('/{product}/status', [ProductController::class, 'updateStatus'])->name('products.update-status');
+
+            // Seller-specific product management
+            Route::get('/my-products', [ProductController::class, 'myProducts'])->name('products.my-products');
+            Route::get('/my-stats', [ProductController::class, 'myProductStats'])->name('products.my-stats');
+            Route::patch('/bulk-status', [ProductController::class, 'bulkUpdateStatus'])->name('products.bulk-status');
 
             // Protected variant routes
             Route::post('/{productId}/variants', [VariantController::class, 'store'])->name('variants.store');
@@ -397,6 +397,26 @@ Route::middleware(['auth:sanctum,web'])->group(function () {
             Route::post('/variants/batch/update', [VariantController::class, 'batchUpdate'])->name('variants.batch.update');
         });
     });
+
+    // Inventory Management Routes (Protected - Sellers only)
+    Route::prefix('inventory')->middleware(['role:seller|admin'])->group(function () {
+        // Get inventory summary
+        Route::get('/summary', [InventoryController::class, 'getSummary'])->name('inventory.summary');
+
+        // Get out of stock items
+        Route::get('/out-of-stock/products', [InventoryController::class, 'getOutOfStockProducts'])->name('inventory.out-of-stock.products');
+        Route::get('/out-of-stock/variants', [InventoryController::class, 'getOutOfStockVariants'])->name('inventory.out-of-stock.variants');
+
+        // Stock adjustments
+        Route::post('/products/{product}/adjust', [InventoryController::class, 'adjustProductStock'])->name('inventory.products.adjust');
+        Route::post('/variants/{variant}/adjust', [InventoryController::class, 'adjustVariantStock'])->name('inventory.variants.adjust');
+        Route::post('/bulk-adjust', [InventoryController::class, 'bulkAdjustment'])->name('inventory.bulk-adjust');
+
+        // Stock management settings
+        Route::post('/products/{product}/manage-stock', [InventoryController::class, 'setProductStockManagement'])->name('inventory.products.manage-stock');
+    });
+
+
 
     // Seller Routes
     Route::prefix('sellers')->group(function () {
@@ -465,17 +485,13 @@ Route::middleware(['auth:sanctum,web'])->group(function () {
 
 // Public Product Routes
 Route::prefix('products')->group(function () {
-    // List routes first (no parameters)
+    // Unified product listing with comprehensive filtering
     Route::get('/', [ProductController::class, 'index'])->name('products.index');
-    Route::get('/search', [ProductController::class, 'search'])->name('products.search');
 
-    // Then routes with specific segments
-    Route::get('/category/{category}', [ProductController::class, 'byCategory'])->name('products.by-category');
+    // Variant routes
     Route::get('/variants/{id}', [VariantController::class, 'show'])->name('variants.show');
-
-    // Then routes with parameters but specific segments after
     Route::get('/{productId}/variants', [VariantController::class, 'index'])->name('variants.index');
 
-    // Finally, the catch-all route
+    // Single product view (catch-all route - must be last)
     Route::get('/{product}', [ProductController::class, 'show'])->name('products.show');
 });
