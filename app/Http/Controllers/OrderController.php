@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\ImprovedController;
+use App\Http\Resources\OrderResource;
 use App\Models\Order;
 use App\Services\OrderService;
 use Illuminate\Http\Request;
@@ -32,9 +33,10 @@ class OrderController extends ImprovedController
         try {
             $orders = $this->orderService->getUserOrders();
 
-            return $this->respondWithSuccess('Orders retrieved successfully', 200, [
-                'orders' => $orders
-            ]);
+            // Load relationships for resource
+            $orders->load(['orderItems.product', 'orderItems.variant']);
+
+            return $this->respondWithSuccess('Orders retrieved successfully', 200, OrderResource::collection($orders));
         } catch (\Exception $e) {
             return $this->respondWithError('Error retrieving orders: ' . $e->getMessage(), 500);
         }
@@ -56,10 +58,15 @@ class OrderController extends ImprovedController
                 return $this->respondWithError('You do not have permission to view this order', 403);
             }
 
-            return $this->respondWithSuccess('Order retrieved successfully', 200, [
-                'order' => $order,
-                'items' => $order->orderItems
-            ]);
+            // Load relationships for resource
+            $order->load(['orderItems.product', 'orderItems.variant']);
+
+            // Add computed fields
+            $order->item_count = $order->orderItems->count();
+            $order->total_quantity = $order->orderItems->sum('quantity');
+            $order->can_cancel = $order->status === 'pending';
+
+            return $this->respondWithSuccess('Order retrieved successfully', 200, new OrderResource($order));
         } catch (\Exception $e) {
             return $this->respondWithError('Error retrieving order: ' . $e->getMessage(), 500);
         }
@@ -88,9 +95,15 @@ class OrderController extends ImprovedController
 
             $order = $this->orderService->cancelOrder($id);
 
-            return $this->respondWithSuccess('Order cancelled successfully', 200, [
-                'order' => $order
-            ]);
+            // Load relationships for resource
+            $order->load(['orderItems.product', 'orderItems.variant']);
+
+            // Add computed fields
+            $order->item_count = $order->orderItems->count();
+            $order->total_quantity = $order->orderItems->sum('quantity');
+            $order->can_cancel = false; // Just cancelled
+
+            return $this->respondWithSuccess('Order cancelled successfully', 200, new OrderResource($order));
         } catch (\Exception $e) {
             return $this->respondWithError('Error cancelling order: ' . $e->getMessage(), 500);
         }
