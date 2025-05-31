@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Events\OrderPlaced;
+use App\Events\OrderStatusChanged;
 use App\Models\Cart;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -111,6 +113,9 @@ class OrderService
             // Clear the cart
             $this->cartService->clearCart($sessionId);
 
+            // Fire order placed event
+            event(new OrderPlaced($order));
+
             return $order;
         });
     }
@@ -166,8 +171,12 @@ class OrderService
             throw new \Exception('Only pending orders can be cancelled');
         }
 
+        $oldStatus = $order->status;
         $order->status = 'cancelled';
         $order->save();
+
+        // Fire order status changed event
+        event(new OrderStatusChanged($order, $oldStatus, 'cancelled'));
 
         return $order;
     }

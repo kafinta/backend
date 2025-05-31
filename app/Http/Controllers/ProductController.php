@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\ProductCreated;
+use App\Events\ProductStatusChanged;
 use App\Http\Controllers\ImageController;
 use App\Http\Controllers\ImprovedController;
 use App\Models\Product;
@@ -196,6 +198,12 @@ class ProductController extends ImprovedController
 
             // Sync attributes from subcategory
             $product->syncAttributesFromSubcategory();
+
+            // Check if this is the seller's first product
+            $isFirstProduct = Product::where('user_id', auth()->id())->count() === 1;
+
+            // Fire product created event
+            event(new ProductCreated($product, $isFirstProduct));
 
             return $this->respondWithSuccess(
                 'Basic product information and inventory saved successfully',
@@ -446,6 +454,7 @@ class ProductController extends ImprovedController
             }
 
             $newStatus = $request->input('status');
+            $oldStatus = $product->status;
 
             // Additional validation for sellers
             if (!$user->hasRole('admin')) {
@@ -461,13 +470,20 @@ class ProductController extends ImprovedController
 
             // Update product status
             $updateData = ['status' => $newStatus];
+            $denialReason = '';
 
             // Add denial reason if provided
             if ($newStatus === 'denied' && $request->has('reason')) {
-                $updateData['denial_reason'] = $request->input('reason');
+                $denialReason = $request->input('reason');
+                $updateData['denial_reason'] = $denialReason;
             }
 
             $product->update($updateData);
+
+            // Fire product status changed event if status actually changed
+            if ($oldStatus !== $newStatus) {
+                event(new ProductStatusChanged($product, $oldStatus, $newStatus, $denialReason));
+            }
 
             $message = match($newStatus) {
                 'active' => 'Product activated successfully',

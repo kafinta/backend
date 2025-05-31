@@ -59,6 +59,29 @@ class EventServiceProvider extends ServiceProvider
         ],
 
         ValidationFailed::class => [],
+
+        // Order Events
+        \App\Events\OrderPlaced::class => [
+            \App\Listeners\SendOrderNotifications::class,
+        ],
+
+        \App\Events\OrderStatusChanged::class => [
+            \App\Listeners\SendOrderNotifications::class,
+        ],
+
+        // Cart Events
+        \App\Events\CartAbandoned::class => [
+            \App\Listeners\SendCartNotifications::class,
+        ],
+
+        // Product Events
+        \App\Events\ProductCreated::class => [
+            \App\Listeners\SendProductNotifications::class,
+        ],
+
+        \App\Events\ProductStatusChanged::class => [
+            \App\Listeners\SendProductNotifications::class,
+        ],
     ];
 
     /**
