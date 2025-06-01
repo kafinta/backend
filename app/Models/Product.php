@@ -421,4 +421,100 @@ class Product extends Model
     {
         return $this->manage_stock && $this->stock_quantity <= 0;
     }
+
+    /**
+     * Get completion status for draft products
+     */
+    public function getCompletionStatus()
+    {
+        return [
+            'basic_info' => $this->hasBasicInfo(),
+            'attributes' => $this->hasAttributes(),
+            'images' => $this->hasImages(),
+        ];
+    }
+
+    /**
+     * Get next step for draft products
+     */
+    public function getNextStep()
+    {
+        if (!$this->hasBasicInfo()) {
+            return 'basic_info';
+        }
+
+        if (!$this->hasAttributes()) {
+            return 'attributes';
+        }
+
+        if (!$this->hasImages()) {
+            return 'images';
+        }
+
+        return 'publish';
+    }
+
+    /**
+     * Get progress percentage for draft products
+     */
+    public function getProgressPercentage()
+    {
+        $completionStatus = $this->getCompletionStatus();
+        $completedSteps = array_sum($completionStatus);
+        $totalSteps = count($completionStatus);
+
+        return round(($completedSteps / $totalSteps) * 100);
+    }
+
+    /**
+     * Check if product has basic info
+     */
+    public function hasBasicInfo()
+    {
+        return !empty($this->name) &&
+               !empty($this->description) &&
+               !empty($this->price) &&
+               !empty($this->subcategory_id);
+    }
+
+    /**
+     * Check if product has attributes
+     */
+    public function hasAttributes()
+    {
+        // Load attribute values if not already loaded
+        if (!$this->relationLoaded('attributeValues')) {
+            $this->load('attributeValues');
+        }
+
+        return $this->attributeValues->count() > 0;
+    }
+
+    /**
+     * Check if product has images
+     */
+    public function hasImages()
+    {
+        // Load images if not already loaded
+        if (!$this->relationLoaded('images')) {
+            $this->load('images');
+        }
+
+        return $this->images->count() > 0;
+    }
+
+    /**
+     * Get conversion rate for active products
+     */
+    public function getConversionRate()
+    {
+        $views = $this->views ?? 0;
+        $orders = $this->orders_count ?? 0;
+
+        if ($views === 0) {
+            return '0.00';
+        }
+
+        return number_format(($orders / $views) * 100, 2);
+    }
 }

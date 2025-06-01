@@ -1,5 +1,9 @@
 # Product API Quick Reference
 
+⚠️ **DEPRECATED**: This documentation has been superseded by the comprehensive [PRODUCT_API_DOCUMENTATION.md](./PRODUCT_API_DOCUMENTATION.md) which includes progress tracking, analytics, and updated response formats.
+
+---
+
 ## 🚀 **Quick Start**
 
 ### **Product Discovery (Public)**

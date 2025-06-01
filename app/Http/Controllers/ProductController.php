@@ -208,7 +208,7 @@ class ProductController extends ImprovedController
             return $this->respondWithSuccess(
                 'Basic product information and inventory saved successfully',
                 201,
-                new ProductResource($product->load(['subcategory', 'location']))
+                new ProductResource($product->load(['subcategory', 'location', 'images', 'attributeValues']))
             );
 
         } catch (\Exception $e) {
@@ -269,7 +269,7 @@ class ProductController extends ImprovedController
             return $this->respondWithSuccess(
                 'Basic product information updated successfully',
                 200,
-                new ProductResource($product->load(['subcategory', 'location']))
+                new ProductResource($product->load(['subcategory', 'location', 'images', 'attributeValues']))
             );
 
         } catch (\Exception $e) {
@@ -342,7 +342,7 @@ class ProductController extends ImprovedController
             return $this->respondWithSuccess(
                 'Product attributes updated successfully',
                 200,
-                new ProductResource($product->load(['attributeValues.attribute', 'subcategory', 'location']))
+                new ProductResource($product->load(['attributeValues.attribute', 'subcategory', 'location', 'images']))
             );
 
         } catch (\Exception $e) {
