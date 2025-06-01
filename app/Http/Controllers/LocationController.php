@@ -24,7 +24,7 @@ class LocationController extends ImprovedController
     {
         try {
             $validatedData = $request->validate([
-                'name' => 'required|string|unique:categories|max:255',
+                'name' => 'required|string|unique:locations|max:255',
                 'image_path' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             ]);
         } catch (\Illuminate\Validation\ValidationException $validator) {
@@ -55,7 +55,7 @@ class LocationController extends ImprovedController
 
         try {
             $validatedData = $request->validate([
-                'name' => 'sometimes|string|unique:categories,name,'.$id.'|max:255',
+                'name' => 'sometimes|string|unique:locations,name,'.$id.'|max:255',
                 'image_path' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             ]);
         } catch (\Illuminate\Validation\ValidationException $validator) {
