@@ -184,30 +184,25 @@ GET /api/products?category_id=1
 
 ## Protected Endpoints (Authentication Required)
 
-### 5. Create Product (Direct Method)
-**Endpoint:** `POST /api/products`
-**Auth:** Bearer token, Seller/Admin role
+### 5. Product Management (Step-by-Step Creation)
+**Note:** Product creation now uses a step-by-step approach. See [PRODUCT_API_DOCUMENTATION.md](./PRODUCT_API_DOCUMENTATION.md) for the complete workflow:
+
+1. `POST /api/products/basic-info` - Create basic product information
+2. `PUT /api/products/{id}/basic-info` - Update basic information
+3. `POST /api/products/{id}/attributes` - Set product attributes
+4. `POST /api/products/{id}/images` - Upload product images
+5. `POST /api/products/{id}/publish` - Publish completed product
+
+### 6. Update Product Status
+**Endpoint:** `PATCH /api/products/{product}/status`
+**Auth:** Bearer token, Owner/Admin
 
 **Request Body:**
 ```json
 {
-  "name": "iPhone 15",
-  "description": "Latest iPhone model",
-  "price": 999.99,
-  "subcategory_id": 1,
-  "location_id": 1,
-  "manage_stock": true,
-  "stock_quantity": 100,
-  "attributes": [15, 23, 41],
-  "images": [file1, file2, file3]
+  "status": "active"  // or "paused", "denied" (admin only)
 }
 ```
-
-### 6. Update Product
-**Endpoint:** `PUT /api/products/{product}`
-**Auth:** Bearer token, Owner/Admin
-
-**Request Body:** Same as create (all fields optional)
 
 ### 7. Delete Product
 **Endpoint:** `DELETE /api/products/{product}`
@@ -222,27 +217,7 @@ GET /api/products?category_id=1
 }
 ```
 
-### 8. Update Product Status
-**Endpoint:** `PATCH /api/products/{product}/status`
-**Auth:** Bearer token, Owner/Admin
-
-**Seller Permissions:** Can change between `active` and `paused`
-**Admin Permissions:** Can set any status including `denied` with reason
-
-**Request Body:**
-```json
-{
-  "status": "paused"
-}
-```
-
-**Admin Denial:**
-```json
-{
-  "status": "denied",
-  "reason": "Product images do not meet quality standards"
-}
-```
+**Note:** The old direct product creation endpoint `POST /api/products` has been removed in favor of the step-by-step approach for better user experience and progress tracking.
 
 ## Seller-Specific Endpoints
 
@@ -417,11 +392,15 @@ GET /api/products?category_id=1&min_price=100&max_price=1000&stock_status=in_sto
 - [ ] Test pagination with different per_page values
 
 ### Protected Endpoints (Auth Required)
-- [ ] `POST /api/products` - Create product (direct method)
-- [ ] `PUT /api/products/{product}` - Update product
+- [ ] `POST /api/products/basic-info` - Create basic product information
+- [ ] `PUT /api/products/{id}/basic-info` - Update basic information
+- [ ] `POST /api/products/{id}/attributes` - Set product attributes
+- [ ] `POST /api/products/{id}/images` - Upload product images
+- [ ] `POST /api/products/{id}/publish` - Publish completed product
 - [ ] `DELETE /api/products/{product}` - Delete product
 - [ ] `PATCH /api/products/{product}/status` - Update status
 - [ ] Test authorization (owner vs non-owner vs admin)
+- [ ] Test progress tracking for draft products
 
 ### Seller-Specific Endpoints
 - [ ] `GET /api/products/my-products` - Get seller's products
@@ -465,7 +444,49 @@ GET {{base_url}}/api/products/my-stats
 Authorization: Bearer {{token}}
 ```
 
-### 6. Bulk Status Update
+### 6. Create Product (Step-by-Step)
+```bash
+# Step 1: Create basic info
+POST {{base_url}}/api/products/basic-info
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "New Product",
+  "description": "Product description",
+  "price": 99.99,
+  "subcategory_id": 1,
+  "location_id": 1,
+  "manage_stock": true,
+  "stock_quantity": 100
+}
+
+# Step 2: Add attributes (use product ID from step 1)
+POST {{base_url}}/api/products/1/attributes
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "attribute_values": [
+    {"attribute_id": 1, "value_id": 5},
+    {"attribute_id": 2, "value_id": 8}
+  ]
+}
+
+# Step 3: Upload images
+POST {{base_url}}/api/products/1/images
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data
+
+images[]: file1.jpg
+images[]: file2.jpg
+
+# Step 4: Publish
+POST {{base_url}}/api/products/1/publish
+Authorization: Bearer {{token}}
+```
+
+### 7. Bulk Status Update
 ```bash
 PATCH {{base_url}}/api/products/bulk-status
 Authorization: Bearer {{token}}
