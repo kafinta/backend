@@ -1,5 +1,9 @@
 # Product Creation API Documentation
 
+⚠️ **DEPRECATED**: This documentation has been superseded by the comprehensive [PRODUCT_API_DOCUMENTATION.md](./PRODUCT_API_DOCUMENTATION.md) which includes progress tracking, analytics, and updated response formats.
+
+---
+
 ## Overview
 
 The product creation system has been simplified to a clean, 3-step process that eliminates complex session management and provides a straightforward API for creating products.

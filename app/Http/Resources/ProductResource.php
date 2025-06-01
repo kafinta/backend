@@ -53,6 +53,27 @@ class ProductResource extends JsonResource
                     ];
                 });
             }),
+
+            // Progress tracking for draft products
+            'completion_status' => $this->when($this->status === 'draft', function () {
+                return $this->getCompletionStatus();
+            }),
+            'next_step' => $this->when($this->status === 'draft', function () {
+                return $this->getNextStep();
+            }),
+            'progress_percentage' => $this->when($this->status === 'draft', function () {
+                return $this->getProgressPercentage();
+            }),
+
+            // Analytics for active products
+            'analytics' => $this->when($this->status === 'active', function () {
+                return [
+                    'views' => $this->views ?? 0,
+                    'orders' => $this->orders_count ?? 0,
+                    'revenue' => $this->total_revenue ?? '0.00',
+                    'conversion_rate' => $this->getConversionRate(),
+                ];
+            }),
         ];
     }
 }
