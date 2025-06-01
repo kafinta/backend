@@ -31,7 +31,8 @@ GET /api/cart
 **Response**:
 ```json
 {
-  "success": true,
+  "status": "success",
+  "status_code": 200,
   "message": "Cart retrieved successfully",
   "data": {
     "id": 1,
@@ -106,7 +107,8 @@ POST /api/cart/items
 **Response**:
 ```json
 {
-  "success": true,
+  "status": "success",
+  "status_code": 201,
   "message": "Product added to cart",
   "data": {
     "id": 1,
@@ -153,7 +155,8 @@ DELETE /api/cart/items/{cartItemId}
 **Response**:
 ```json
 {
-  "success": true,
+  "status": "success",
+  "status_code": 200,
   "message": "Cart item removed successfully",
   "data": {
     // Updated cart object (same as View Cart response)
@@ -171,7 +174,8 @@ DELETE /api/cart
 **Response**:
 ```json
 {
-  "success": true,
+  "status": "success",
+  "status_code": 200,
   "message": "Cart cleared successfully",
   "data": {
     "id": 1,
@@ -200,7 +204,8 @@ POST /api/cart/transfer
 **Response**:
 ```json
 {
-  "success": true,
+  "status": "success",
+  "status_code": 200,
   "message": "Guest cart transferred successfully",
   "data": {
     // Updated user cart object
@@ -220,7 +225,8 @@ GET /api/cart-items
 **Response**:
 ```json
 {
-  "success": true,
+  "status": "success",
+  "status_code": 200,
   "message": "Cart items retrieved successfully",
   "data": [
     {

@@ -55,7 +55,8 @@ POST /api/products/basic-info
 **Response (Draft Product)**:
 ```json
 {
-  "success": true,
+  "status": "success",
+  "status_code": 201,
   "message": "Basic product information and inventory saved successfully",
   "data": {
     "id": 2,
@@ -117,7 +118,8 @@ PUT /api/products/{id}/attributes
 **Response**:
 ```json
 {
-  "success": true,
+  "status": "success",
+  "status_code": 200,
   "message": "Product attributes updated successfully",
   "data": {
     "id": 2,
@@ -175,7 +177,8 @@ images[]: file3.jpg
 **Response**:
 ```json
 {
-  "success": true,
+  "status": "success",
+  "status_code": 200,
   "message": "Images uploaded successfully",
   "data": {
     "id": 2,
@@ -218,7 +221,8 @@ POST /api/products/{id}/publish
 **Response (Active Product)**:
 ```json
 {
-  "success": true,
+  "status": "success",
+  "status_code": 200,
   "message": "Product published successfully",
   "data": {
     "id": 2,
@@ -288,7 +292,8 @@ GET /api/products
 **Response**:
 ```json
 {
-  "success": true,
+  "status": "success",
+  "status_code": 200,
   "message": "Products retrieved successfully",
   "data": {
     "data": [

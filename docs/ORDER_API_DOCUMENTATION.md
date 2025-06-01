@@ -32,7 +32,8 @@ GET /api/orders
 **Response**:
 ```json
 {
-  "success": true,
+  "status": "success",
+  "status_code": 200,
   "message": "Orders retrieved successfully",
   "data": [
     {
@@ -118,7 +119,8 @@ POST /api/orders/{orderId}/cancel
 **Response**:
 ```json
 {
-  "success": true,
+  "status": "success",
+  "status_code": 200,
   "message": "Order cancelled successfully",
   "data": {
     // Updated order object with status: "cancelled"
@@ -191,7 +193,8 @@ POST /api/checkout/calculate
 **Response**:
 ```json
 {
-  "success": true,
+  "status": "success",
+  "status_code": 200,
   "message": "Order totals calculated",
   "data": {
     "subtotal": "59.98",
@@ -260,7 +263,8 @@ GET /api/checkout/shipping-methods
 **Response**:
 ```json
 {
-  "success": true,
+  "status": "success",
+  "status_code": 200,
   "message": "Shipping methods retrieved",
   "data": {
     "shipping_methods": [
@@ -295,7 +299,8 @@ GET /api/checkout/payment-methods
 **Response**:
 ```json
 {
-  "success": true,
+  "status": "success",
+  "status_code": 200,
   "message": "Payment methods retrieved",
   "data": {
     "payment_methods": [

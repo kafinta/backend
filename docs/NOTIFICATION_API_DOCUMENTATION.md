@@ -36,7 +36,8 @@ GET /api/notifications
 **Response**:
 ```json
 {
-  "success": true,
+  "status": "success",
+  "status_code": 200,
   "message": "Notifications retrieved successfully",
   "data": {
     "notifications": [
@@ -103,7 +104,8 @@ GET /api/notifications/unread-count
 **Response**:
 ```json
 {
-  "success": true,
+  "status": "success",
+  "status_code": 200,
   "message": "Unread count retrieved successfully",
   "data": {
     "unread_count": 12
@@ -121,7 +123,8 @@ POST /api/notifications/{id}/read
 **Response**:
 ```json
 {
-  "success": true,
+  "status": "success",
+  "status_code": 200,
   "message": "Notification marked as read",
   "data": {
     "unread_count": 11
@@ -139,7 +142,8 @@ POST /api/notifications/mark-all-read
 **Response**:
 ```json
 {
-  "success": true,
+  "status": "success",
+  "status_code": 200,
   "message": "All notifications marked as read",
   "data": {
     "marked_count": 12,
@@ -158,7 +162,8 @@ DELETE /api/notifications/{id}
 **Response**:
 ```json
 {
-  "success": true,
+  "status": "success",
+  "status_code": 200,
   "message": "Notification deleted successfully",
   "data": {
     "unread_count": 11
@@ -180,7 +185,8 @@ GET /api/notifications/preferences
 **Response**:
 ```json
 {
-  "success": true,
+  "status": "success",
+  "status_code": 200,
   "message": "Notification preferences retrieved successfully",
   "data": {
     "preferences": {
@@ -256,7 +262,8 @@ PUT /api/notifications/preferences
 **Response**:
 ```json
 {
-  "success": true,
+  "status": "success",
+  "status_code": 200,
   "message": "Notification preferences updated successfully",
   "data": {
     "preferences": {
