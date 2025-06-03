@@ -368,7 +368,8 @@ POST /api/products/123/variants
 All successful responses follow the ImprovedController format:
 ```json
 {
-  "success": true,
+  "status": "success",
+  "status_code": 200,
   "message": "Operation completed successfully",
   "data": {
     // Variant data or array of variants

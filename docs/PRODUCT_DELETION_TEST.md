@@ -262,7 +262,8 @@ SELECT * FROM images WHERE imageable_type = 'App\\Models\\Variant' AND imageable
 ### **Successful Deletion**
 ```json
 {
-  "success": true,
+  "status": "success",
+  "status_code": 200,
   "message": "Product deleted successfully"
 }
 ```
@@ -277,7 +278,8 @@ SELECT * FROM images WHERE imageable_type = 'App\\Models\\Variant' AND imageable
 ### **Error Handling**
 ```json
 {
-  "success": false,
+  "status": "fail",
+  "status_code": 403,
   "message": "Unauthorized access"
 }
 ```

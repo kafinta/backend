@@ -188,10 +188,10 @@ GET /api/products?category_id=1
 **Note:** Product creation now uses a step-by-step approach. See [PRODUCT_API_DOCUMENTATION.md](./PRODUCT_API_DOCUMENTATION.md) for the complete workflow:
 
 1. `POST /api/products/basic-info` - Create basic product information
-2. `PUT /api/products/{id}/basic-info` - Update basic information
-3. `POST /api/products/{id}/attributes` - Set product attributes
-4. `POST /api/products/{id}/images` - Upload product images
-5. `POST /api/products/{id}/publish` - Publish completed product
+2. `PUT /api/products/{product}/basic-info` - Update basic information
+3. `POST /api/products/{product}/attributes` - Set product attributes
+4. `POST /api/products/{product}/images` - Upload product images
+5. `POST /api/products/{product}/publish` - Publish completed product
 
 ### 6. Update Product Status
 **Endpoint:** `PATCH /api/products/{product}/status`
@@ -393,10 +393,10 @@ GET /api/products?category_id=1&min_price=100&max_price=1000&stock_status=in_sto
 
 ### Protected Endpoints (Auth Required)
 - [ ] `POST /api/products/basic-info` - Create basic product information
-- [ ] `PUT /api/products/{id}/basic-info` - Update basic information
-- [ ] `POST /api/products/{id}/attributes` - Set product attributes
-- [ ] `POST /api/products/{id}/images` - Upload product images
-- [ ] `POST /api/products/{id}/publish` - Publish completed product
+- [ ] `PUT /api/products/{product}/basic-info` - Update basic information
+- [ ] `POST /api/products/{product}/attributes` - Set product attributes
+- [ ] `POST /api/products/{product}/images` - Upload product images
+- [ ] `POST /api/products/{product}/publish` - Publish completed product
 - [ ] `DELETE /api/products/{product}` - Delete product
 - [ ] `PATCH /api/products/{product}/status` - Update status
 - [ ] Test authorization (owner vs non-owner vs admin)

@@ -20,7 +20,8 @@ The product creation system has been simplified to a clean, 3-step process that 
 All endpoints follow the ImprovedController standard response structure:
 ```json
 {
-  "success": true,
+  "status": "success",
+  "status_code": 200,
   "message": "Success message",
   "data": {
     "product": {...},
@@ -33,7 +34,7 @@ All endpoints follow the ImprovedController standard response structure:
 ## Step-by-Step Process
 
 ### Step 1: Basic Information + Inventory
-**Endpoint:** `POST /api/product-creation/basic-info`
+**Endpoint:** `POST /api/products/basic-info`
 
 **Required Fields:**
 - `name` (string, max 255) - Product name
@@ -91,7 +92,7 @@ All endpoints follow the ImprovedController standard response structure:
 ```
 
 ### Step 2: Product Attributes
-**Endpoint:** `POST /api/product-creation/{product}/attributes`
+**Endpoint:** `POST /api/products/{product}/attributes`
 
 **Required Fields:**
 - `attributes` (array) - Array of attribute-value pairs
@@ -168,7 +169,7 @@ All endpoints follow the ImprovedController standard response structure:
 ```
 
 ### Step 3: Upload Images
-**Endpoint:** `POST /api/product-creation/{product}/images`
+**Endpoint:** `POST /api/products/{product}/images`
 
 **Content-Type:** `multipart/form-data`
 
@@ -181,7 +182,7 @@ curl -X POST \
   -H "Authorization: Bearer {token}" \
   -F "images[]=@image1.jpg" \
   -F "images[]=@image2.jpg" \
-  http://localhost:8000/api/product-creation/123/images
+  http://localhost:8000/api/products/123/images
 ```
 
 **Response:**
@@ -233,7 +234,7 @@ curl -X POST \
 ```
 
 ### Step 4: Review and Publish
-**Endpoint:** `POST /api/product-creation/{product}/publish`
+**Endpoint:** `POST /api/products/{product}/publish`
 
 **Description:** Automatically publishes the product (sets status to 'active') if all required steps are completed.
 
@@ -394,7 +395,8 @@ All endpoints require:
 **Authorization Errors (403):**
 ```json
 {
-  "success": false,
+  "status": "fail",
+  "status_code": 403,
   "message": "Unauthorized"
 }
 ```
