@@ -94,7 +94,7 @@ POST /api/products/basic-info
 
 ### Step 2: Update Product Attributes
 ```http
-PUT /api/products/{id}/attributes
+POST /api/products/{product}/attributes
 ```
 
 **Description**: Set attribute values for the product based on subcategory requirements.
@@ -158,7 +158,7 @@ PUT /api/products/{id}/attributes
 
 ### Step 3: Upload Product Images
 ```http
-POST /api/products/{id}/images
+POST /api/products/{product}/images
 ```
 
 **Description**: Upload images for the product.
@@ -213,7 +213,7 @@ images[]: file3.jpg
 
 ### Step 4: Publish Product
 ```http
-POST /api/products/{id}/publish
+POST /api/products/{product}/publish
 ```
 
 **Description**: Publish the completed product to make it live.
@@ -280,7 +280,7 @@ POST /api/products/{id}/publish
 
 ### 1. List User Products
 ```http
-GET /api/products
+GET /api/products/my-products
 ```
 
 **Description**: Get all products for the authenticated seller.
@@ -334,7 +334,7 @@ GET /api/products
 
 ### 2. View Single Product
 ```http
-GET /api/products/{id}
+GET /api/products/{product}
 ```
 
 **Description**: Get detailed information about a specific product.
@@ -343,7 +343,7 @@ GET /api/products/{id}
 
 ### 3. Update Product Status
 ```http
-PATCH /api/products/{id}/status
+PATCH /api/products/{product}/status
 ```
 
 **Description**: Update product status (admin can approve/deny, sellers can pause/activate).
@@ -431,7 +431,7 @@ class ProductService {
   // Update product attributes
   async updateAttributes(productId, attributeValues) {
     const response = await fetch(`${this.baseURL}/products/${productId}/attributes`, {
-      method: 'PUT',
+      method: 'POST',
       headers: {
         'Authorization': `Bearer ${this.token}`,
         'Content-Type': 'application/json'
@@ -475,7 +475,7 @@ class ProductService {
     const params = new URLSearchParams({ page });
     if (status) params.append('status', status);
 
-    const response = await fetch(`${this.baseURL}/products?${params}`, {
+    const response = await fetch(`${this.baseURL}/products/my-products?${params}`, {
       headers: {
         'Authorization': `Bearer ${this.token}`
       }

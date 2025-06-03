@@ -56,7 +56,8 @@ All endpoints follow the ImprovedController standard response structure:
 
 ```json
 {
-  "success": true,
+  "status": "success",
+  "status_code": 200,
   "message": "Operation completed successfully",
   "data": {
     "product": {...},

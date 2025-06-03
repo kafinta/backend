@@ -215,41 +215,6 @@ POST /api/cart/transfer
 
 ---
 
-## 🛍️ **CART ITEM API ENDPOINTS**
-
-### 1. List Cart Items
-```http
-GET /api/cart-items
-```
-
-**Response**:
-```json
-{
-  "status": "success",
-  "status_code": 200,
-  "message": "Cart items retrieved successfully",
-  "data": [
-    {
-      "id": 1,
-      "quantity": 2,
-      "product": {...},
-      "variant": null,
-      "price": "29.99",
-      "subtotal": "59.98"
-    }
-  ]
-}
-```
-
-### 2. Show Cart Item
-```http
-GET /api/cart-items/{id}
-```
-
-**Response**: Single cart item object.
-
----
-
 ## 🔧 **FRONTEND IMPLEMENTATION GUIDE**
 
 ### JavaScript/TypeScript Service Example
@@ -344,7 +309,7 @@ class CartService {
 
 ### Error Handling
 - All endpoints return consistent error format
-- Check `response.success` before accessing `response.data`
+- Check `response.status === 'success'` before accessing `response.data`
 - Handle 404 errors for cart items not found
 - Handle 422 errors for validation failures
 

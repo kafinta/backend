@@ -22,15 +22,15 @@ GET /api/products?keyword=iPhone&subcategory_id[]=5
 ```bash
 # Create new product
 POST /api/products/basic-info
-PUT /api/products/{id}/basic-info
-POST /api/products/{id}/attributes
-POST /api/products/{id}/images
-POST /api/products/{id}/publish
+PUT /api/products/{product}/basic-info
+POST /api/products/{product}/attributes
+POST /api/products/{product}/images
+POST /api/products/{product}/publish
 
 # Update existing product
-PUT /api/products/{id}/basic-info
-POST /api/products/{id}/attributes
-POST /api/products/{id}/images
+PUT /api/products/{product}/basic-info
+POST /api/products/{product}/attributes
+POST /api/products/{product}/images
 DELETE /api/images/{imageId}
 ```
 
@@ -152,7 +152,8 @@ GET /api/products?keyword=iPhone&subcategory_id[]=5&location_id[]=2&sort_by=pric
 ### **Success Response**
 ```json
 {
-  "success": true,
+  "status": "success",
+  "status_code": 200,
   "message": "Operation completed successfully",
   "data": {
     "product": {
@@ -171,9 +172,10 @@ GET /api/products?keyword=iPhone&subcategory_id[]=5&location_id[]=2&sort_by=pric
 ### **Error Response**
 ```json
 {
-  "success": false,
+  "status": "fail",
+  "status_code": 422,
   "message": "Validation failed",
-  "errors": {
+  "data": {
     "name": ["The name field is required."],
     "price": ["The price must be at least 0."]
   }
@@ -183,7 +185,8 @@ GET /api/products?keyword=iPhone&subcategory_id[]=5&location_id[]=2&sort_by=pric
 ### **Product Discovery Response**
 ```json
 {
-  "success": true,
+  "status": "success",
+  "status_code": 200,
   "message": "Products retrieved successfully",
   "data": {
     "products": {
