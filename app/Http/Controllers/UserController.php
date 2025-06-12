@@ -67,12 +67,10 @@ class UserController extends ImprovedController
             DB::commit();
             request()->session()->regenerate();
             Auth::guard('web')->login($user);
-            $token = $user->createToken('auth_token')->plainTextToken;
             $response = $this->respondWithSuccess("Account Created Successfully", 200, [
                 'user' => new UserAccountResource($user),
                 'email_verification_required' => true,
-                'verification_email_sent' => $emailSent,
-                'token' => $token,
+                'verification_email_sent' => $emailSent
             ]);
             return $response;
         } catch (\Exception $e) {
