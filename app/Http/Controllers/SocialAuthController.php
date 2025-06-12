@@ -136,15 +136,11 @@ class SocialAuthController extends ImprovedController
             // Log the user in using the web guard
             Auth::guard('web')->login($user, true); // Remember the user
 
-            // Create a token for API access
-            $token = $user->createToken('oauth_auth_token')->plainTextToken;
-
             return $this->respondWithSuccess($result['message'], 200, [
                 'user' => new UserAccountResource($user),
                 'is_new_user' => $result['is_new_user'],
                 'oauth_provider' => $user->getProviderDisplayName(),
-                'email_verification_required' => false, // OAuth emails are pre-verified
-                'token' => $token,
+                'email_verification_required' => false // OAuth emails are pre-verified
             ]);
 
         } catch (\Exception $e) {
@@ -206,25 +202,21 @@ class SocialAuthController extends ImprovedController
             // Log the user in using the web guard
             Auth::guard('web')->login($user, true); // Remember the user
 
-            // Create a token for API access
-            $token = $user->createToken('oauth_auth_token')->plainTextToken;
-
             return $this->respondWithSuccess($result['message'], 200, [
                 'user' => new UserAccountResource($user),
                 'is_new_user' => $result['is_new_user'],
                 'oauth_provider' => $user->getProviderDisplayName(),
-                'email_verification_required' => false, // OAuth emails are pre-verified
-                'token' => $token,
+                'email_verification_required' => false // OAuth emails are pre-verified
             ]);
 
         } catch (\Exception $e) {
             Log::error('OAuth token authentication error', [
-                'provider' => $request->provider ?? 'unknown',
+                'provider' => $request->provider,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
 
-            return $this->respondWithError('OAuth authentication failed', 500);
+            return $this->respondWithError('OAuth authentication failed: ' . $e->getMessage(), 500);
         }
     }
 
