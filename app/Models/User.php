@@ -4,13 +4,11 @@ namespace App\Models;
 
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Support\Str;
-use Laravel\Sanctum\NewAccessToken;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, Notifiable;
+    use Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -60,17 +58,6 @@ class User extends Authenticatable
     public function hasRole($role)
     {
         return $this->roles()->where('slug', $role)->exists();
-    }
-
-    public function createToken(string $name, array $abilities = ['*'])
-    {
-        $token = $this->tokens()->create([
-            'name' => $name,
-            'token' => hash('sha256', $plainTextToken = Str::random(64)),
-            'abilities' => $abilities,
-        ]);
-
-        return new NewAccessToken($token, $token->getKey() . '|' . $plainTextToken);
     }
 
     /**
