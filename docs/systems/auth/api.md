@@ -28,11 +28,6 @@ POST /api/auth/register
         "name": "string",
         "email": "string",
         "created_at": "datetime"
-    },
-    "token": {
-        "access_token": "string",
-        "refresh_token": "string",
-        "expires_in": "integer"
     }
 }
 ```
@@ -60,11 +55,6 @@ POST /api/auth/login
         "id": "integer",
         "name": "string",
         "email": "string"
-    },
-    "token": {
-        "access_token": "string",
-        "refresh_token": "string",
-        "expires_in": "integer"
     }
 }
 ```
@@ -74,36 +64,10 @@ POST /api/auth/login
 POST /api/auth/logout
 ```
 
-**Headers:**
-```
-Authorization: Bearer {access_token}
-```
-
 **Response (200 OK):**
 ```json
 {
     "message": "Successfully logged out"
-}
-```
-
-### Token Management
-
-#### Refresh Token
-```http
-POST /api/auth/refresh
-```
-
-**Headers:**
-```
-Authorization: Bearer {refresh_token}
-```
-
-**Response (200 OK):**
-```json
-{
-    "access_token": "string",
-    "refresh_token": "string",
-    "expires_in": "integer"
 }
 ```
 
@@ -146,7 +110,7 @@ POST /api/auth/reset-password
 **Response (200 OK):**
 ```json
 {
-    "message": "Password reset successful"
+    "message": "Password has been reset successfully"
 }
 ```
 
