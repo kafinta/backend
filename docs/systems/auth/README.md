@@ -25,11 +25,6 @@ POST /api/auth/login
 }
 ```
 
-### 3. Token Management
-- Access tokens are issued upon successful login
-- Tokens are automatically refreshed when valid
-- Tokens can be revoked manually or automatically expire
-
 ## Testing with Postman
 
 For general Postman testing guidelines, environment setup, and best practices, please refer to the [main documentation](../README.md#api-testing-with-postman).
