@@ -33,63 +33,48 @@ class UserController extends ImprovedController
     public function register(Request $request)
     {
         try {
-
             $validator = $this->validateUserInfo();
-
             if ($validator->fails()) {
-                return $this->respondWithValidationError($validator->messages()->first(), 422);
+                return $this->respondWithValidationError($validator->errors(), 422);
+            }
+
+            // Validate password
+            $passwordErrors = $this->validatePassword($request->password);
+            if (!empty($passwordErrors)) {
+                return $this->respondWithValidationError(['password' => $passwordErrors], 422);
             }
 
             DB::beginTransaction();
-
             $userData = [
                 'email' => $request->email,
                 'username' => $request->username,
                 'password' => Hash::make($request->password),
             ];
-
-            // Add phone number if provided
             if ($request->has('phone_number')) {
                 $userData['phone_number'] = $request->phone_number;
             }
-
             $user = User::create($userData);
-
-            // Assign default role to user (customer by default)
             $defaultRole = Role::where('slug', 'customer')->first();
             if ($defaultRole) {
                 $user->roles()->attach($defaultRole->id);
             }
-
-            // Generate verification token and send email
             $tokenData = $this->emailService->generateVerificationToken($user);
             $emailSent = $this->emailService->sendVerificationEmail(
                 $user,
                 $tokenData['verification_url'],
                 $tokenData['verification_code']
             );
-
             DB::commit();
-
-            // Start a new session and regenerate the ID
             request()->session()->regenerate();
-
-            // Log the user in using the web guard explicitly
             Auth::guard('web')->login($user);
-
-            // Create a token for API access
             $token = $user->createToken('auth_token')->plainTextToken;
-
-            // Create a response
             $response = $this->respondWithSuccess("Account Created Successfully", 200, [
                 'user' => new UserAccountResource($user),
                 'email_verification_required' => true,
                 'verification_email_sent' => $emailSent,
-                'token' => $token, // Include token in response for API access
+                'token' => $token,
             ]);
-
             return $response;
-
         } catch (\Exception $e) {
             DB::rollBack();
             return $this->respondWithError($e->getMessage(), 500);
@@ -100,13 +85,11 @@ class UserController extends ImprovedController
     {
         try {
             $validator = $this->validateLoginCredentials();
-
             if ($validator->fails()) {
-                return $this->respondWithValidationError($validator->messages()->first(), 422);
+                return $this->respondWithValidationError($validator->errors(), 422);
             }
 
             $throttleKey = Str::lower($request->email) . '|' . $request->ip();
-
             if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
                 $seconds = RateLimiter::availableIn($throttleKey);
                 return $this->respondWithError(
@@ -119,36 +102,22 @@ class UserController extends ImprovedController
             $user = User::where('email', $credentials['email'])->first();
 
             if (!$user || !Hash::check($credentials['password'], $user->password)) {
-                RateLimiter::hit($throttleKey, 60); // Add to rate limiter
+                RateLimiter::hit($throttleKey, 60);
                 return $this->respondWithError("Invalid credentials", 401);
             }
 
-            // Reset rate limiter on successful login
             RateLimiter::clear($throttleKey);
-
-
-            // Set session lifetime based on remember_me
             $minutes = $request->remember_me ? 60 * 24 * 30 : 60 * 24;
             config(['session.lifetime' => $minutes]);
-
-            // Start a new session and regenerate the ID
             $request->session()->regenerate();
-
-            // Log the user in using the web guard explicitly
             Auth::guard('web')->login($user, $request->remember_me);
-
-            // Create a token for API access
             $tokenExpiration = $request->remember_me ? now()->addDays(30) : now()->addDay();
             $token = $user->createToken('auth_token', ['*'], $tokenExpiration)->plainTextToken;
-
-            // Create a response
             $response = $this->respondWithSuccess("Login successful", 200, [
                 'user' => new UserAccountResource($user),
-                'token' => $token, // Include token in response for API access
+                'token' => $token,
             ]);
-
             return $response;
-
         } catch (\Exception $e) {
             return $this->respondWithError($e->getMessage(), 500);
         }
@@ -171,7 +140,7 @@ class UserController extends ImprovedController
             ]);
 
             if ($validator->fails()) {
-                return $this->respondWithError('Validation failed: ' . $validator->errors()->first(), 422);
+                return $this->respondWithValidationError($validator->errors(), 422);
             }
 
             // Use the FileService to upload the profile picture
@@ -213,32 +182,22 @@ class UserController extends ImprovedController
 
     public function logout(Request $request)
     {
-        try {
-            // Revoke all tokens if using token-based auth
-            if ($request->user()) {
-                $request->user()->tokens()->delete();
-            }
+        // Revoke all tokens for the user
+        $this->revokeTokens();
+        
+        // Log the user out
+        Auth::guard('web')->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+        
+        return $this->respondWithSuccess("Logged out successfully", 200);
+    }
 
-            // Log the user out of the session
-            Auth::guard('web')->logout();
-
-            // Invalidate the session
-            $request->session()->invalidate();
-
-            // Regenerate the CSRF token
-            $request->session()->regenerateToken();
-
-            // Create a response
-            $response = $this->respondWithSuccess("Logout successful", 200);
-
-            return $response;
-        } catch (\Exception $e) {
-            Log::error('Logout error', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-
-            return $this->respondWithError('Error during logout: ' . $e->getMessage(), 500);
+    private function revokeTokens()
+    {
+        $user = auth()->user();
+        if ($user) {
+            $user->tokens()->delete();
         }
     }
 
@@ -292,7 +251,7 @@ class UserController extends ImprovedController
             ]);
 
             if ($validator->fails()) {
-                return $this->respondWithError('Validation failed: ' . $validator->errors()->first(), 422);
+                return $this->respondWithValidationError($validator->errors(), 422);
             }
 
             // Update user data
@@ -418,7 +377,7 @@ class UserController extends ImprovedController
             $token = $request->token ?? $request->route('token');
 
             if (!$token) {
-                return $this->respondWithError('Verification token is required', 400);
+                return $this->respondWithValidationError(['token' => ['Verification token is required']], 400);
             }
 
             // Verify the token
@@ -483,7 +442,7 @@ class UserController extends ImprovedController
             ]);
 
             if ($validator->fails()) {
-                return $this->respondWithError($validator->errors()->first(), 422);
+                return $this->respondWithValidationError($validator->errors(), 422);
             }
 
             // Verify the code without requiring email
@@ -524,7 +483,7 @@ class UserController extends ImprovedController
             ]);
 
             if ($validator->fails()) {
-                return $this->respondWithError($validator->errors()->first(), 422);
+                return $this->respondWithValidationError($validator->errors(), 422);
             }
 
             // Find the user by email
@@ -575,7 +534,7 @@ class UserController extends ImprovedController
             ]);
 
             if ($validator->fails()) {
-                return $this->respondWithError($validator->errors()->first(), 422);
+                return $this->respondWithValidationError($validator->errors(), 422);
             }
 
             // Reset the password using the token
@@ -615,7 +574,7 @@ class UserController extends ImprovedController
             ]);
 
             if ($validator->fails()) {
-                return $this->respondWithError($validator->errors()->first(), 422);
+                return $this->respondWithValidationError($validator->errors(), 422);
             }
 
             // Reset the password using the code
@@ -654,7 +613,7 @@ class UserController extends ImprovedController
             ]);
 
             if ($validator->fails()) {
-                return $this->respondWithError($validator->errors()->first(), 422);
+                return $this->respondWithValidationError($validator->errors(), 422);
             }
 
             // Verify the token
@@ -691,7 +650,7 @@ class UserController extends ImprovedController
             ]);
 
             if ($validator->fails()) {
-                return $this->respondWithError($validator->errors()->first(), 422);
+                return $this->respondWithValidationError($validator->errors(), 422);
             }
 
             // Verify the code
@@ -712,5 +671,26 @@ class UserController extends ImprovedController
             ]);
             return $this->respondWithError('Error verifying reset code: ' . $e->getMessage(), 500);
         }
+    }
+
+    private function validatePassword($password)
+    {
+        $errors = [];
+        if (strlen($password) < 8) {
+            $errors[] = 'Password must be at least 8 characters long.';
+        }
+        if (!preg_match('/[A-Z]/', $password)) {
+            $errors[] = 'Password must contain at least one uppercase letter.';
+        }
+        if (!preg_match('/[a-z]/', $password)) {
+            $errors[] = 'Password must contain at least one lowercase letter.';
+        }
+        if (!preg_match('/[0-9]/', $password)) {
+            $errors[] = 'Password must contain at least one number.';
+        }
+        if (!preg_match('/[^A-Za-z0-9]/', $password)) {
+            $errors[] = 'Password must contain at least one special character.';
+        }
+        return $errors;
     }
 }
