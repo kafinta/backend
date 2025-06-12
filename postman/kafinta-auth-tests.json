@@ -1,0 +1,254 @@
+{
+    "info": {
+        "name": "Authentication Tests",
+        "description": "Authentication system tests for Kafinta API",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "Registration",
+            "item": [
+                {
+                    "name": "Register New User",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "X-Requested-With",
+                                "value": "XMLHttpRequest"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"{{name}}\",\n    \"email\": \"{{email}}\",\n    \"password\": \"{{password}}\",\n    \"password_confirmation\": \"{{password}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/auth/register",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "auth", "register"]
+                        },
+                        "description": "Register a new user account"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Email Verification",
+            "item": [
+                {
+                    "name": "Check Simulated Emails",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/simulated-emails",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "simulated-emails"]
+                        },
+                        "description": "Get list of simulated emails (development only)"
+                    }
+                },
+                {
+                    "name": "Verify Email",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"token\": \"{{verification_token}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/verify-email/token",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "verify-email", "token"]
+                        },
+                        "description": "Verify email using token from simulated email"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Login",
+            "item": [
+                {
+                    "name": "Login User",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"{{email}}\",\n    \"password\": \"{{password}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/auth/login",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "auth", "login"]
+                        },
+                        "description": "Login with user credentials"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Password Management",
+            "item": [
+                {
+                    "name": "Forgot Password",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"{{email}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/forgot-password",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "forgot-password"]
+                        },
+                        "description": "Request password reset"
+                    }
+                },
+                {
+                    "name": "Reset Password",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"token\": \"{{reset_token}}\",\n    \"email\": \"{{email}}\",\n    \"password\": \"{{new_password}}\",\n    \"password_confirmation\": \"{{new_password}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/reset-password/token",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "reset-password", "token"]
+                        },
+                        "description": "Reset password using token from email"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Debug Routes",
+            "item": [
+                {
+                    "name": "Auth Test",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/debug/auth-test",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "debug", "auth-test"]
+                        },
+                        "description": "Test authentication state"
+                    }
+                },
+                {
+                    "name": "Cookie Settings",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/debug/cookie-settings",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "debug", "cookie-settings"]
+                        },
+                        "description": "Check cookie configuration"
+                    }
+                }
+            ]
+        }
+    ],
+    "variable": [
+        {
+            "key": "base_url",
+            "value": "http://localhost:8000",
+            "type": "string"
+        },
+        {
+            "key": "email",
+            "value": "test@example.com",
+            "type": "string"
+        },
+        {
+            "key": "password",
+            "value": "Test123!@#",
+            "type": "string"
+        },
+        {
+            "key": "new_password",
+            "value": "NewTest123!@#",
+            "type": "string"
+        },
+        {
+            "key": "verification_token",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "reset_token",
+            "value": "",
+            "type": "string"
+        }
+    ]
+} 
