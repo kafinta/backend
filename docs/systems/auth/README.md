@@ -1,7 +1,7 @@
 # Authentication System
 
 ## Overview
-The authentication system provides secure user authentication and authorization for the application. It implements Laravel's built-in authentication features with additional customizations for enhanced security and user experience.
+The authentication system provides secure user authentication and authorization for the application. It implements Laravel's built-in authentication features with Sanctum for cookie-based authentication, providing enhanced security and user experience.
 
 ## Quick Start Guide
 
@@ -37,9 +37,11 @@ For general Postman testing guidelines, environment setup, and best practices, p
    - Check simulated emails for verification token
    - Update `verification_token` environment variable
    - Use "Verify Email" request
+   - Note: Session cookie will be automatically set
 
 2. **Login Flow**
    - Use "Login User" request
+   - Session cookie will be automatically set
    - Check debug routes to verify authentication
    - Verify cookie settings
 
@@ -69,20 +71,19 @@ For general Postman testing guidelines, environment setup, and best practices, p
 - CSRF protection
 - Rate limiting on authentication endpoints
 - Secure session management
-- Token-based authentication
+- Cookie-based authentication with Sanctum
 
 ### User Management
 - User registration with email verification
+- Secure login with session management
 - Password reset functionality
-- Account deactivation
-- Session management
-- Role-based access control
+- Email verification system
 
-### Token System
-- JWT-based authentication
-- Token refresh mechanism
-- Token revocation
-- Automatic token expiration
+### Session Management
+- Secure session cookies
+- Automatic CSRF protection
+- Session lifetime configuration
+- Remember me functionality
 
 ## Dependencies
 
@@ -111,12 +112,23 @@ REFRESH_TOKEN_EXPIRY=604800
 - Lockout duration: 15 minutes
 
 ## Best Practices
-1. Always use HTTPS in production
-2. Implement rate limiting on authentication endpoints
-3. Use secure password hashing
-4. Implement proper session management
-5. Regular security audits
-6. Keep dependencies updated
+
+1. **Cookie Settings**
+   - Enable cookies in Postman
+   - Use the same domain for all requests
+   - Check cookie settings in debug routes
+
+2. **Security**
+   - Always use HTTPS in production
+   - Keep session lifetime reasonable
+   - Implement rate limiting
+   - Use secure cookie settings
+
+3. **Testing**
+   - Test authentication flows end-to-end
+   - Verify session persistence
+   - Check security headers
+   - Test rate limiting
 
 ## Common Issues and Solutions
 1. Token expiration
