@@ -110,18 +110,21 @@ trait JsonExceptionHandlerTrait
     protected function respondWithError($message, $statusCode, $headers = [])
     {
         return response()->json([
-            'status'      => 'fail',
+            'success' => false,
+            'status' => 'fail',
             'status_code' => $statusCode,
-            'message'       => $message
+            'message' => $message
         ], $statusCode, $headers);
     }
 
     protected function respondWithValidationError($error, $statusCode)
     {
         return response()->json([
-            'status'      => 'fail',
+            'success' => false,
+            'status' => 'fail',
             'status_code' => $statusCode,
-            'message'       => $error,
+            'message' => 'Validation failed',
+            'errors' => $error,
         ], $statusCode);
     }
 
@@ -138,7 +141,8 @@ trait JsonExceptionHandlerTrait
     protected function respondWithSuccess($message, $statusCode, $data = [], $headers = [])
     {
         return response()->json([
-            'status'      => 'success',
+            'success' => true,
+            'status' => 'success',
             'status_code' => $statusCode,
             'message' => $message,
             'data' => $data,
