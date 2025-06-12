@@ -19,7 +19,6 @@ use App\Http\Controllers\SellerOrderController;
 use App\Http\Controllers\SimulatedEmailController;
 use App\Http\Controllers\VerificationTokenController;
 use App\Http\Controllers\SocialAuthController;
-use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\NotificationController;
 
 /*
@@ -417,12 +416,8 @@ Route::middleware(['auth:sanctum,web'])->group(function () {
         Route::post('/products/{product}/manage-stock', [InventoryController::class, 'setProductStockManagement'])->name('inventory.products.manage-stock');
     });
 
-
-
     // Seller Routes
     Route::prefix('sellers')->group(function () {
-
-
         // Routes that require seller or admin role
         Route::middleware('role:seller|admin')->group(function() {
             Route::get('{seller}', [SellerController::class, 'show'])->name('sellers.show');
@@ -520,3 +515,34 @@ Route::prefix('products')->group(function () {
     // Single product view (catch-all route - must be last)
     Route::get('/{product}', [ProductController::class, 'show'])->name('products.show');
 });
+
+// Public routes
+Route::post('/auth/register', [AuthController::class, 'register']);
+Route::post('/auth/login', [AuthController::class, 'login']);
+Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword']);
+Route::post('/auth/reset-password', [AuthController::class, 'resetPassword']);
+Route::post('/auth/verify-email/{token}', [AuthController::class, 'verifyEmail']);
+Route::post('/auth/verify-code', [AuthController::class, 'verifyCode']);
+
+// Protected routes
+Route::middleware('auth:sanctum')->group(function () {
+    // Auth routes
+    Route::post('/auth/logout', [AuthController::class, 'logout']);
+    Route::post('/auth/refresh', [AuthController::class, 'refreshToken']);
+    Route::post('/auth/resend-verification', [AuthController::class, 'resendVerificationEmail']);
+    Route::get('/auth/check-verification', [AuthController::class, 'checkEmailVerification']);
+
+    // User routes
+    Route::get('/user/profile', [UserController::class, 'getProfile']);
+    Route::put('/user/profile', [UserController::class, 'updateProfile']);
+    Route::post('/user/profile/picture', [UserController::class, 'uploadProfilePicture']);
+    Route::get('/user/roles', [UserController::class, 'getRoles']);
+});
+
+// Simulated Email API Routes (Development Only)
+if (config('app.env') === 'local') {
+    Route::get('/simulated-emails', [SimulatedEmailController::class, 'index']);
+    Route::get('/simulated-emails/{filename}', [SimulatedEmailController::class, 'show']);
+    Route::delete('/simulated-emails/{filename}', [SimulatedEmailController::class, 'destroy']);
+    Route::delete('/simulated-emails', [SimulatedEmailController::class, 'clearAll']);
+}
