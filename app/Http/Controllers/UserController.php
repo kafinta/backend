@@ -111,13 +111,10 @@ class UserController extends ImprovedController
             config(['session.lifetime' => $minutes]);
             $request->session()->regenerate();
             Auth::guard('web')->login($user, $request->remember_me);
-            $tokenExpiration = $request->remember_me ? now()->addDays(30) : now()->addDay();
-            $token = $user->createToken('auth_token', ['*'], $tokenExpiration)->plainTextToken;
-            $response = $this->respondWithSuccess("Login successful", 200, [
-                'user' => new UserAccountResource($user),
-                'token' => $token,
+            
+            return $this->respondWithSuccess("Login successful", 200, [
+                'user' => new UserAccountResource($user)
             ]);
-            return $response;
         } catch (\Exception $e) {
             return $this->respondWithError($e->getMessage(), 500);
         }
@@ -182,10 +179,6 @@ class UserController extends ImprovedController
 
     public function logout(Request $request)
     {
-        // Revoke all tokens for the user
-        $this->revokeTokens();
-        
-        // Log the user out
         Auth::guard('web')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
