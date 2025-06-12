@@ -2,134 +2,104 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\ImprovedController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Response;
+use Illuminate\Support\Facades\Storage;
 
-class SimulatedEmailController extends ImprovedController
+class SimulatedEmailController extends Controller
 {
     /**
-     * List all simulated emails
-     *
-     * @return \Illuminate\Http\JsonResponse
+     * Display the simulated emails interface
      */
     public function index()
     {
-        try {
-            $emailsDir = storage_path('simulated-emails');
-
-            // Create directory if it doesn't exist
-            if (!File::exists($emailsDir)) {
-                File::makeDirectory($emailsDir, 0755, true);
-                \Log::info('Created simulated-emails directory', ['path' => $emailsDir]);
-            }
-
-            // Get all email files
-            $files = File::files($emailsDir);
-            \Log::info('Found simulated email files', ['count' => count($files)]);
-
-            $emails = [];
-            foreach ($files as $file) {
-                $emails[] = [
-                    'filename' => $file->getFilename(),
-                    'size' => $file->getSize(),
-                    'created_at' => date('Y-m-d H:i:s', $file->getMTime()),
-                    'url' => route('simulated-emails.show', ['filename' => $file->getFilename()]),
-                ];
-            }
-
-            // Sort by creation time (newest first)
-            usort($emails, function($a, $b) {
-                return strtotime($b['created_at']) - strtotime($a['created_at']);
-            });
-
-            return $this->respondWithSuccess('Simulated emails retrieved successfully', 200, [
-                'emails' => $emails,
-                'directory' => $emailsDir,
-                'directory_exists' => File::exists($emailsDir),
-                'email_count' => count($emails),
-            ]);
-        } catch (\Exception $e) {
-            \Log::error('Error retrieving simulated emails', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            return $this->respondWithError('Error retrieving simulated emails: ' . $e->getMessage(), 500);
+        // Create directory if it doesn't exist
+        $emailsDir = storage_path('simulated-emails');
+        if (!File::exists($emailsDir)) {
+            File::makeDirectory($emailsDir, 0755, true);
         }
+
+        // Get all email files
+        $files = File::files($emailsDir);
+
+        $emails = [];
+        foreach ($files as $file) {
+            $emails[] = [
+                'filename' => $file->getFilename(),
+                'size' => $file->getSize(),
+                'created_at' => date('Y-m-d H:i:s', $file->getMTime()),
+                'url' => route('simulated-emails.show', ['filename' => $file->getFilename()]),
+            ];
+        }
+
+        // Sort by creation time (newest first)
+        usort($emails, function($a, $b) {
+            return strtotime($b['created_at']) - strtotime($a['created_at']);
+        });
+
+        return view('emails.simulated.index', [
+            'initialEmails' => json_encode([
+                'success' => true,
+                'data' => [
+                    'emails' => $emails
+                ]
+            ])
+        ]);
     }
 
     /**
-     * Show a specific simulated email
-     *
-     * @param string $filename
-     * @return \Illuminate\Http\Response
+     * Display a specific simulated email
      */
     public function show($filename)
     {
-        try {
-            $filepath = storage_path('simulated-emails/' . $filename);
+        $filepath = storage_path('simulated-emails/' . $filename);
 
-            if (!File::exists($filepath)) {
-                return $this->respondWithError('Email not found', 404);
-            }
-
-            $content = File::get($filepath);
-
-            return Response::make($content, 200, [
-                'Content-Type' => 'text/html',
-            ]);
-        } catch (\Exception $e) {
-            return $this->respondWithError('Error retrieving email: ' . $e->getMessage(), 500);
+        if (!File::exists($filepath)) {
+            abort(404, 'Email not found');
         }
+
+        $content = File::get($filepath);
+
+        return response($content)->header('Content-Type', 'text/html');
     }
 
     /**
      * Delete a specific simulated email
-     *
-     * @param string $filename
-     * @return \Illuminate\Http\JsonResponse
      */
     public function destroy($filename)
     {
-        try {
-            $filepath = storage_path('simulated-emails/' . $filename);
+        $filepath = storage_path('simulated-emails/' . $filename);
 
-            if (!File::exists($filepath)) {
-                return $this->respondWithError('Email not found', 404);
-            }
-
-            File::delete($filepath);
-
-            return $this->respondWithSuccess('Email deleted successfully', 200);
-        } catch (\Exception $e) {
-            return $this->respondWithError('Error deleting email: ' . $e->getMessage(), 500);
+        if (!File::exists($filepath)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Email not found'
+            ], 404);
         }
+
+        File::delete($filepath);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Email deleted successfully'
+        ]);
     }
 
     /**
-     * Delete all simulated emails
-     *
-     * @return \Illuminate\Http\JsonResponse
+     * Clear all simulated emails
      */
-    public function destroyAll()
+    public function clearAll()
     {
-        try {
-            $emailsDir = storage_path('simulated-emails');
-
-            if (!File::exists($emailsDir)) {
-                return $this->respondWithSuccess('No emails to delete', 200);
-            }
-
-            $files = File::files($emailsDir);
-
-            foreach ($files as $file) {
-                File::delete($file->getPathname());
-            }
-
-            return $this->respondWithSuccess('All emails deleted successfully', 200);
-        } catch (\Exception $e) {
-            return $this->respondWithError('Error deleting emails: ' . $e->getMessage(), 500);
+        $emailsDir = storage_path('simulated-emails');
+        
+        if (File::exists($emailsDir)) {
+            File::deleteDirectory($emailsDir);
+            File::makeDirectory($emailsDir, 0755, true);
         }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'All emails cleared successfully'
+        ]);
     }
 }
