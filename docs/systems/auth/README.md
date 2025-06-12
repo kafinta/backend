@@ -30,6 +30,43 @@ POST /api/auth/login
 - Tokens are automatically refreshed when valid
 - Tokens can be revoked manually or automatically expire
 
+## Testing with Postman
+
+For general Postman testing guidelines, environment setup, and best practices, please refer to the [main documentation](../README.md#api-testing-with-postman).
+
+### Authentication-Specific Testing
+
+#### Test Cases
+1. **Registration Flow**
+   - Use "Register New User" request
+   - Check simulated emails for verification token
+   - Update `verification_token` environment variable
+   - Use "Verify Email" request
+
+2. **Login Flow**
+   - Use "Login User" request
+   - Check debug routes to verify authentication
+   - Verify cookie settings
+
+3. **Password Reset Flow**
+   - Use "Forgot Password" request
+   - Check simulated emails for reset token
+   - Update `reset_token` environment variable
+   - Use "Reset Password" request
+
+#### Auth-Specific Debug Routes
+- `/api/debug/auth-test`: Check authentication state
+- `/api/debug/cookie-settings`: Verify cookie configuration
+- `/api/simulated-emails`: View development emails
+
+#### Auth-Specific Environment Variables
+```json
+{
+    "verification_token": "",
+    "reset_token": ""
+}
+```
+
 ## Key Features
 
 ### Security
