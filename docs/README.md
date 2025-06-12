@@ -102,6 +102,98 @@ Development guides should include:
    - Environment configuration
    - Monitoring setup
 
+## API Testing with Postman
+
+### Collection Structure
+The project uses a hierarchical Postman collection structure:
+```
+Kafinta API Tests (Parent Collection)
+├── Authentication Tests
+├── Order Management Tests
+├── Product Management Tests
+└── Feature Tests
+    ├── Email Tests
+    ├── Notification Tests
+    └── Payment Tests
+```
+
+### Environment Setup
+1. **Base Environment Variables**
+   ```json
+   {
+       "base_url": "http://localhost:8000",
+       "api_version": "v1",
+       "debug_mode": true
+   }
+   ```
+
+2. **Authentication Variables**
+   ```json
+   {
+       "email": "test@example.com",
+       "password": "Test123!@#",
+       "access_token": "",
+       "refresh_token": ""
+   }
+   ```
+
+### Testing Guidelines
+1. **Request Headers**
+   ```
+   Content-Type: application/json
+   Accept: application/json
+   X-Requested-With: XMLHttpRequest
+   ```
+
+2. **Cookie Management**
+   - Enable cookies in Postman
+   - Use the same domain for all requests
+   - Check cookie settings in debug routes
+
+3. **Development Environment**
+   - Use debug routes for testing
+   - Check simulated emails
+   - Monitor request/response logs
+
+### Best Practices
+1. **Collection Organization**
+   - Group related endpoints in folders
+   - Use descriptive names for requests
+   - Include request/response examples
+
+2. **Environment Management**
+   - Use separate environments for development/staging/production
+   - Keep sensitive data in environment variables
+   - Document all required variables
+
+3. **Testing Workflow**
+   - Start with authentication
+   - Test endpoints in logical order
+   - Verify error handling
+   - Check rate limiting
+
+4. **Debug Routes**
+   - Use `/api/debug/*` endpoints for testing
+   - Check authentication state
+   - Verify cookie settings
+   - Monitor email delivery
+
+### Common Issues
+1. **Authentication**
+   - Cookie not being set
+   - Token expiration
+   - CSRF token issues
+
+2. **Request Issues**
+   - Missing required headers
+   - Invalid JSON format
+   - Rate limiting
+
+3. **Environment Issues**
+   - Incorrect base URL
+   - Missing environment variables
+   - Wrong API version
+
 ## Contributing
 When adding new documentation:
 1. Follow the established structure
