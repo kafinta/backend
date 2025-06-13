@@ -7,9 +7,9 @@ The authentication system provides secure user authentication and authorization 
 
 ### 1. User Registration
 ```php
-POST /api/auth/register
+POST /api/user/signup
 {
-    "name": "string",
+    "username": "string",
     "email": "string",
     "password": "string",
     "password_confirmation": "string"
@@ -18,10 +18,11 @@ POST /api/auth/register
 
 ### 2. User Login
 ```php
-POST /api/auth/login
+POST /api/user/login
 {
     "email": "string",
-    "password": "string"
+    "password": "string",
+    "remember_me": "boolean"
 }
 ```
 
@@ -141,4 +142,32 @@ REFRESH_TOKEN_EXPIRY=604800
 ## Next Steps
 1. Review the [API Documentation](api.md) for detailed endpoint information
 2. Check the [Frontend Integration Guide](frontend.md) for implementation details
-3. See the [Roadmap](roadmap.md) for planned features and improvements 
+3. See the [Roadmap](roadmap.md) for planned features and improvements
+
+## Email Verification
+
+The system provides two methods for email verification:
+
+1. **Token-based Verification**
+   - Endpoint: `POST /api/verify-email/token`
+   - Body: `{ "token": "verification_token" }`
+   - Description: Verify email using the token from the verification email
+
+2. **Code-based Verification**
+   - Endpoint: `POST /api/verify-email/code`
+   - Body: `{ "code": "verification_code", "email": "user@example.com" }`
+   - Description: Verify email using the 6-digit verification code from the email
+
+Both methods are available in the verification email, and either can be used to verify the user's email address.
+
+### Resending Verification Email
+- Endpoint: `POST /api/user/resend-verification-email`
+- Description: Resend the verification email to the authenticated user
+- Requires: Authentication
+
+### Development Mode
+In development mode, emails are simulated and stored in the `storage/simulated-emails` directory. You can:
+- View simulated emails at `GET /api/simulated-emails`
+- View a specific email at `GET /api/simulated-emails/{filename}`
+- Delete a specific email at `DELETE /api/simulated-emails/{filename}`
+- Clear all emails at `DELETE /api/simulated-emails`
