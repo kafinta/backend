@@ -516,22 +516,8 @@ Route::prefix('products')->group(function () {
     Route::get('/{product}', [ProductController::class, 'show'])->name('products.show');
 });
 
-// Public routes
-Route::post('/auth/register', [AuthController::class, 'register']);
-Route::post('/auth/login', [AuthController::class, 'login']);
-Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword']);
-Route::post('/auth/reset-password', [AuthController::class, 'resetPassword']);
-Route::post('/auth/verify-email/{token}', [AuthController::class, 'verifyEmail']);
-Route::post('/auth/verify-code', [AuthController::class, 'verifyCode']);
-
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {
-    // Auth routes
-    Route::post('/auth/logout', [AuthController::class, 'logout']);
-    Route::post('/auth/refresh', [AuthController::class, 'refreshToken']);
-    Route::post('/auth/resend-verification', [AuthController::class, 'resendVerificationEmail']);
-    Route::get('/auth/check-verification', [AuthController::class, 'checkEmailVerification']);
-
     // User routes
     Route::get('/user/profile', [UserController::class, 'getProfile']);
     Route::put('/user/profile', [UserController::class, 'updateProfile']);
