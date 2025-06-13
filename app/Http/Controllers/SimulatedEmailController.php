@@ -37,13 +37,21 @@ class SimulatedEmailController extends Controller
             return strtotime($b['created_at']) - strtotime($a['created_at']);
         });
 
+        $data = [
+            'success' => true,
+            'data' => [
+                'emails' => $emails
+            ]
+        ];
+
+        // If it's an API request, return JSON
+        if (request()->wantsJson()) {
+            return response()->json($data);
+        }
+
+        // Otherwise return the view
         return view('emails.simulated.index', [
-            'initialEmails' => json_encode([
-                'success' => true,
-                'data' => [
-                    'emails' => $emails
-                ]
-            ])
+            'initialEmails' => json_encode($data)
         ]);
     }
 
