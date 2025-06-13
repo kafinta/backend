@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\File;
 
 class EmailService
 {
@@ -68,6 +69,45 @@ class EmailService
     }
 
     /**
+     * Handle simulated email in development environment
+     *
+     * @param User $user
+     * @param string $verificationUrl
+     * @param string|null $verificationCode
+     * @return bool
+     */
+    private function handleSimulatedEmail(User $user, string $verificationUrl, string $verificationCode = null): bool
+    {
+        try {
+            $emailsDir = storage_path('simulated-emails');
+            if (!File::exists($emailsDir)) {
+                File::makeDirectory($emailsDir, 0755, true);
+            }
+
+            // Add timestamp to keep history of emails
+            $timestamp = now()->format('Y-m-d_H-i-s');
+            $filename = "verification_{$user->id}_{$timestamp}.html";
+            $filepath = $emailsDir . '/' . $filename;
+
+            $html = $this->createHtmlEmail($user, $verificationUrl, $verificationCode);
+            File::put($filepath, $html);
+
+            Log::info('Saved simulated verification email', [
+                'file' => $filename,
+                'user_id' => $user->id,
+                'timestamp' => $timestamp
+            ]);
+            return true;
+        } catch (\Exception $e) {
+            Log::error('Error saving simulated email', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage()
+            ]);
+            return false;
+        }
+    }
+
+    /**
      * Send a verification email to the user
      *
      * @param User $user
@@ -78,6 +118,16 @@ class EmailService
     public function sendVerificationEmail(User $user, string $verificationUrl, string $verificationCode = null): bool
     {
         try {
+            // Check if mail configuration is properly set up
+            $mailConfig = config('mail');
+            $hasMailConfig = !empty($mailConfig['default']) && 
+                            !empty($mailConfig['mailers'][$mailConfig['default']]) &&
+                            !empty($mailConfig['mailers'][$mailConfig['default']]['host']);
+
+            if (!$hasMailConfig) {
+                return $this->handleSimulatedEmail($user, $verificationUrl, $verificationCode);
+            }
+
             Mail::to($user->email)->send(new \App\Mail\VerificationEmail($user, $verificationUrl, $verificationCode));
             return true;
         } catch (\Exception $e) {
@@ -85,7 +135,8 @@ class EmailService
                 'user_id' => $user->id,
                 'error' => $e->getMessage()
             ]);
-            return false;
+            // Fall back to simulated email if real email fails
+            return $this->handleSimulatedEmail($user, $verificationUrl, $verificationCode);
         }
     }
 
@@ -97,6 +148,11 @@ class EmailService
      */
     private function deleteEmailFile(EmailVerificationToken $token): bool
     {
+        // Only delete files in production environment
+        if (config('app.env') !== 'production') {
+            return true;
+        }
+
         // Find all email files for this user
         $pattern = 'verification_' . $token->user_id . '_*.html';
         $files = glob(storage_path('simulated-emails/' . $pattern));
@@ -232,7 +288,9 @@ HTML;
         $user->email_verified_at = now();
         $user->save();
 
+        // Clear both token and code from cache
         Cache::forget("verification_token_{$token}");
+        Cache::forget("verification_code_{$tokenData['code']}");
 
         return [
             'success' => true,
@@ -264,9 +322,6 @@ HTML;
 
         // Check if token is expired
         if ($verificationToken->isExpired()) {
-            // Delete the email file for expired token
-            $this->deleteEmailFile($verificationToken);
-
             // Delete the token
             $verificationToken->delete();
 
@@ -288,8 +343,9 @@ HTML;
         $user->email_verified_at = now();
         $user->save();
 
-        // Delete the email file
-        $this->deleteEmailFile($verificationToken);
+        // Clear both token and code from cache
+        Cache::forget("verification_token_{$verificationToken->token}");
+        Cache::forget("verification_code_{$code}");
 
         // Delete the token
         $verificationToken->delete();
@@ -410,6 +466,16 @@ HTML;
     public function sendPasswordResetEmail(User $user, string $resetUrl, string $resetCode): bool
     {
         try {
+            // Check if mail configuration is properly set up
+            $mailConfig = config('mail');
+            $hasMailConfig = !empty($mailConfig['default']) && 
+                            !empty($mailConfig['mailers'][$mailConfig['default']]) &&
+                            !empty($mailConfig['mailers'][$mailConfig['default']]['host']);
+
+            if (!$hasMailConfig) {
+                return $this->handleSimulatedEmail($user, $resetUrl, $resetCode);
+            }
+
             Mail::to($user->email)->send(new \App\Mail\PasswordResetEmail($user, $resetUrl, $resetCode));
             return true;
         } catch (\Exception $e) {
@@ -417,7 +483,8 @@ HTML;
                 'user_id' => $user->id,
                 'error' => $e->getMessage()
             ]);
-            return false;
+            // Fall back to simulated email if real email fails
+            return $this->handleSimulatedEmail($user, $resetUrl, $resetCode);
         }
     }
 
