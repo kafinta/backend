@@ -6,13 +6,13 @@
 
 #### Register New User
 ```http
-POST /api/auth/register
+POST /api/user/signup
 ```
 
 **Request Body:**
 ```json
 {
-    "name": "string",
+    "username": "string",
     "email": "string",
     "password": "string",
     "password_confirmation": "string"
@@ -22,13 +22,15 @@ POST /api/auth/register
 **Response (201 Created):**
 ```json
 {
-    "message": "User registered successfully",
+    "message": "Account Created Successfully",
     "user": {
         "id": "integer",
-        "name": "string",
+        "username": "string",
         "email": "string",
         "created_at": "datetime"
-    }
+    },
+    "email_verification_required": true,
+    "verification_email_sent": true
 }
 ```
 
@@ -36,14 +38,15 @@ POST /api/auth/register
 
 #### Login
 ```http
-POST /api/auth/login
+POST /api/user/login
 ```
 
 **Request Body:**
 ```json
 {
     "email": "string",
-    "password": "string"
+    "password": "string",
+    "remember_me": "boolean"
 }
 ```
 
@@ -53,7 +56,7 @@ POST /api/auth/login
     "message": "Login successful",
     "user": {
         "id": "integer",
-        "name": "string",
+        "username": "string",
         "email": "string"
     }
 }
@@ -61,13 +64,13 @@ POST /api/auth/login
 
 #### Logout
 ```http
-POST /api/auth/logout
+POST /api/user/logout
 ```
 
 **Response (200 OK):**
 ```json
 {
-    "message": "Successfully logged out"
+    "message": "Logged out successfully"
 }
 ```
 
@@ -75,7 +78,7 @@ POST /api/auth/logout
 
 #### Forgot Password
 ```http
-POST /api/auth/forgot-password
+POST /api/forgot-password
 ```
 
 **Request Body:**
@@ -88,13 +91,13 @@ POST /api/auth/forgot-password
 **Response (200 OK):**
 ```json
 {
-    "message": "Password reset link sent to your email"
+    "message": "If an account with that email exists, a password reset link has been sent."
 }
 ```
 
 #### Reset Password
 ```http
-POST /api/auth/reset-password
+POST /api/reset-password/token
 ```
 
 **Request Body:**
@@ -110,7 +113,7 @@ POST /api/auth/reset-password
 **Response (200 OK):**
 ```json
 {
-    "message": "Password has been reset successfully"
+    "message": "Password reset successfully"
 }
 ```
 
@@ -138,8 +141,7 @@ POST /api/auth/reset-password
 ### Rate Limiting (429 Too Many Requests)
 ```json
 {
-    "message": "Too many attempts",
-    "retry_after": "integer"
+    "message": "Too many login attempts. Please try again in X seconds."
 }
 ```
 
