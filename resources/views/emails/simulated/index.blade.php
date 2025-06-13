@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Simulated Emails</title>
     <style>
         body {
@@ -96,7 +97,7 @@
             }
 
             // Otherwise fetch from API
-            fetch('/api/simulated-emails')
+            fetch('{{ route("simulated-emails.index") }}')
                 .then(response => response.json())
                 .then(data => {
                     displayEmails(data);
@@ -148,8 +149,12 @@
         // Function to delete a specific email
         function deleteEmail(filename) {
             if (confirm(`Are you sure you want to delete the email "${filename}"?`)) {
-                fetch(`/api/simulated-emails/${filename}`, {
-                    method: 'DELETE'
+                const deleteUrl = '{{ route("simulated-emails.destroy", ["filename" => "PLACEHOLDER"]) }}'.replace('PLACEHOLDER', filename);
+                fetch(deleteUrl, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+                    }
                 })
                 .then(response => response.json())
                 .then(data => {
@@ -169,8 +174,11 @@
         // Function to clear all emails
         function clearAllEmails() {
             if (confirm('Are you sure you want to delete all simulated emails?')) {
-                fetch('/api/simulated-emails', {
-                    method: 'DELETE'
+                fetch('{{ route("simulated-emails.clear-all") }}', {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+                    }
                 })
                 .then(response => response.json())
                 .then(data => {
