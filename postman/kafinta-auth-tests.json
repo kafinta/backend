@@ -28,12 +28,12 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n    \"name\": \"{{name}}\",\n    \"email\": \"{{email}}\",\n    \"password\": \"{{password}}\",\n    \"password_confirmation\": \"{{password}}\"\n}"
+                            "raw": "{\n    \"username\": \"{{username}}\",\n    \"email\": \"{{email}}\",\n    \"password\": \"{{password}}\",\n    \"password_confirmation\": \"{{password}}\"\n}"
                         },
                         "url": {
-                            "raw": "{{base_url}}/api/auth/register",
+                            "raw": "{{base_url}}/api/user/signup",
                             "host": ["{{base_url}}"],
-                            "path": ["api", "auth", "register"]
+                            "path": ["api", "user", "signup"]
                         },
                         "description": "Register a new user account"
                     }
@@ -62,7 +62,7 @@
                     }
                 },
                 {
-                    "name": "Verify Email",
+                    "name": "Verify Email with Token",
                     "request": {
                         "method": "POST",
                         "header": [
@@ -85,6 +85,54 @@
                             "path": ["api", "verify-email", "token"]
                         },
                         "description": "Verify email using token from simulated email"
+                    }
+                },
+                {
+                    "name": "Verify Email with Code",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"code\": \"{{verification_code}}\",\n    \"email\": \"{{email}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/verify-email/code",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "verify-email", "code"]
+                        },
+                        "description": "Verify email using verification code from simulated email"
+                    }
+                },
+                {
+                    "name": "Resend Verification Email",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/user/resend-verification-email",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "user", "resend-verification-email"]
+                        },
+                        "description": "Resend verification email to the authenticated user"
                     }
                 }
             ]
