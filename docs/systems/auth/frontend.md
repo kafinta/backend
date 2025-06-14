@@ -1,55 +1,54 @@
 # Frontend Integration Guide
 
 ## Overview
-This guide provides instructions for integrating the authentication system with frontend applications. The authentication system uses token-based authentication with JWT tokens.
+This guide provides instructions for integrating the authentication system with frontend applications. The system implements secure user authentication with support for various authentication methods and session management.
 
 ## Implementation Steps
 
-### 1. Setup Authentication Service
+### 1. Setup Auth Service
 
 ```typescript
 // auth.service.ts
-import axios from 'axios';
-
 export class AuthService {
-    private static instance: AuthService;
-    private token: string | null = null;
+    private baseURL: string;
 
-    private constructor() {
-        this.token = localStorage.getItem('token');
+    constructor() {
+        this.baseURL = '/api/auth';
     }
 
-    public static getInstance(): AuthService {
-        if (!AuthService.instance) {
-            AuthService.instance = new AuthService();
-        }
-        return AuthService.instance;
-    }
-
-    public async login(email: string, password: string) {
+    public async login(data: {
+        email: string;
+        password: string;
+    }) {
         try {
-            const response = await axios.post('/api/auth/login', {
-                email,
-                password
+            const response = await fetch(`${this.baseURL}/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
             });
-            
-            this.setToken(response.data.token.access_token);
-            return response.data;
+            return await response.json();
         } catch (error) {
             throw this.handleError(error);
         }
     }
 
-    public async register(userData: {
+    public async register(data: {
         name: string;
         email: string;
         password: string;
         password_confirmation: string;
     }) {
         try {
-            const response = await axios.post('/api/auth/register', userData);
-            this.setToken(response.data.token.access_token);
-            return response.data;
+            const response = await fetch(`${this.baseURL}/register`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            });
+            return await response.json();
         } catch (error) {
             throw this.handleError(error);
         }
@@ -57,29 +56,65 @@ export class AuthService {
 
     public async logout() {
         try {
-            await axios.post('/api/auth/logout', {}, {
-                headers: this.getAuthHeader()
+            const response = await fetch(`${this.baseURL}/logout`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
             });
-            this.clearToken();
+            return await response.json();
         } catch (error) {
             throw this.handleError(error);
         }
     }
 
-    private setToken(token: string) {
-        this.token = token;
-        localStorage.setItem('token', token);
+    public async refreshToken() {
+        try {
+            const response = await fetch(`${this.baseURL}/refresh`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+            return await response.json();
+        } catch (error) {
+            throw this.handleError(error);
+        }
     }
 
-    private clearToken() {
-        this.token = null;
-        localStorage.removeItem('token');
+    public async forgotPassword(email: string) {
+        try {
+            const response = await fetch(`${this.baseURL}/forgot-password`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email })
+            });
+            return await response.json();
+        } catch (error) {
+            throw this.handleError(error);
+        }
     }
 
-    public getAuthHeader() {
-        return {
-            Authorization: `Bearer ${this.token}`
-        };
+    public async resetPassword(data: {
+        token: string;
+        email: string;
+        password: string;
+        password_confirmation: string;
+    }) {
+        try {
+            const response = await fetch(`${this.baseURL}/reset-password`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            });
+            return await response.json();
+        } catch (error) {
+            throw this.handleError(error);
+        }
     }
 
     private handleError(error: any) {
@@ -91,204 +126,167 @@ export class AuthService {
 }
 ```
 
-### 2. Setup Axios Interceptor
+### 2. State Management
+The auth service can be integrated with any state management solution. Here's an example using a simple store pattern:
 
 ```typescript
-// axios.config.ts
-import axios from 'axios';
-import { AuthService } from './auth.service';
+// auth.store.ts
+export class AuthStore {
+    private user: any = null;
+    private token: string | null = null;
+    private loading: boolean = false;
+    private error: any = null;
+    private authService: AuthService;
 
-// Add request interceptor
-axios.interceptors.request.use(
-    (config) => {
-        const authService = AuthService.getInstance();
-        const token = authService.getAuthHeader();
-        
-        if (token) {
-            config.headers = {
-                ...config.headers,
-                ...token
-            };
-        }
-        
-        return config;
-    },
-    (error) => {
-        return Promise.reject(error);
+    constructor() {
+        this.authService = new AuthService();
+        this.token = localStorage.getItem('token');
     }
-);
 
-// Add response interceptor
-axios.interceptors.response.use(
-    (response) => response,
-    async (error) => {
-        const originalRequest = error.config;
-
-        // Handle token refresh
-        if (error.response.status === 401 && !originalRequest._retry) {
-            originalRequest._retry = true;
-            
-            try {
-                const authService = AuthService.getInstance();
-                const response = await axios.post('/api/auth/refresh');
-                authService.setToken(response.data.access_token);
-                
-                return axios(originalRequest);
-            } catch (refreshError) {
-                // Handle refresh token failure
-                authService.clearToken();
-                window.location.href = '/login';
-                return Promise.reject(refreshError);
-            }
+    async login(data: any) {
+        try {
+            this.loading = true;
+            const response = await this.authService.login(data);
+            this.user = response.user;
+            this.token = response.token;
+            localStorage.setItem('token', response.token);
+            this.error = null;
+            return response;
+        } catch (error) {
+            this.error = error;
+            throw error;
+        } finally {
+            this.loading = false;
         }
-
-        return Promise.reject(error);
     }
-);
+
+    async logout() {
+        try {
+            this.loading = true;
+            await this.authService.logout();
+            this.user = null;
+            this.token = null;
+            localStorage.removeItem('token');
+            this.error = null;
+        } catch (error) {
+            this.error = error;
+            throw error;
+        } finally {
+            this.loading = false;
+        }
+    }
+
+    // ... similar methods for other operations
+}
 ```
 
-### 3. Create Authentication Context
+### 3. Component Example
+Here's a framework-agnostic example of a login form component:
 
 ```typescript
-// AuthContext.tsx
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { AuthService } from './auth.service';
+// LoginForm.ts
+export class LoginForm {
+    private formData = {
+        email: '',
+        password: ''
+    };
 
-interface AuthContextType {
-    isAuthenticated: boolean;
-    user: any | null;
-    login: (email: string, password: string) => Promise<void>;
-    logout: () => Promise<void>;
-    register: (userData: any) => Promise<void>;
-}
+    constructor(private authStore: AuthStore) {}
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-export const AuthProvider: React.FC = ({ children }) => {
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const [user, setUser] = useState(null);
-    const authService = AuthService.getInstance();
-
-    useEffect(() => {
-        // Check authentication status on mount
-        const token = localStorage.getItem('token');
-        if (token) {
-            setIsAuthenticated(true);
-            // Fetch user data
+    async handleSubmit(event: Event) {
+        event.preventDefault();
+        try {
+            await this.authStore.login(this.formData);
+            // Handle success
+        } catch (error) {
+            // Handle error
         }
-    }, []);
-
-    const login = async (email: string, password: string) => {
-        const response = await authService.login(email, password);
-        setUser(response.user);
-        setIsAuthenticated(true);
-    };
-
-    const logout = async () => {
-        await authService.logout();
-        setUser(null);
-        setIsAuthenticated(false);
-    };
-
-    const register = async (userData: any) => {
-        const response = await authService.register(userData);
-        setUser(response.user);
-        setIsAuthenticated(true);
-    };
-
-    return (
-        <AuthContext.Provider value={{
-            isAuthenticated,
-            user,
-            login,
-            logout,
-            register
-        }}>
-            {children}
-        </AuthContext.Provider>
-    );
-};
-
-export const useAuth = () => {
-    const context = useContext(AuthContext);
-    if (context === undefined) {
-        throw new Error('useAuth must be used within an AuthProvider');
     }
-    return context;
-};
+
+    updateField(field: string, value: any) {
+        this.formData[field] = value;
+    }
+}
 ```
 
 ## Best Practices
 
-### 1. Token Management
-- Store tokens securely (localStorage for web, secure storage for mobile)
-- Implement token refresh mechanism
-- Clear tokens on logout
-- Handle token expiration
+### 1. Authentication
+- Implement proper token management
+- Handle token refresh
+- Secure token storage
+- Implement proper logout
 
 ### 2. Error Handling
-- Implement proper error handling for all API calls
-- Show user-friendly error messages
-- Handle network errors gracefully
-- Implement retry mechanism for failed requests
+- Show clear error messages
+- Handle validation errors
+- Implement retry mechanism
+- Log errors properly
 
-### 3. Security
-- Use HTTPS for all API calls
-- Implement CSRF protection
-- Sanitize user inputs
-- Implement rate limiting on the frontend
-- Clear sensitive data on logout
+### 3. User Experience
+- Show loading states
+- Implement proper validation
+- Provide clear feedback
+- Handle session timeouts
 
-### 4. User Experience
-- Show loading states during authentication
-- Implement proper form validation
-- Provide clear feedback for user actions
-- Handle session timeouts gracefully
+### 4. Security
+- Validate all inputs
+- Secure sensitive data
+- Implement proper error handling
+- Follow security best practices
 
 ## Common Issues and Solutions
 
-### 1. Token Expiration
+### 1. Token Management
 ```typescript
-// Handle token expiration
-if (error.response.status === 401) {
-    // Attempt to refresh token
+// Handle token refresh
+const handleTokenRefresh = async () => {
     try {
-        const response = await axios.post('/api/auth/refresh');
-        // Update token and retry request
-    } catch (refreshError) {
-        // Redirect to login
+        const response = await refreshToken();
+        localStorage.setItem('token', response.token);
+        return response.token;
+    } catch (error) {
+        // Handle error
+        showError(error.message);
+        // Redirect to login if refresh fails
+        redirectToLogin();
     }
-}
+};
 ```
 
-### 2. Network Errors
+### 2. Password Reset
 ```typescript
-// Handle network errors
-try {
-    await apiCall();
-} catch (error) {
-    if (!error.response) {
-        // Network error
-        showNetworkError();
+// Handle password reset
+const handlePasswordReset = async (email: string) => {
+    try {
+        if (!email) {
+            throw new Error('Email is required.');
+        }
+
+        await forgotPassword(email);
+        showSuccess('Password reset instructions sent to your email.');
+    } catch (error) {
+        // Handle error
+        showError(error.message);
     }
-}
+};
 ```
 
 ### 3. Form Validation
 ```typescript
-// Implement form validation
-const validateForm = (values: any) => {
+// Handle form validation
+const validateForm = (formData: any) => {
     const errors: any = {};
     
-    if (!values.email) {
+    if (!formData.email) {
         errors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(values.email)) {
-        errors.email = 'Email is invalid';
+    } else if (!isValidEmail(formData.email)) {
+        errors.email = 'Invalid email format';
     }
     
-    if (!values.password) {
+    if (!formData.password) {
         errors.password = 'Password is required';
-    } else if (values.password.length < 8) {
+    } else if (formData.password.length < 8) {
         errors.password = 'Password must be at least 8 characters';
     }
     
@@ -303,8 +301,11 @@ const validateForm = (values: any) => {
 // auth.service.test.ts
 describe('AuthService', () => {
     it('should login successfully', async () => {
-        const authService = AuthService.getInstance();
-        const response = await authService.login('test@example.com', 'password');
+        const authService = new AuthService();
+        const response = await authService.login({
+            email: 'test@example.com',
+            password: 'password123'
+        });
         expect(response.token).toBeDefined();
     });
 });
@@ -313,7 +314,7 @@ describe('AuthService', () => {
 ### 2. Integration Tests
 ```typescript
 // auth.integration.test.ts
-describe('Authentication Flow', () => {
+describe('Auth Flow', () => {
     it('should complete full authentication flow', async () => {
         // Register
         const registerResponse = await register(userData);
@@ -323,9 +324,13 @@ describe('Authentication Flow', () => {
         const loginResponse = await login(credentials);
         expect(loginResponse.token).toBeDefined();
         
+        // Refresh token
+        const refreshResponse = await refreshToken();
+        expect(refreshResponse.token).toBeDefined();
+        
         // Logout
-        await logout();
-        expect(localStorage.getItem('token')).toBeNull();
+        const logoutResponse = await logout();
+        expect(logoutResponse.success).toBe(true);
     });
 });
 ```
@@ -333,5 +338,5 @@ describe('Authentication Flow', () => {
 ## Next Steps
 1. Review the [API Documentation](api.md) for endpoint details
 2. Check the [Roadmap](roadmap.md) for upcoming features
-3. Implement additional security measures as needed
+3. Implement additional security measures
 4. Add error tracking and monitoring 
