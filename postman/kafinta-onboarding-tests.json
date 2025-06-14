@@ -1,0 +1,357 @@
+{
+    "info": {
+        "name": "Onboarding Tests",
+        "description": "Onboarding system tests for Kafinta API",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "Onboarding Process",
+            "item": [
+                {
+                    "name": "Start Onboarding",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"business_name\": \"{{business_name}}\",\n    \"business_category\": \"{{business_category}}\",\n    \"phone_number\": \"{{phone_number}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/seller/start-onboarding",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "seller", "start-onboarding"]
+                        },
+                        "description": "Start the seller onboarding process"
+                    }
+                },
+                {
+                    "name": "Check Progress",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/seller/progress",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "seller", "progress"]
+                        },
+                        "description": "Check onboarding progress"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Phone Verification",
+            "item": [
+                {
+                    "name": "Verify Phone",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"phone_number\": \"{{phone_number}}\",\n    \"verification_code\": \"{{verification_code}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/seller/verify-phone",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "seller", "verify-phone"]
+                        },
+                        "description": "Verify seller's phone number"
+                    }
+                },
+                {
+                    "name": "Resend Verification Code",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"phone_number\": \"{{phone_number}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/seller/resend-verification",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "seller", "resend-verification"]
+                        },
+                        "description": "Resend phone verification code"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Business Profile",
+            "item": [
+                {
+                    "name": "Update Profile",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"business_name\": \"{{business_name}}\",\n    \"business_description\": \"{{business_description}}\",\n    \"business_category\": \"{{business_category}}\",\n    \"business_address\": \"{{business_address}}\",\n    \"business_phone\": \"{{business_phone}}\",\n    \"business_email\": \"{{business_email}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/seller/update-profile",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "seller", "update-profile"]
+                        },
+                        "description": "Update seller's business profile"
+                    }
+                },
+                {
+                    "name": "Upload Business Documents",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "business_license",
+                                    "type": "file",
+                                    "src": "{{business_license_file}}"
+                                },
+                                {
+                                    "key": "tax_certificate",
+                                    "type": "file",
+                                    "src": "{{tax_certificate_file}}"
+                                }
+                            ]
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/seller/upload-documents",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "seller", "upload-documents"]
+                        },
+                        "description": "Upload business documents"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Agreement and Payment",
+            "item": [
+                {
+                    "name": "Accept Agreement",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/seller/accept-agreement",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "seller", "accept-agreement"]
+                        },
+                        "description": "Accept seller agreement"
+                    }
+                },
+                {
+                    "name": "Update Payment Info",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"bank_name\": \"{{bank_name}}\",\n    \"account_number\": \"{{account_number}}\",\n    \"account_name\": \"{{account_name}}\",\n    \"payment_methods\": [\"{{payment_methods}}\"]\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/seller/update-payment-info",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "seller", "update-payment-info"]
+                        },
+                        "description": "Update seller's payment information"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Social Media",
+            "item": [
+                {
+                    "name": "Update Social Media",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"facebook\": \"{{facebook_url}}\",\n    \"instagram\": \"{{instagram_url}}\",\n    \"twitter\": \"{{twitter_url}}\",\n    \"website\": \"{{website_url}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/seller/update-social-media",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "seller", "update-social-media"]
+                        },
+                        "description": "Update seller's social media links"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Completion",
+            "item": [
+                {
+                    "name": "Complete Onboarding",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/seller/complete-onboarding",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "seller", "complete-onboarding"]
+                        },
+                        "description": "Complete the onboarding process"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Debug Routes",
+            "item": [
+                {
+                    "name": "Check Onboarding Status",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/debug/onboarding-status",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "debug", "onboarding-status"]
+                        },
+                        "description": "Check detailed onboarding status (development only)"
+                    }
+                }
+            ]
+        }
+    ]
+} 
