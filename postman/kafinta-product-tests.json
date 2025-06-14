@@ -1,0 +1,409 @@
+{
+    "info": {
+        "name": "Product Tests",
+        "description": "Product management system tests for Kafinta API",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "Product Management",
+            "item": [
+                {
+                    "name": "Create Product",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"{{product_name}}\",\n    \"description\": \"{{product_description}}\",\n    \"price\": {{product_price}},\n    \"category_id\": {{category_id}},\n    \"stock\": {{stock_quantity}},\n    \"status\": \"{{product_status}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/products",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "products"]
+                        },
+                        "description": "Create a new product"
+                    }
+                },
+                {
+                    "name": "Update Product",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"{{product_name}}\",\n    \"description\": \"{{product_description}}\",\n    \"price\": {{product_price}},\n    \"category_id\": {{category_id}},\n    \"stock\": {{stock_quantity}},\n    \"status\": \"{{product_status}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/products/{{product_id}}",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "products", "{{product_id}}"]
+                        },
+                        "description": "Update an existing product"
+                    }
+                },
+                {
+                    "name": "Get Product",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/products/{{product_id}}",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "products", "{{product_id}}"]
+                        },
+                        "description": "Get product details"
+                    }
+                },
+                {
+                    "name": "List Products",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/products?page={{page}}&per_page={{per_page}}&category={{category_id}}&status={{status}}",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "products"],
+                            "query": [
+                                {
+                                    "key": "page",
+                                    "value": "{{page}}"
+                                },
+                                {
+                                    "key": "per_page",
+                                    "value": "{{per_page}}"
+                                },
+                                {
+                                    "key": "category",
+                                    "value": "{{category_id}}"
+                                },
+                                {
+                                    "key": "status",
+                                    "value": "{{status}}"
+                                }
+                            ]
+                        },
+                        "description": "List products with pagination and filters"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Product Attributes",
+            "item": [
+                {
+                    "name": "Add Attributes",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"attributes\": [\n        {\n            \"name\": \"{{attribute_name}}\",\n            \"value\": \"{{attribute_value}}\"\n        }\n    ]\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/products/{{product_id}}/attributes",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "products", "{{product_id}}", "attributes"]
+                        },
+                        "description": "Add attributes to a product"
+                    }
+                },
+                {
+                    "name": "Update Attributes",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"attributes\": [\n        {\n            \"id\": {{attribute_id}},\n            \"name\": \"{{attribute_name}}\",\n            \"value\": \"{{attribute_value}}\"\n        }\n    ]\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/products/{{product_id}}/attributes",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "products", "{{product_id}}", "attributes"]
+                        },
+                        "description": "Update product attributes"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Product Images",
+            "item": [
+                {
+                    "name": "Upload Images",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "images[]",
+                                    "type": "file",
+                                    "src": "{{product_image}}"
+                                }
+                            ]
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/products/{{product_id}}/images",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "products", "{{product_id}}", "images"]
+                        },
+                        "description": "Upload product images"
+                    }
+                },
+                {
+                    "name": "Delete Image",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/products/{{product_id}}/images/{{image_id}}",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "products", "{{product_id}}", "images", "{{image_id}}"]
+                        },
+                        "description": "Delete a product image"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Product Variants",
+            "item": [
+                {
+                    "name": "Create Variant",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"{{variant_name}}\",\n    \"sku\": \"{{variant_sku}}\",\n    \"price\": {{variant_price}},\n    \"stock\": {{variant_stock}},\n    \"attributes\": {\n        \"{{attribute_name}}\": \"{{attribute_value}}\"\n    }\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/products/{{product_id}}/variants",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "products", "{{product_id}}", "variants"]
+                        },
+                        "description": "Create a product variant"
+                    }
+                },
+                {
+                    "name": "Update Variant",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"{{variant_name}}\",\n    \"sku\": \"{{variant_sku}}\",\n    \"price\": {{variant_price}},\n    \"stock\": {{variant_stock}},\n    \"attributes\": {\n        \"{{attribute_name}}\": \"{{attribute_value}}\"\n    }\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/products/{{product_id}}/variants/{{variant_id}}",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "products", "{{product_id}}", "variants", "{{variant_id}}"]
+                        },
+                        "description": "Update a product variant"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Inventory Management",
+            "item": [
+                {
+                    "name": "Update Stock",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"quantity\": {{stock_quantity}}\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/products/{{product_id}}/stock",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "products", "{{product_id}}", "stock"]
+                        },
+                        "description": "Update product stock quantity"
+                    }
+                },
+                {
+                    "name": "Get Stock History",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/products/{{product_id}}/stock/history",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "products", "{{product_id}}", "stock", "history"]
+                        },
+                        "description": "Get product stock history"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Debug Routes",
+            "item": [
+                {
+                    "name": "Check Product Status",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/debug/product-status/{{product_id}}",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "debug", "product-status", "{{product_id}}"]
+                        },
+                        "description": "Check detailed product status (development only)"
+                    }
+                }
+            ]
+        }
+    ]
+} 
