@@ -37,6 +37,32 @@
                         },
                         "description": "Register a new user account"
                     }
+                },
+                {
+                    "name": "Validate Registration Data",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"username\": \"{{username}}\",\n    \"email\": \"{{email}}\",\n    \"password\": \"{{password}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/user/validate-registration",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "user", "validate-registration"]
+                        },
+                        "description": "Validate registration data before submission"
+                    }
                 }
             ]
         },
@@ -165,6 +191,115 @@
                         },
                         "description": "Login with user credentials"
                     }
+                },
+                {
+                    "name": "Login with Remember Me",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"{{email}}\",\n    \"password\": \"{{password}}\",\n    \"remember_me\": true\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/auth/login",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "auth", "login"]
+                        },
+                        "description": "Login with remember me option"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Session Management",
+            "item": [
+                {
+                    "name": "Refresh Token",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/auth/refresh",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "auth", "refresh"]
+                        },
+                        "description": "Refresh authentication token"
+                    }
+                },
+                {
+                    "name": "Logout",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/auth/logout",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "auth", "logout"]
+                        },
+                        "description": "Logout user and invalidate token"
+                    }
+                },
+                {
+                    "name": "Logout All Devices",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/auth/logout-all",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "auth", "logout-all"]
+                        },
+                        "description": "Logout from all devices"
+                    }
                 }
             ]
         },
@@ -222,6 +357,36 @@
                         },
                         "description": "Reset password using token from email"
                     }
+                },
+                {
+                    "name": "Change Password",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"current_password\": \"{{current_password}}\",\n    \"new_password\": \"{{new_password}}\",\n    \"new_password_confirmation\": \"{{new_password}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/user/change-password",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "user", "change-password"]
+                        },
+                        "description": "Change password for authenticated user"
+                    }
                 }
             ]
         },
@@ -261,7 +426,7 @@
                             "host": ["{{base_url}}"],
                             "path": ["api", "debug", "cookie-settings"]
                         },
-                        "description": "Check cookie configuration"
+                        "description": "Check cookie settings (development only)"
                     }
                 }
             ]
