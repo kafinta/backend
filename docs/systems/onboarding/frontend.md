@@ -1,7 +1,7 @@
 # Frontend Integration Guide
 
 ## Overview
-This guide provides instructions for integrating the onboarding system with frontend applications. The onboarding system uses a step-by-step approach with both required and optional steps.
+This guide provides instructions for integrating the onboarding system with frontend applications. The system implements a step-by-step approach for seller registration with required and optional steps.
 
 ## Implementation Steps
 
@@ -9,18 +9,11 @@ This guide provides instructions for integrating the onboarding system with fron
 
 ```typescript
 // onboarding.service.ts
-import axios from 'axios';
-
 export class OnboardingService {
-    private static instance: OnboardingService;
+    private baseURL: string;
 
-    private constructor() {}
-
-    public static getInstance(): OnboardingService {
-        if (!OnboardingService.instance) {
-            OnboardingService.instance = new OnboardingService();
-        }
-        return OnboardingService.instance;
+    constructor() {
+        this.baseURL = '/api/seller';
     }
 
     public async startOnboarding(data: {
@@ -29,17 +22,23 @@ export class OnboardingService {
         phone_number: string;
     }) {
         try {
-            const response = await axios.post('/api/seller/start-onboarding', data);
-            return response.data;
+            const response = await fetch(`${this.baseURL}/start-onboarding`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            });
+            return await response.json();
         } catch (error) {
             throw this.handleError(error);
         }
     }
 
-    public async getProgress() {
+    public async checkProgress() {
         try {
-            const response = await axios.get('/api/seller/progress');
-            return response.data;
+            const response = await fetch(`${this.baseURL}/progress`);
+            return await response.json();
         } catch (error) {
             throw this.handleError(error);
         }
@@ -50,24 +49,36 @@ export class OnboardingService {
         verification_code: string;
     }) {
         try {
-            const response = await axios.post('/api/seller/verify-phone', data);
-            return response.data;
+            const response = await fetch(`${this.baseURL}/verify-phone`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            });
+            return await response.json();
         } catch (error) {
             throw this.handleError(error);
         }
     }
 
     public async updateProfile(data: {
-        business_name: string;
-        business_description: string;
-        business_address: string;
-        business_category: string;
-        years_in_business: number;
-        business_website: string;
+        business_name?: string;
+        business_description?: string;
+        business_category?: string;
+        business_address?: string;
+        business_phone?: string;
+        business_email?: string;
     }) {
         try {
-            const response = await axios.post('/api/seller/update-profile', data);
-            return response.data;
+            const response = await fetch(`${this.baseURL}/update-profile`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            });
+            return await response.json();
         } catch (error) {
             throw this.handleError(error);
         }
@@ -75,8 +86,50 @@ export class OnboardingService {
 
     public async acceptAgreement() {
         try {
-            const response = await axios.post('/api/seller/accept-agreement');
-            return response.data;
+            const response = await fetch(`${this.baseURL}/accept-agreement`, {
+                method: 'POST'
+            });
+            return await response.json();
+        } catch (error) {
+            throw this.handleError(error);
+        }
+    }
+
+    public async updatePaymentInfo(data: {
+        bank_name: string;
+        account_number: string;
+        account_name: string;
+        payment_methods: string[];
+    }) {
+        try {
+            const response = await fetch(`${this.baseURL}/update-payment-info`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            });
+            return await response.json();
+        } catch (error) {
+            throw this.handleError(error);
+        }
+    }
+
+    public async updateSocialMedia(data: {
+        facebook?: string;
+        instagram?: string;
+        twitter?: string;
+        website?: string;
+    }) {
+        try {
+            const response = await fetch(`${this.baseURL}/update-social-media`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            });
+            return await response.json();
         } catch (error) {
             throw this.handleError(error);
         }
@@ -84,8 +137,10 @@ export class OnboardingService {
 
     public async completeOnboarding() {
         try {
-            const response = await axios.post('/api/seller/complete-onboarding');
-            return response.data;
+            const response = await fetch(`${this.baseURL}/complete-onboarding`, {
+                method: 'POST'
+            });
+            return await response.json();
         } catch (error) {
             throw this.handleError(error);
         }
@@ -100,157 +155,93 @@ export class OnboardingService {
 }
 ```
 
-### 2. Create Onboarding Context
+### 2. State Management
+The onboarding service can be integrated with any state management solution. Here's an example using a simple store pattern:
 
 ```typescript
-// OnboardingContext.tsx
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { OnboardingService } from './onboarding.service';
+// onboarding.store.ts
+export class OnboardingStore {
+    private progress: any = null;
+    private loading: boolean = false;
+    private error: any = null;
+    private onboardingService: OnboardingService;
 
-interface OnboardingContextType {
-    progress: any;
-    currentStep: string;
-    startOnboarding: (data: any) => Promise<void>;
-    verifyPhone: (data: any) => Promise<void>;
-    updateProfile: (data: any) => Promise<void>;
-    acceptAgreement: () => Promise<void>;
-    completeOnboarding: () => Promise<void>;
-}
-
-const OnboardingContext = createContext<OnboardingContextType | undefined>(undefined);
-
-export const OnboardingProvider: React.FC = ({ children }) => {
-    const [progress, setProgress] = useState(null);
-    const [currentStep, setCurrentStep] = useState('');
-    const onboardingService = OnboardingService.getInstance();
-
-    useEffect(() => {
-        // Load initial progress
-        loadProgress();
-    }, []);
-
-    const loadProgress = async () => {
-        try {
-            const response = await onboardingService.getProgress();
-            setProgress(response.progress);
-            setCurrentStep(determineCurrentStep(response.progress));
-        } catch (error) {
-            console.error('Error loading progress:', error);
-        }
-    };
-
-    const determineCurrentStep = (progress: any) => {
-        // Logic to determine current step based on progress
-        return 'start';
-    };
-
-    const startOnboarding = async (data: any) => {
-        const response = await onboardingService.startOnboarding(data);
-        await loadProgress();
-    };
-
-    const verifyPhone = async (data: any) => {
-        const response = await onboardingService.verifyPhone(data);
-        await loadProgress();
-    };
-
-    const updateProfile = async (data: any) => {
-        const response = await onboardingService.updateProfile(data);
-        await loadProgress();
-    };
-
-    const acceptAgreement = async () => {
-        const response = await onboardingService.acceptAgreement();
-        await loadProgress();
-    };
-
-    const completeOnboarding = async () => {
-        const response = await onboardingService.completeOnboarding();
-        await loadProgress();
-    };
-
-    return (
-        <OnboardingContext.Provider value={{
-            progress,
-            currentStep,
-            startOnboarding,
-            verifyPhone,
-            updateProfile,
-            acceptAgreement,
-            completeOnboarding
-        }}>
-            {children}
-        </OnboardingContext.Provider>
-    );
-};
-
-export const useOnboarding = () => {
-    const context = useContext(OnboardingContext);
-    if (context === undefined) {
-        throw new Error('useOnboarding must be used within an OnboardingProvider');
+    constructor() {
+        this.onboardingService = new OnboardingService();
     }
-    return context;
-};
+
+    async startOnboarding(data: any) {
+        try {
+            this.loading = true;
+            const response = await this.onboardingService.startOnboarding(data);
+            this.progress = response.progress;
+            this.error = null;
+            return response;
+        } catch (error) {
+            this.error = error;
+            throw error;
+        } finally {
+            this.loading = false;
+        }
+    }
+
+    // ... similar methods for other operations
+}
 ```
 
-### 3. Create Onboarding Components
+### 3. Component Example
+Here's a framework-agnostic example of an onboarding form component:
 
 ```typescript
-// OnboardingProgress.tsx
-import React from 'react';
-import { useOnboarding } from './OnboardingContext';
+// OnboardingForm.ts
+export class OnboardingForm {
+    private formData = {
+        business_name: '',
+        business_category: '',
+        phone_number: ''
+    };
 
-export const OnboardingProgress: React.FC = () => {
-    const { progress } = useOnboarding();
+    constructor(private onboardingStore: OnboardingStore) {}
 
-    if (!progress) return null;
+    async handleSubmit(event: Event) {
+        event.preventDefault();
+        try {
+            await this.onboardingStore.startOnboarding(this.formData);
+            // Handle success
+        } catch (error) {
+            // Handle error
+        }
+    }
 
-    return (
-        <div className="onboarding-progress">
-            <h2>Onboarding Progress</h2>
-            <div className="progress-bar">
-                <div 
-                    className="progress-fill"
-                    style={{ width: `${progress.completion_summary.completion_percentage}%` }}
-                />
-            </div>
-            <div className="steps">
-                {progress.required_steps.map((step: any) => (
-                    <div key={step.id} className={`step ${step.completed ? 'completed' : ''}`}>
-                        <h3>{step.name}</h3>
-                        <p>{step.benefit}</p>
-                        <span>Estimated time: {step.estimated_time}</span>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-};
+    updateField(field: string, value: any) {
+        this.formData[field] = value;
+    }
+}
 ```
 
 ## Best Practices
 
 ### 1. Progress Management
 - Track completion status
-- Validate required steps
-- Monitor optional steps
-- Handle timeouts
+- Save progress automatically
+- Handle session timeouts
+- Implement proper validation
 
 ### 2. Error Handling
-- Implement proper error handling
-- Show user-friendly error messages
-- Handle network errors gracefully
+- Show clear error messages
+- Handle validation errors
 - Implement retry mechanism
+- Log errors properly
 
 ### 3. User Experience
-- Show loading states
-- Implement proper form validation
-- Provide clear feedback
-- Handle session timeouts
+- Show clear progress
+- Provide helpful guidance
+- Handle loading states
+- Implement proper validation
 
 ### 4. Security
 - Validate all inputs
-- Secure sensitive data
+- Handle sensitive data
 - Implement proper error handling
 - Follow security best practices
 
@@ -258,51 +249,57 @@ export const OnboardingProgress: React.FC = () => {
 
 ### 1. Progress Tracking
 ```typescript
-// Handle progress updates
-const updateProgress = async () => {
+// Handle progress tracking
+const handleProgressTracking = async () => {
     try {
-        await loadProgress();
+        const progress = await checkProgress();
+        if (progress.required_steps.some(step => !step.completed)) {
+            // Handle incomplete required steps
+            showIncompleteSteps(progress.required_steps);
+        }
     } catch (error) {
         // Handle error
-        showError('Failed to update progress');
+        showError(error.message);
     }
 };
 ```
 
-### 2. Form Validation
+### 2. Phone Verification
 ```typescript
-// Implement form validation
-const validateForm = (values: any) => {
-    const errors: any = {};
-    
-    if (!values.business_name) {
-        errors.business_name = 'Business name is required';
+// Handle phone verification
+const handlePhoneVerification = async (phoneNumber: string, code: string) => {
+    try {
+        if (!phoneNumber || !code) {
+            throw new Error('Phone number and verification code are required.');
+        }
+
+        await verifyPhone({ phone_number: phoneNumber, verification_code: code });
+    } catch (error) {
+        // Handle error
+        showError(error.message);
     }
-    
-    if (!values.phone_number) {
-        errors.phone_number = 'Phone number is required';
-    } else if (!isValidPhoneNumber(values.phone_number)) {
-        errors.phone_number = 'Invalid phone number';
-    }
-    
-    return errors;
 };
 ```
 
-### 3. Error Handling
+### 3. Profile Update
 ```typescript
-// Handle API errors
-try {
-    await apiCall();
-} catch (error) {
-    if (error.response) {
-        // Handle API error
-        showError(error.response.data.message);
-    } else {
-        // Handle network error
-        showError('Network error occurred');
+// Handle profile update
+const handleProfileUpdate = async (profileData: any) => {
+    try {
+        // Validate required fields
+        const requiredFields = ['business_name', 'business_category'];
+        const missingFields = requiredFields.filter(field => !profileData[field]);
+        
+        if (missingFields.length > 0) {
+            throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+        }
+
+        await updateProfile(profileData);
+    } catch (error) {
+        // Handle error
+        showError(error.message);
     }
-}
+};
 ```
 
 ## Testing
@@ -312,13 +309,13 @@ try {
 // onboarding.service.test.ts
 describe('OnboardingService', () => {
     it('should start onboarding successfully', async () => {
-        const onboardingService = OnboardingService.getInstance();
+        const onboardingService = new OnboardingService();
         const response = await onboardingService.startOnboarding({
             business_name: 'Test Business',
             business_category: 'Retail',
             phone_number: '+1234567890'
         });
-        expect(response.seller).toBeDefined();
+        expect(response.progress).toBeDefined();
     });
 });
 ```
@@ -330,15 +327,19 @@ describe('Onboarding Flow', () => {
     it('should complete full onboarding flow', async () => {
         // Start onboarding
         const startResponse = await startOnboarding(data);
-        expect(startResponse.seller).toBeDefined();
+        expect(startResponse.progress).toBeDefined();
         
         // Verify phone
-        const verifyResponse = await verifyPhone(verificationData);
-        expect(verifyResponse.seller.phone_verified_at).toBeDefined();
+        const verifyResponse = await verifyPhone(phoneData);
+        expect(verifyResponse.verified).toBe(true);
+        
+        // Update profile
+        const profileResponse = await updateProfile(profileData);
+        expect(profileResponse.updated).toBe(true);
         
         // Complete onboarding
         const completeResponse = await completeOnboarding();
-        expect(completeResponse.seller.onboarding_completed_at).toBeDefined();
+        expect(completeResponse.completed).toBe(true);
     });
 });
 ```
