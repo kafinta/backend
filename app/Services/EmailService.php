@@ -148,11 +148,6 @@ class EmailService
      */
     private function deleteEmailFile(EmailVerificationToken $token): bool
     {
-        // Only delete files in production environment
-        if (config('app.env') !== 'production') {
-            return true;
-        }
-
         // Find all email files for this user
         $pattern = 'verification_' . $token->user_id . '_*.html';
         $files = glob(storage_path('simulated-emails/' . $pattern));
