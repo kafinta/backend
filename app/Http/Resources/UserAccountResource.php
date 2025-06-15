@@ -21,14 +21,6 @@ class UserAccountResource extends JsonResource
             'phone_number' => $this->phone_number,
             'profile_picture' => $this->profile_picture,
             'email_verified_at' => $this->email_verified_at,
-
-            // OAuth information
-            'oauth_provider' => $this->provider,
-            'oauth_provider_display' => $this->getProviderDisplayName(),
-            'is_oauth_user' => $this->isOAuthUser(),
-            'has_password' => $this->hasPassword(),
-
-            // Role information
             'roles' => $this->roles->pluck('slug'),
         ];
     }
