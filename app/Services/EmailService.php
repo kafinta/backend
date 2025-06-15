@@ -366,12 +366,41 @@ HTML;
      */
     public function verifyCodeOnly(string $code): array
     {
+        // First check the cache
         $token = Cache::get("verification_code_{$code}");
 
+        // If not in cache, check the database
         if (!$token) {
+            $verificationToken = EmailVerificationToken::where('verification_code', $code)
+                ->where('expires_at', '>', now())
+                ->first();
+
+            if (!$verificationToken) {
+                return [
+                    'success' => false,
+                    'message' => 'Invalid or expired verification code'
+                ];
+            }
+
+            // Get the user
+            $user = $verificationToken->user;
+            if (!$user) {
+                return [
+                    'success' => false,
+                    'message' => 'User not found'
+                ];
+            }
+
+            // Mark email as verified
+            $user->email_verified_at = now();
+            $user->save();
+
+            // Delete the token
+            $verificationToken->delete();
+
             return [
-                'success' => false,
-                'message' => 'Invalid or expired verification code'
+                'success' => true,
+                'user' => $user
             ];
         }
 
