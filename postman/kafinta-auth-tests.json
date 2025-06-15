@@ -19,11 +19,11 @@
                             }
                         ],
                         "url": {
-                            "raw": "{{base_url}}/api/debug/csrf",
+                            "raw": "{{base_url}}/sanctum/csrf-cookie",
                             "host": ["{{base_url}}"],
-                            "path": ["api", "debug", "csrf"]
+                            "path": ["sanctum", "csrf-cookie"]
                         },
-                        "description": "Get CSRF token for protected routes"
+                        "description": "Get CSRF token cookie for protected routes"
                     }
                 },
                 {
@@ -61,10 +61,6 @@
                             {
                                 "key": "Accept",
                                 "value": "application/json"
-                            },
-                            {
-                                "key": "X-XSRF-TOKEN",
-                                "value": "{{csrf_token}}"
                             }
                         ],
                         "body": {
@@ -77,32 +73,6 @@
                             "path": ["api", "user", "signup"]
                         },
                         "description": "Register a new user account. Session cookie will be automatically set."
-                    }
-                },
-                {
-                    "name": "Validate Registration Data",
-                    "request": {
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application/json"
-                            },
-                            {
-                                "key": "Accept",
-                                "value": "application/json"
-                            }
-                        ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n    \"username\": \"{{username}}\",\n    \"email\": \"{{email}}\",\n    \"password\": \"{{password}}\"\n}"
-                        },
-                        "url": {
-                            "raw": "{{base_url}}/api/user/validate-registration",
-                            "host": ["{{base_url}}"],
-                            "path": ["api", "user", "validate-registration"]
-                        },
-                        "description": "Validate registration data before submission"
                     }
                 }
             ]
@@ -166,10 +136,6 @@
                             {
                                 "key": "Accept",
                                 "value": "application/json"
-                            },
-                            {
-                                "key": "X-XSRF-TOKEN",
-                                "value": "{{csrf_token}}"
                             }
                         ],
                         "body": {
@@ -196,10 +162,6 @@
                             {
                                 "key": "Accept",
                                 "value": "application/json"
-                            },
-                            {
-                                "key": "X-XSRF-TOKEN",
-                                "value": "{{csrf_token}}"
                             }
                         ],
                         "url": {
@@ -227,40 +189,6 @@
                             {
                                 "key": "Accept",
                                 "value": "application/json"
-                            },
-                            {
-                                "key": "X-XSRF-TOKEN",
-                                "value": "{{csrf_token}}"
-                            }
-                        ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n    \"email\": \"{{email}}\",\n    \"password\": \"{{password}}\"\n}"
-                        },
-                        "url": {
-                            "raw": "{{base_url}}/api/auth/login",
-                            "host": ["{{base_url}}"],
-                            "path": ["api", "auth", "login"]
-                        },
-                        "description": "Login with user credentials. Session cookie will be automatically set."
-                    }
-                },
-                {
-                    "name": "Login with Remember Me",
-                    "request": {
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application/json"
-                            },
-                            {
-                                "key": "Accept",
-                                "value": "application/json"
-                            },
-                            {
-                                "key": "X-XSRF-TOKEN",
-                                "value": "{{csrf_token}}"
                             }
                         ],
                         "body": {
@@ -268,11 +196,11 @@
                             "raw": "{\n    \"email\": \"{{email}}\",\n    \"password\": \"{{password}}\",\n    \"remember_me\": true\n}"
                         },
                         "url": {
-                            "raw": "{{base_url}}/api/auth/login",
+                            "raw": "{{base_url}}/api/user/login",
                             "host": ["{{base_url}}"],
-                            "path": ["api", "auth", "login"]
+                            "path": ["api", "user", "login"]
                         },
-                        "description": "Login with remember me option. Session cookie will be automatically set."
+                        "description": "Login with user credentials. Session cookie will be automatically set."
                     }
                 }
             ]
@@ -292,10 +220,6 @@
                             {
                                 "key": "Accept",
                                 "value": "application/json"
-                            },
-                            {
-                                "key": "X-XSRF-TOKEN",
-                                "value": "{{csrf_token}}"
                             }
                         ],
                         "body": {
@@ -322,10 +246,6 @@
                             {
                                 "key": "Accept",
                                 "value": "application/json"
-                            },
-                            {
-                                "key": "X-XSRF-TOKEN",
-                                "value": "{{csrf_token}}"
                             }
                         ],
                         "body": {
@@ -353,10 +273,6 @@
                             {
                                 "key": "Accept",
                                 "value": "application/json"
-                            },
-                            {
-                                "key": "X-XSRF-TOKEN",
-                                "value": "{{csrf_token}}"
                             }
                         ],
                         "url": {
@@ -379,10 +295,6 @@
                             {
                                 "key": "Accept",
                                 "value": "application/json"
-                            },
-                            {
-                                "key": "X-XSRF-TOKEN",
-                                "value": "{{csrf_token}}"
                             }
                         ],
                         "body": {
@@ -405,10 +317,6 @@
                             {
                                 "key": "Accept",
                                 "value": "application/json"
-                            },
-                            {
-                                "key": "X-XSRF-TOKEN",
-                                "value": "{{csrf_token}}"
                             }
                         ],
                         "body": {
@@ -446,41 +354,14 @@
                             {
                                 "key": "Accept",
                                 "value": "application/json"
-                            },
-                            {
-                                "key": "X-XSRF-TOKEN",
-                                "value": "{{csrf_token}}"
                             }
                         ],
                         "url": {
-                            "raw": "{{base_url}}/api/auth/logout",
+                            "raw": "{{base_url}}/api/user/logout",
                             "host": ["{{base_url}}"],
-                            "path": ["api", "auth", "logout"]
+                            "path": ["api", "user", "logout"]
                         },
                         "description": "Logout user and invalidate session"
-                    }
-                }
-            ]
-        },
-        {
-            "name": "Debug Routes",
-            "item": [
-                {
-                    "name": "Auth Test",
-                    "request": {
-                        "method": "GET",
-                        "header": [
-                            {
-                                "key": "Accept",
-                                "value": "application/json"
-                            }
-                        ],
-                        "url": {
-                            "raw": "{{base_url}}/api/debug/auth-test",
-                            "host": ["{{base_url}}"],
-                            "path": ["api", "debug", "auth-test"]
-                        },
-                        "description": "Test authentication state"
                     }
                 }
             ]
