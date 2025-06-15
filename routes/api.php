@@ -201,17 +201,6 @@ Route::get('/debug/auth-test', function() {
     ]);
 });
 
-// Debug route for CSRF token
-Route::get('/debug/csrf', function() {
-    return response()->json([
-        'success' => true,
-        'message' => 'CSRF token generated',
-        'token' => csrf_token(),
-        'session_id' => session()->getId(),
-        'cookies' => request()->cookies->all()
-    ]);
-});
-
 // Debug route for cookie settings
 Route::get('/debug/cookie-settings', function() {
     $sessionConfig = config('session');
