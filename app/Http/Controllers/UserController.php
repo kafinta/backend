@@ -184,14 +184,6 @@ class UserController extends ImprovedController
         return $this->respondWithSuccess("Logged out successfully", 200);
     }
 
-    private function revokeTokens()
-    {
-        $user = auth()->user();
-        if ($user) {
-            $user->tokens()->delete();
-        }
-    }
-
     public function validateUserInfo()
     {
         return Validator::make(request()->all(), [
@@ -208,19 +200,6 @@ class UserController extends ImprovedController
             'email' => ['required', 'email'],
             'password' => ['required'],
             'remember_me' => ['sometimes', 'boolean']
-        ]);
-    }
-
-    public function rotateToken(Request $request)
-    {
-        // Revoke current token
-        $request->user()->currentAccessToken()->delete();
-
-        // Create new token
-        $token = $request->user()->createToken('auth_token', ['*'])->plainTextToken;
-        return $this->respondWithSuccess('Token rotated successfully', 200, [
-            'auth_token' => $token,
-            'token_type' => 'Bearer'
         ]);
     }
 
