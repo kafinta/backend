@@ -1,7 +1,7 @@
 {
     "info": {
         "name": "Onboarding Tests",
-        "description": "Onboarding system tests for Kafinta API",
+        "description": "Onboarding system tests for Kafinta API. Requires session authentication and CSRF token.",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
     "item": [
@@ -22,8 +22,8 @@
                                 "value": "application/json"
                             },
                             {
-                                "key": "Authorization",
-                                "value": "Bearer {{token}}"
+                                "key": "X-XSRF-TOKEN",
+                                "value": "{{csrf_token}}"
                             }
                         ],
                         "body": {
@@ -35,7 +35,7 @@
                             "host": ["{{base_url}}"],
                             "path": ["api", "seller", "start-onboarding"]
                         },
-                        "description": "Start the seller onboarding process"
+                        "description": "Start the seller onboarding process. Requires session authentication."
                     }
                 },
                 {
@@ -48,8 +48,8 @@
                                 "value": "application/json"
                             },
                             {
-                                "key": "Authorization",
-                                "value": "Bearer {{token}}"
+                                "key": "X-XSRF-TOKEN",
+                                "value": "{{csrf_token}}"
                             }
                         ],
                         "url": {
@@ -57,7 +57,7 @@
                             "host": ["{{base_url}}"],
                             "path": ["api", "seller", "progress"]
                         },
-                        "description": "Check onboarding progress"
+                        "description": "Check onboarding progress. Requires session authentication."
                     }
                 }
             ]
@@ -79,8 +79,8 @@
                                 "value": "application/json"
                             },
                             {
-                                "key": "Authorization",
-                                "value": "Bearer {{token}}"
+                                "key": "X-XSRF-TOKEN",
+                                "value": "{{csrf_token}}"
                             }
                         ],
                         "body": {
@@ -92,7 +92,7 @@
                             "host": ["{{base_url}}"],
                             "path": ["api", "seller", "verify-phone"]
                         },
-                        "description": "Verify seller's phone number"
+                        "description": "Verify seller's phone number. Requires session authentication."
                     }
                 },
                 {
@@ -109,8 +109,8 @@
                                 "value": "application/json"
                             },
                             {
-                                "key": "Authorization",
-                                "value": "Bearer {{token}}"
+                                "key": "X-XSRF-TOKEN",
+                                "value": "{{csrf_token}}"
                             }
                         ],
                         "body": {
@@ -122,7 +122,7 @@
                             "host": ["{{base_url}}"],
                             "path": ["api", "seller", "resend-verification"]
                         },
-                        "description": "Resend phone verification code"
+                        "description": "Resend phone verification code. Requires session authentication."
                     }
                 }
             ]
@@ -144,8 +144,8 @@
                                 "value": "application/json"
                             },
                             {
-                                "key": "Authorization",
-                                "value": "Bearer {{token}}"
+                                "key": "X-XSRF-TOKEN",
+                                "value": "{{csrf_token}}"
                             }
                         ],
                         "body": {
@@ -157,7 +157,7 @@
                             "host": ["{{base_url}}"],
                             "path": ["api", "seller", "update-profile"]
                         },
-                        "description": "Update seller's business profile"
+                        "description": "Update seller's business profile. Requires session authentication."
                     }
                 },
                 {
@@ -170,8 +170,8 @@
                                 "value": "application/json"
                             },
                             {
-                                "key": "Authorization",
-                                "value": "Bearer {{token}}"
+                                "key": "X-XSRF-TOKEN",
+                                "value": "{{csrf_token}}"
                             }
                         ],
                         "body": {
@@ -194,7 +194,7 @@
                             "host": ["{{base_url}}"],
                             "path": ["api", "seller", "upload-documents"]
                         },
-                        "description": "Upload business documents"
+                        "description": "Upload business documents. Requires session authentication."
                     }
                 }
             ]
@@ -216,8 +216,8 @@
                                 "value": "application/json"
                             },
                             {
-                                "key": "Authorization",
-                                "value": "Bearer {{token}}"
+                                "key": "X-XSRF-TOKEN",
+                                "value": "{{csrf_token}}"
                             }
                         ],
                         "url": {
@@ -225,7 +225,7 @@
                             "host": ["{{base_url}}"],
                             "path": ["api", "seller", "accept-agreement"]
                         },
-                        "description": "Accept seller agreement"
+                        "description": "Accept seller agreement. Requires session authentication."
                     }
                 },
                 {
@@ -242,8 +242,8 @@
                                 "value": "application/json"
                             },
                             {
-                                "key": "Authorization",
-                                "value": "Bearer {{token}}"
+                                "key": "X-XSRF-TOKEN",
+                                "value": "{{csrf_token}}"
                             }
                         ],
                         "body": {
@@ -255,7 +255,7 @@
                             "host": ["{{base_url}}"],
                             "path": ["api", "seller", "update-payment-info"]
                         },
-                        "description": "Update seller's payment information"
+                        "description": "Update seller's payment information. Requires session authentication."
                     }
                 }
             ]
@@ -277,8 +277,8 @@
                                 "value": "application/json"
                             },
                             {
-                                "key": "Authorization",
-                                "value": "Bearer {{token}}"
+                                "key": "X-XSRF-TOKEN",
+                                "value": "{{csrf_token}}"
                             }
                         ],
                         "body": {
@@ -290,7 +290,7 @@
                             "host": ["{{base_url}}"],
                             "path": ["api", "seller", "update-social-media"]
                         },
-                        "description": "Update seller's social media links"
+                        "description": "Update seller's social media links. Requires session authentication."
                     }
                 }
             ]
@@ -312,8 +312,8 @@
                                 "value": "application/json"
                             },
                             {
-                                "key": "Authorization",
-                                "value": "Bearer {{token}}"
+                                "key": "X-XSRF-TOKEN",
+                                "value": "{{csrf_token}}"
                             }
                         ],
                         "url": {
@@ -321,7 +321,7 @@
                             "host": ["{{base_url}}"],
                             "path": ["api", "seller", "complete-onboarding"]
                         },
-                        "description": "Complete the onboarding process"
+                        "description": "Complete the onboarding process. Requires session authentication."
                     }
                 }
             ]
@@ -339,8 +339,8 @@
                                 "value": "application/json"
                             },
                             {
-                                "key": "Authorization",
-                                "value": "Bearer {{token}}"
+                                "key": "X-XSRF-TOKEN",
+                                "value": "{{csrf_token}}"
                             }
                         ],
                         "url": {
@@ -348,7 +348,7 @@
                             "host": ["{{base_url}}"],
                             "path": ["api", "debug", "onboarding-status"]
                         },
-                        "description": "Check detailed onboarding status (development only)"
+                        "description": "Check detailed onboarding status (development only). Requires session authentication."
                     }
                 }
             ]
