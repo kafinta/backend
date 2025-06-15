@@ -20,10 +20,6 @@
                             {
                                 "key": "Accept",
                                 "value": "application/json"
-                            },
-                            {
-                                "key": "X-XSRF-TOKEN",
-                                "value": "{{csrf_token}}"
                             }
                         ],
                         "body": {
@@ -50,10 +46,6 @@
                             {
                                 "key": "Accept",
                                 "value": "application/json"
-                            },
-                            {
-                                "key": "X-XSRF-TOKEN",
-                                "value": "{{csrf_token}}"
                             }
                         ],
                         "body": {
@@ -76,10 +68,6 @@
                             {
                                 "key": "Accept",
                                 "value": "application/json"
-                            },
-                            {
-                                "key": "X-XSRF-TOKEN",
-                                "value": "{{csrf_token}}"
                             }
                         ],
                         "url": {
@@ -98,10 +86,6 @@
                             {
                                 "key": "Accept",
                                 "value": "application/json"
-                            },
-                            {
-                                "key": "X-XSRF-TOKEN",
-                                "value": "{{csrf_token}}"
                             }
                         ],
                         "url": {
@@ -147,10 +131,6 @@
                             {
                                 "key": "Accept",
                                 "value": "application/json"
-                            },
-                            {
-                                "key": "X-XSRF-TOKEN",
-                                "value": "{{csrf_token}}"
                             }
                         ],
                         "body": {
@@ -177,10 +157,6 @@
                             {
                                 "key": "Accept",
                                 "value": "application/json"
-                            },
-                            {
-                                "key": "X-XSRF-TOKEN",
-                                "value": "{{csrf_token}}"
                             }
                         ],
                         "body": {
@@ -208,10 +184,6 @@
                             {
                                 "key": "Accept",
                                 "value": "application/json"
-                            },
-                            {
-                                "key": "X-XSRF-TOKEN",
-                                "value": "{{csrf_token}}"
                             }
                         ],
                         "body": {
@@ -240,10 +212,6 @@
                             {
                                 "key": "Accept",
                                 "value": "application/json"
-                            },
-                            {
-                                "key": "X-XSRF-TOKEN",
-                                "value": "{{csrf_token}}"
                             }
                         ],
                         "url": {
@@ -271,10 +239,6 @@
                             {
                                 "key": "Accept",
                                 "value": "application/json"
-                            },
-                            {
-                                "key": "Authorization",
-                                "value": "Bearer {{token}}"
                             }
                         ],
                         "body": {
@@ -301,10 +265,6 @@
                             {
                                 "key": "Accept",
                                 "value": "application/json"
-                            },
-                            {
-                                "key": "Authorization",
-                                "value": "Bearer {{token}}"
                             }
                         ],
                         "body": {
@@ -336,10 +296,6 @@
                             {
                                 "key": "Accept",
                                 "value": "application/json"
-                            },
-                            {
-                                "key": "Authorization",
-                                "value": "Bearer {{token}}"
                             }
                         ],
                         "body": {
@@ -362,10 +318,6 @@
                             {
                                 "key": "Accept",
                                 "value": "application/json"
-                            },
-                            {
-                                "key": "Authorization",
-                                "value": "Bearer {{token}}"
                             }
                         ],
                         "url": {
