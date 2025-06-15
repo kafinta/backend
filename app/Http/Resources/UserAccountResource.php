@@ -30,8 +30,6 @@ class UserAccountResource extends JsonResource
 
             // Role information
             'roles' => $this->roles->pluck('slug'),
-            'is_seller' => $this->isSeller(),
-            'is_admin' => $this->isAdmin(),
         ];
     }
 }
