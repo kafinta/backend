@@ -1,10 +1,51 @@
 {
     "info": {
         "name": "Authentication Tests",
-        "description": "Authentication system tests for Kafinta API",
+        "description": "Authentication system tests for Kafinta API. Uses session-based authentication with CSRF protection.",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
     "item": [
+        {
+            "name": "Session Management",
+            "item": [
+                {
+                    "name": "Get CSRF Token",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/debug/csrf",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "debug", "csrf"]
+                        },
+                        "description": "Get CSRF token for protected routes"
+                    }
+                },
+                {
+                    "name": "Check Cookie Settings",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/debug/cookie-settings",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "debug", "cookie-settings"]
+                        },
+                        "description": "Check cookie configuration (development only)"
+                    }
+                }
+            ]
+        },
         {
             "name": "Registration",
             "item": [
@@ -22,8 +63,8 @@
                                 "value": "application/json"
                             },
                             {
-                                "key": "X-Requested-With",
-                                "value": "XMLHttpRequest"
+                                "key": "X-XSRF-TOKEN",
+                                "value": "{{csrf_token}}"
                             }
                         ],
                         "body": {
@@ -35,7 +76,7 @@
                             "host": ["{{base_url}}"],
                             "path": ["api", "user", "signup"]
                         },
-                        "description": "Register a new user account"
+                        "description": "Register a new user account. Session cookie will be automatically set."
                     }
                 },
                 {
@@ -110,7 +151,7 @@
                             "host": ["{{base_url}}"],
                             "path": ["api", "verify-email", "token"]
                         },
-                        "description": "Verify email using token from simulated email"
+                        "description": "Verify email using token from verification email"
                     }
                 },
                 {
@@ -125,18 +166,22 @@
                             {
                                 "key": "Accept",
                                 "value": "application/json"
+                            },
+                            {
+                                "key": "X-XSRF-TOKEN",
+                                "value": "{{csrf_token}}"
                             }
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n    \"code\": \"{{verification_code}}\",\n    \"email\": \"{{email}}\"\n}"
+                            "raw": "{\n    \"code\": \"{{verification_code}}\"\n}"
                         },
                         "url": {
                             "raw": "{{base_url}}/api/verify-email/code",
                             "host": ["{{base_url}}"],
                             "path": ["api", "verify-email", "code"]
                         },
-                        "description": "Verify email using verification code from simulated email"
+                        "description": "Verify email using verification code. Requires session authentication."
                     }
                 },
                 {
@@ -151,6 +196,10 @@
                             {
                                 "key": "Accept",
                                 "value": "application/json"
+                            },
+                            {
+                                "key": "X-XSRF-TOKEN",
+                                "value": "{{csrf_token}}"
                             }
                         ],
                         "url": {
@@ -158,7 +207,7 @@
                             "host": ["{{base_url}}"],
                             "path": ["api", "user", "resend-verification-email"]
                         },
-                        "description": "Resend verification email to the authenticated user"
+                        "description": "Resend verification email. Requires session authentication."
                     }
                 }
             ]
@@ -178,6 +227,10 @@
                             {
                                 "key": "Accept",
                                 "value": "application/json"
+                            },
+                            {
+                                "key": "X-XSRF-TOKEN",
+                                "value": "{{csrf_token}}"
                             }
                         ],
                         "body": {
@@ -189,7 +242,7 @@
                             "host": ["{{base_url}}"],
                             "path": ["api", "auth", "login"]
                         },
-                        "description": "Login with user credentials"
+                        "description": "Login with user credentials. Session cookie will be automatically set."
                     }
                 },
                 {
@@ -204,6 +257,10 @@
                             {
                                 "key": "Accept",
                                 "value": "application/json"
+                            },
+                            {
+                                "key": "X-XSRF-TOKEN",
+                                "value": "{{csrf_token}}"
                             }
                         ],
                         "body": {
@@ -215,90 +272,7 @@
                             "host": ["{{base_url}}"],
                             "path": ["api", "auth", "login"]
                         },
-                        "description": "Login with remember me option"
-                    }
-                }
-            ]
-        },
-        {
-            "name": "Session Management",
-            "item": [
-                {
-                    "name": "Refresh Token",
-                    "request": {
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application/json"
-                            },
-                            {
-                                "key": "Accept",
-                                "value": "application/json"
-                            },
-                            {
-                                "key": "Authorization",
-                                "value": "Bearer {{token}}"
-                            }
-                        ],
-                        "url": {
-                            "raw": "{{base_url}}/api/auth/refresh",
-                            "host": ["{{base_url}}"],
-                            "path": ["api", "auth", "refresh"]
-                        },
-                        "description": "Refresh authentication token"
-                    }
-                },
-                {
-                    "name": "Logout",
-                    "request": {
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application/json"
-                            },
-                            {
-                                "key": "Accept",
-                                "value": "application/json"
-                            },
-                            {
-                                "key": "Authorization",
-                                "value": "Bearer {{token}}"
-                            }
-                        ],
-                        "url": {
-                            "raw": "{{base_url}}/api/auth/logout",
-                            "host": ["{{base_url}}"],
-                            "path": ["api", "auth", "logout"]
-                        },
-                        "description": "Logout user and invalidate token"
-                    }
-                },
-                {
-                    "name": "Logout All Devices",
-                    "request": {
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application/json"
-                            },
-                            {
-                                "key": "Accept",
-                                "value": "application/json"
-                            },
-                            {
-                                "key": "Authorization",
-                                "value": "Bearer {{token}}"
-                            }
-                        ],
-                        "url": {
-                            "raw": "{{base_url}}/api/auth/logout-all",
-                            "host": ["{{base_url}}"],
-                            "path": ["api", "auth", "logout-all"]
-                        },
-                        "description": "Logout from all devices"
+                        "description": "Login with remember me option. Session cookie will be automatically set."
                     }
                 }
             ]
@@ -318,6 +292,10 @@
                             {
                                 "key": "Accept",
                                 "value": "application/json"
+                            },
+                            {
+                                "key": "X-XSRF-TOKEN",
+                                "value": "{{csrf_token}}"
                             }
                         ],
                         "body": {
@@ -329,37 +307,11 @@
                             "host": ["{{base_url}}"],
                             "path": ["api", "forgot-password"]
                         },
-                        "description": "Request password reset"
+                        "description": "Request password reset email"
                     }
                 },
                 {
-                    "name": "Reset Password",
-                    "request": {
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application/json"
-                            },
-                            {
-                                "key": "Accept",
-                                "value": "application/json"
-                            }
-                        ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n    \"token\": \"{{reset_token}}\",\n    \"email\": \"{{email}}\",\n    \"password\": \"{{new_password}}\",\n    \"password_confirmation\": \"{{new_password}}\"\n}"
-                        },
-                        "url": {
-                            "raw": "{{base_url}}/api/reset-password/token",
-                            "host": ["{{base_url}}"],
-                            "path": ["api", "reset-password", "token"]
-                        },
-                        "description": "Reset password using token from email"
-                    }
-                },
-                {
-                    "name": "Change Password",
+                    "name": "Reset Password with Code",
                     "request": {
                         "method": "POST",
                         "header": [
@@ -372,20 +324,140 @@
                                 "value": "application/json"
                             },
                             {
-                                "key": "Authorization",
-                                "value": "Bearer {{token}}"
+                                "key": "X-XSRF-TOKEN",
+                                "value": "{{csrf_token}}"
                             }
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n    \"current_password\": \"{{current_password}}\",\n    \"new_password\": \"{{new_password}}\",\n    \"new_password_confirmation\": \"{{new_password}}\"\n}"
+                            "raw": "{\n    \"code\": \"{{reset_code}}\",\n    \"password\": \"{{new_password}}\",\n    \"password_confirmation\": \"{{new_password}}\"\n}"
                         },
                         "url": {
-                            "raw": "{{base_url}}/api/user/change-password",
+                            "raw": "{{base_url}}/api/reset-password/code",
                             "host": ["{{base_url}}"],
-                            "path": ["api", "user", "change-password"]
+                            "path": ["api", "reset-password", "code"]
                         },
-                        "description": "Change password for authenticated user"
+                        "description": "Reset password using verification code"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Profile Management",
+            "item": [
+                {
+                    "name": "Get Profile",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "X-XSRF-TOKEN",
+                                "value": "{{csrf_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/user/profile",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "user", "profile"]
+                        },
+                        "description": "Get user profile information. Requires session authentication."
+                    }
+                },
+                {
+                    "name": "Update Profile",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "X-XSRF-TOKEN",
+                                "value": "{{csrf_token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"username\": \"{{username}}\",\n    \"phone_number\": \"{{phone_number}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/user/profile",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "user", "profile"]
+                        },
+                        "description": "Update user profile information. Requires session authentication."
+                    }
+                },
+                {
+                    "name": "Upload Profile Picture",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "X-XSRF-TOKEN",
+                                "value": "{{csrf_token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "profile_picture",
+                                    "type": "file",
+                                    "src": "{{profile_picture}}"
+                                }
+                            ]
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/user/profile/picture",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "user", "profile", "picture"]
+                        },
+                        "description": "Upload profile picture. Requires session authentication."
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Logout",
+            "item": [
+                {
+                    "name": "Logout User",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "X-XSRF-TOKEN",
+                                "value": "{{csrf_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/auth/logout",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "auth", "logout"]
+                        },
+                        "description": "Logout user and invalidate session"
                     }
                 }
             ]
@@ -409,24 +481,6 @@
                             "path": ["api", "debug", "auth-test"]
                         },
                         "description": "Test authentication state"
-                    }
-                },
-                {
-                    "name": "Cookie Settings",
-                    "request": {
-                        "method": "GET",
-                        "header": [
-                            {
-                                "key": "Accept",
-                                "value": "application/json"
-                            }
-                        ],
-                        "url": {
-                            "raw": "{{base_url}}/api/debug/cookie-settings",
-                            "host": ["{{base_url}}"],
-                            "path": ["api", "debug", "cookie-settings"]
-                        },
-                        "description": "Check cookie settings (development only)"
                     }
                 }
             ]
