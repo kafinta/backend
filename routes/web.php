@@ -23,6 +23,3 @@ Route::get('/simulated-emails', [SimulatedEmailController::class, 'index'])->nam
 Route::get('/simulated-emails/{filename}', [SimulatedEmailController::class, 'show'])->name('simulated-emails.show');
 Route::delete('/simulated-emails/{filename}', [SimulatedEmailController::class, 'destroy'])->name('simulated-emails.destroy');
 Route::delete('/simulated-emails', [SimulatedEmailController::class, 'clearAll'])->name('simulated-emails.clear-all');
-
-Route::post('/user/auth/login', [App\Http\Controllers\UserController::class, 'login']);
-Route::post('/user/auth/signup', [App\Http\Controllers\UserController::class, 'register']);
