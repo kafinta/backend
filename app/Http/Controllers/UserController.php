@@ -312,7 +312,7 @@ class UserController extends ImprovedController
 
             // Check if email is already verified
             if ($user->email_verified_at) {
-                return $this->respondWithSuccess('Email already verified', 200);
+                return $this->respondWithError('Email is already verified. No need to resend verification.', 400);
             }
 
             // Generate new token and send email
