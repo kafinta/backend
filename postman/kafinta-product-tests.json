@@ -1,7 +1,7 @@
 {
     "info": {
         "name": "Product Tests",
-        "description": "Product management system tests for Kafinta API",
+        "description": "Product management system tests for Kafinta API. Requires session authentication and CSRF token.",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
     "item": [
@@ -22,8 +22,8 @@
                                 "value": "application/json"
                             },
                             {
-                                "key": "Authorization",
-                                "value": "Bearer {{token}}"
+                                "key": "X-XSRF-TOKEN",
+                                "value": "{{csrf_token}}"
                             }
                         ],
                         "body": {
@@ -35,7 +35,7 @@
                             "host": ["{{base_url}}"],
                             "path": ["api", "products"]
                         },
-                        "description": "Create a new product"
+                        "description": "Create a new product. Requires session authentication."
                     }
                 },
                 {
@@ -52,8 +52,8 @@
                                 "value": "application/json"
                             },
                             {
-                                "key": "Authorization",
-                                "value": "Bearer {{token}}"
+                                "key": "X-XSRF-TOKEN",
+                                "value": "{{csrf_token}}"
                             }
                         ],
                         "body": {
@@ -65,7 +65,7 @@
                             "host": ["{{base_url}}"],
                             "path": ["api", "products", "{{product_id}}"]
                         },
-                        "description": "Update an existing product"
+                        "description": "Update an existing product. Requires session authentication."
                     }
                 },
                 {
@@ -78,8 +78,8 @@
                                 "value": "application/json"
                             },
                             {
-                                "key": "Authorization",
-                                "value": "Bearer {{token}}"
+                                "key": "X-XSRF-TOKEN",
+                                "value": "{{csrf_token}}"
                             }
                         ],
                         "url": {
@@ -87,7 +87,7 @@
                             "host": ["{{base_url}}"],
                             "path": ["api", "products", "{{product_id}}"]
                         },
-                        "description": "Get product details"
+                        "description": "Get product details. Requires session authentication."
                     }
                 },
                 {
@@ -100,8 +100,8 @@
                                 "value": "application/json"
                             },
                             {
-                                "key": "Authorization",
-                                "value": "Bearer {{token}}"
+                                "key": "X-XSRF-TOKEN",
+                                "value": "{{csrf_token}}"
                             }
                         ],
                         "url": {
@@ -127,7 +127,7 @@
                                 }
                             ]
                         },
-                        "description": "List products with pagination and filters"
+                        "description": "List products with pagination and filters. Requires session authentication."
                     }
                 }
             ]
@@ -149,8 +149,8 @@
                                 "value": "application/json"
                             },
                             {
-                                "key": "Authorization",
-                                "value": "Bearer {{token}}"
+                                "key": "X-XSRF-TOKEN",
+                                "value": "{{csrf_token}}"
                             }
                         ],
                         "body": {
@@ -162,7 +162,7 @@
                             "host": ["{{base_url}}"],
                             "path": ["api", "products", "{{product_id}}", "attributes"]
                         },
-                        "description": "Add attributes to a product"
+                        "description": "Add attributes to a product. Requires session authentication."
                     }
                 },
                 {
@@ -179,8 +179,8 @@
                                 "value": "application/json"
                             },
                             {
-                                "key": "Authorization",
-                                "value": "Bearer {{token}}"
+                                "key": "X-XSRF-TOKEN",
+                                "value": "{{csrf_token}}"
                             }
                         ],
                         "body": {
@@ -192,7 +192,7 @@
                             "host": ["{{base_url}}"],
                             "path": ["api", "products", "{{product_id}}", "attributes"]
                         },
-                        "description": "Update product attributes"
+                        "description": "Update product attributes. Requires session authentication."
                     }
                 }
             ]
@@ -210,8 +210,8 @@
                                 "value": "application/json"
                             },
                             {
-                                "key": "Authorization",
-                                "value": "Bearer {{token}}"
+                                "key": "X-XSRF-TOKEN",
+                                "value": "{{csrf_token}}"
                             }
                         ],
                         "body": {
@@ -229,7 +229,7 @@
                             "host": ["{{base_url}}"],
                             "path": ["api", "products", "{{product_id}}", "images"]
                         },
-                        "description": "Upload product images"
+                        "description": "Upload product images. Requires session authentication."
                     }
                 },
                 {
@@ -242,8 +242,8 @@
                                 "value": "application/json"
                             },
                             {
-                                "key": "Authorization",
-                                "value": "Bearer {{token}}"
+                                "key": "X-XSRF-TOKEN",
+                                "value": "{{csrf_token}}"
                             }
                         ],
                         "url": {
@@ -251,7 +251,7 @@
                             "host": ["{{base_url}}"],
                             "path": ["api", "products", "{{product_id}}", "images", "{{image_id}}"]
                         },
-                        "description": "Delete a product image"
+                        "description": "Delete a product image. Requires session authentication."
                     }
                 }
             ]
