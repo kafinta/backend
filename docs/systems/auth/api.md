@@ -142,8 +142,11 @@ Allows authenticated users to update their email address, whether they are verif
 ```json
 {
     "message": "Email updated successfully. Please check your new email for a verification link.",
-    "verification_email_sent": true,
-    "email": "new@email.com"
+    "status": 200,
+    "data": {
+        "verification_email_sent": true,
+        "email": "new@email.com"
+    }
 }
 ```
 
@@ -151,22 +154,35 @@ Allows authenticated users to update their email address, whether they are verif
 - If the new email is the same as the current email:
 ```json
 {
-    "message": "New email is the same as the current email."
+    "message": "New email is the same as the current email.",
+    "status": 400
 }
 ```
 - If the new email is already in use by a verified account:
 ```json
 {
-    "message": "Unable to update email."
+    "message": "Unable to update email.",
+    "status": 400
 }
 ```
 - If the password is incorrect:
 ```json
 {
-    "message": "Incorrect password."
+    "message": "Incorrect password.",
+    "status": 401
 }
 ```
-- Validation errors (see general error responses above).
+- Validation errors:
+```json
+{
+    "message": "The given data was invalid",
+    "status": 422,
+    "errors": {
+        "email": ["The email field is required."],
+        "password": ["The password field is required."]
+    }
+}
+```
 
 **Rate Limiting:**
 - Max 3 requests per 60 minutes per user.
