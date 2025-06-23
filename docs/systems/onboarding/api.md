@@ -21,13 +21,18 @@ POST /api/seller/start-onboarding
 **Response (201 Created):**
 ```json
 {
+    "success": true,
+    "status": "success",
+    "status_code": 201,
     "message": "Onboarding started successfully",
-    "seller": {
-        "id": "integer",
-        "business_name": "string",
-        "business_category": "string",
-        "phone_number": "string",
-        "onboarding_progress": "integer"
+    "data": {
+        "seller": {
+            "id": 1,
+            "business_name": "string",
+            "business_category": "string",
+            "phone_number": "string",
+            "onboarding_progress": 1
+        }
     }
 }
 ```
@@ -40,37 +45,42 @@ GET /api/seller/progress
 **Response (200 OK):**
 ```json
 {
+    "success": true,
+    "status": "success",
+    "status_code": 200,
     "message": "Onboarding progress retrieved",
-    "progress": {
-        "can_complete": "boolean",
-        "required_steps": [
-            {
-                "id": "string",
-                "name": "string",
-                "completed": "boolean",
-                "required": "boolean",
-                "benefit": "string",
-                "estimated_time": "string"
+    "data": {
+        "progress": {
+            "can_complete": "boolean",
+            "required_steps": [
+                {
+                    "id": "string",
+                    "name": "string",
+                    "completed": "boolean",
+                    "required": "boolean",
+                    "benefit": "string",
+                    "estimated_time": "string"
+                }
+            ],
+            "optional_steps": [
+                {
+                    "id": "string",
+                    "name": "string",
+                    "completed": "boolean",
+                    "required": "boolean",
+                    "benefit": "string",
+                    "estimated_time": "string"
+                }
+            ],
+            "completion_summary": {
+                "required_completed": "integer",
+                "required_total": "integer",
+                "optional_completed": "integer",
+                "optional_total": "integer",
+                "total_completed": "integer",
+                "total_steps": "integer",
+                "completion_percentage": "integer"
             }
-        ],
-        "optional_steps": [
-            {
-                "id": "string",
-                "name": "string",
-                "completed": "boolean",
-                "required": "boolean",
-                "benefit": "string",
-                "estimated_time": "string"
-            }
-        ],
-        "completion_summary": {
-            "required_completed": "integer",
-            "required_total": "integer",
-            "optional_completed": "integer",
-            "optional_total": "integer",
-            "total_completed": "integer",
-            "total_steps": "integer",
-            "completion_percentage": "integer"
         }
     }
 }
@@ -94,10 +104,15 @@ POST /api/seller/verify-phone
 **Response (200 OK):**
 ```json
 {
+    "success": true,
+    "status": "success",
+    "status_code": 200,
     "message": "Phone number verified successfully",
-    "seller": {
-        "id": "integer",
-        "phone_verified_at": "datetime"
+    "data": {
+        "seller": {
+            "id": 1,
+            "phone_verified_at": "datetime"
+        }
     }
 }
 ```
@@ -119,10 +134,15 @@ POST /api/seller/verify-kyc
 **Response (200 OK):**
 ```json
 {
+    "success": true,
+    "status": "success",
+    "status_code": 200,
     "message": "KYC verification submitted successfully",
-    "seller": {
-        "id": "integer",
-        "kyc_verified_at": "datetime"
+    "data": {
+        "seller": {
+            "id": 1,
+            "kyc_verified_at": "datetime"
+        }
     }
 }
 ```
@@ -149,10 +169,15 @@ POST /api/seller/update-profile
 **Response (200 OK):**
 ```json
 {
+    "success": true,
+    "status": "success",
+    "status_code": 200,
     "message": "Business profile updated successfully",
-    "seller": {
-        "id": "integer",
-        "profile_completed_at": "datetime"
+    "data": {
+        "seller": {
+            "id": 1,
+            "profile_completed_at": "datetime"
+        }
     }
 }
 ```
@@ -167,10 +192,15 @@ POST /api/seller/accept-agreement
 **Response (200 OK):**
 ```json
 {
+    "success": true,
+    "status": "success",
+    "status_code": 200,
     "message": "Seller agreement accepted successfully",
-    "seller": {
-        "id": "integer",
-        "agreement_completed_at": "datetime"
+    "data": {
+        "seller": {
+            "id": 1,
+            "agreement_completed_at": "datetime"
+        }
     }
 }
 ```
@@ -197,10 +227,15 @@ POST /api/seller/update-payment-info
 **Response (200 OK):**
 ```json
 {
+    "success": true,
+    "status": "success",
+    "status_code": 200,
     "message": "Payment information updated successfully",
-    "seller": {
-        "id": "integer",
-        "payment_info_completed_at": "datetime"
+    "data": {
+        "seller": {
+            "id": 1,
+            "payment_info_completed_at": "datetime"
+        }
     }
 }
 ```
@@ -227,10 +262,15 @@ POST /api/seller/update-social-media
 **Response (200 OK):**
 ```json
 {
+    "success": true,
+    "status": "success",
+    "status_code": 200,
     "message": "Social media information updated successfully",
-    "seller": {
-        "id": "integer",
-        "social_media_completed_at": "datetime"
+    "data": {
+        "seller": {
+            "id": 1,
+            "social_media_completed_at": "datetime"
+        }
     }
 }
 ```
@@ -245,11 +285,16 @@ POST /api/seller/complete-onboarding
 **Response (200 OK):**
 ```json
 {
+    "success": true,
+    "status": "success",
+    "status_code": 200,
     "message": "Onboarding completed successfully",
-    "seller": {
-        "id": "integer",
-        "onboarding_completed_at": "datetime",
-        "is_verified": "boolean"
+    "data": {
+        "seller": {
+            "id": 1,
+            "onboarding_completed_at": "datetime",
+            "is_verified": true
+        }
     }
 }
 ```
@@ -259,7 +304,10 @@ POST /api/seller/complete-onboarding
 ### Validation Errors (422 Unprocessable Entity)
 ```json
 {
-    "message": "The given data was invalid",
+    "success": false,
+    "status": "fail",
+    "status_code": 422,
+    "message": "Validation failed",
     "errors": {
         "field": [
             "error message"
@@ -271,6 +319,9 @@ POST /api/seller/complete-onboarding
 ### Not Found (404)
 ```json
 {
+    "success": false,
+    "status": "fail",
+    "status_code": 404,
     "message": "Seller profile not found"
 }
 ```
@@ -278,6 +329,9 @@ POST /api/seller/complete-onboarding
 ### Unauthorized (401)
 ```json
 {
+    "success": false,
+    "status": "fail",
+    "status_code": 401,
     "message": "Unauthenticated"
 }
 ```
@@ -285,5 +339,8 @@ POST /api/seller/complete-onboarding
 ### Forbidden (403)
 ```json
 {
+    "success": false,
+    "status": "fail",
+    "status_code": 403,
     "message": "Required steps must be completed"
 } 
