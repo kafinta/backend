@@ -22,15 +22,20 @@ POST /api/user/signup
 **Response (201 Created):**
 ```json
 {
+    "success": true,
+    "status": "success",
+    "status_code": 201,
     "message": "Account Created Successfully",
-    "user": {
-        "id": "integer",
-        "username": "string",
-        "email": "string",
-        "created_at": "datetime"
-    },
-    "email_verification_required": true,
-    "verification_email_sent": true
+    "data": {
+        "user": {
+            "id": 1,
+            "username": "string",
+            "email": "string",
+            "created_at": "datetime"
+        },
+        "email_verification_required": true,
+        "verification_email_sent": true
+    }
 }
 ```
 
@@ -53,11 +58,16 @@ POST /api/user/login
 **Response (200 OK):**
 ```json
 {
+    "success": true,
+    "status": "success",
+    "status_code": 200,
     "message": "Login successful",
-    "user": {
-        "id": "integer",
-        "username": "string",
-        "email": "string"
+    "data": {
+        "user": {
+            "id": 1,
+            "username": "string",
+            "email": "string"
+        }
     }
 }
 ```
@@ -70,6 +80,9 @@ POST /api/user/logout
 **Response (200 OK):**
 ```json
 {
+    "success": true,
+    "status": "success",
+    "status_code": 200,
     "message": "Logged out successfully"
 }
 ```
@@ -91,6 +104,9 @@ POST /api/forgot-password
 **Response (200 OK):**
 ```json
 {
+    "success": true,
+    "status": "success",
+    "status_code": 200,
     "message": "If an account with that email exists, a password reset link has been sent."
 }
 ```
@@ -113,6 +129,9 @@ POST /api/reset-password/token
 **Response (200 OK):**
 ```json
 {
+    "success": true,
+    "status": "success",
+    "status_code": 200,
     "message": "Password reset successfully"
 }
 ```
@@ -141,8 +160,10 @@ Allows authenticated users to update their email address, whether they are verif
 **Response (200 OK):**
 ```json
 {
+    "success": true,
+    "status": "success",
+    "status_code": 200,
     "message": "Email updated successfully. Please check your new email for a verification link.",
-    "status": 200,
     "data": {
         "verification_email_sent": true,
         "email": "new@email.com"
@@ -154,29 +175,37 @@ Allows authenticated users to update their email address, whether they are verif
 - If the new email is the same as the current email:
 ```json
 {
-    "message": "New email is the same as the current email.",
-    "status": 400
+    "success": false,
+    "status": "fail",
+    "status_code": 400,
+    "message": "New email is the same as the current email."
 }
 ```
 - If the new email is already in use by a verified account:
 ```json
 {
-    "message": "Unable to update email.",
-    "status": 400
+    "success": false,
+    "status": "fail",
+    "status_code": 400,
+    "message": "Unable to update email."
 }
 ```
 - If the password is incorrect:
 ```json
 {
-    "message": "Incorrect password.",
-    "status": 401
+    "success": false,
+    "status": "fail",
+    "status_code": 401,
+    "message": "Incorrect password."
 }
 ```
 - Validation errors:
 ```json
 {
-    "message": "The given data was invalid",
-    "status": 422,
+    "success": false,
+    "status": "fail",
+    "status_code": 422,
+    "message": "Validation failed",
     "errors": {
         "email": ["The email field is required."],
         "password": ["The password field is required."]
@@ -200,7 +229,10 @@ Allows authenticated users to update their email address, whether they are verif
 ### Validation Errors (422 Unprocessable Entity)
 ```json
 {
-    "message": "The given data was invalid",
+    "success": false,
+    "status": "fail",
+    "status_code": 422,
+    "message": "Validation failed",
     "errors": {
         "field": [
             "error message"
@@ -212,6 +244,9 @@ Allows authenticated users to update their email address, whether they are verif
 ### Authentication Errors (401 Unauthorized)
 ```json
 {
+    "success": false,
+    "status": "fail",
+    "status_code": 401,
     "message": "Unauthenticated"
 }
 ```
@@ -219,6 +254,9 @@ Allows authenticated users to update their email address, whether they are verif
 ### Rate Limiting (429 Too Many Requests)
 ```json
 {
+    "success": false,
+    "status": "fail",
+    "status_code": 429,
     "message": "Too many login attempts. Please try again in X seconds."
 }
 ```
