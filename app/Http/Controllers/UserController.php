@@ -681,7 +681,7 @@ class UserController extends ImprovedController
                 'password' => 'required|string',
             ]);
             if ($validator->fails()) {
-                return $this->respondWithValidationError($validator->errors(), 422);
+                return $this->respondWithError('The given data was invalid', 422, $validator->errors());
             }
 
             if (!\Hash::check($request->password, $user->password)) {
@@ -738,10 +738,14 @@ class UserController extends ImprovedController
                 'ip' => $request->ip(),
             ]);
 
-            return $this->respondWithSuccess('Email updated successfully. Please check your new email for a verification link.', 200, [
-                'verification_email_sent' => $emailSent,
-                'email' => $newEmail
-            ]);
+            return $this->respondWithSuccess(
+                'Email updated successfully. Please check your new email for a verification link.',
+                200,
+                [
+                    'verification_email_sent' => $emailSent,
+                    'email' => $newEmail
+                ]
+            );
         } catch (\Exception $e) {
             \Log::error('Error updating email', [
                 'user_id' => auth()->id(),
