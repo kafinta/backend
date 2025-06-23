@@ -331,8 +331,10 @@ const updateEmail = async (newEmail: string, password: string, token: string) =>
 - Success:
 ```json
 {
+    "success": true,
+    "status": "success",
+    "status_code": 200,
     "message": "Email updated successfully. Please check your new email for a verification link.",
-    "status": 200,
     "data": {
         "verification_email_sent": true,
         "email": "new@email.com"
@@ -342,8 +344,10 @@ const updateEmail = async (newEmail: string, password: string, token: string) =>
 - Error (validation):
 ```json
 {
-    "message": "The given data was invalid",
-    "status": 422,
+    "success": false,
+    "status": "fail",
+    "status_code": 422,
+    "message": "Validation failed",
     "errors": {
         "email": ["The email field is required."]
     }
@@ -352,8 +356,10 @@ const updateEmail = async (newEmail: string, password: string, token: string) =>
 - Error (other):
 ```json
 {
-    "message": "Incorrect password.",
-    "status": 401
+    "success": false,
+    "status": "fail",
+    "status_code": 401,
+    "message": "Incorrect password."
 }
 ```
 
