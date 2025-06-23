@@ -336,6 +336,26 @@
                         },
                         "description": "Upload profile picture. Requires session authentication."
                     }
+                },
+                {
+                    "name": "Update Email (Verified or Unverified)",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            { "key": "Content-Type", "value": "application/json" },
+                            { "key": "Accept", "value": "application/json" }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"{{new_email}}\",\n    \"password\": \"{{password}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/user/update-email",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "user", "update-email"]
+                        },
+                        "description": "Unified endpoint for updating email for both verified and unverified users. Requires password re-entry. Sends verification to new email. Notifies old email if previously verified (when real email is enabled)."
+                    }
                 }
             ]
         },
