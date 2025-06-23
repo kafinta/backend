@@ -663,4 +663,91 @@ class UserController extends ImprovedController
         }
         return $errors;
     }
+
+    /**
+     * Allow users (verified or unverified) to update their email address
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function updateEmail(Request $request)
+    {
+        try {
+            $user = auth()->user();
+
+            // Require password re-entry
+            $validator = Validator::make($request->all(), [
+                'email' => 'required|email|unique:users,email',
+                'password' => 'required|string',
+            ]);
+            if ($validator->fails()) {
+                return $this->respondWithValidationError($validator->errors(), 422);
+            }
+
+            if (!\Hash::check($request->password, $user->password)) {
+                return $this->respondWithError('Incorrect password.', 401);
+            }
+
+            $newEmail = $request->email;
+            if ($newEmail === $user->email) {
+                return $this->respondWithError('New email is the same as the current email.', 400);
+            }
+
+            // Check if the new email is already registered and verified
+            $existingUser = \App\Models\User::where('email', $newEmail)->first();
+            if ($existingUser) {
+                if ($existingUser->email_verified_at) {
+                    return $this->respondWithError('Unable to update email.', 400);
+                }
+            }
+
+            // Invalidate all previous verification tokens for this user
+            \App\Models\EmailVerificationToken::where('user_id', $user->id)->delete();
+
+            $wasVerified = (bool) $user->email_verified_at;
+            $oldEmail = $user->getOriginal('email');
+
+            // Update the user's email and reset verification
+            $user->email = $newEmail;
+            $user->email_verified_at = null;
+            $user->save();
+
+            // Generate and send a new verification email
+            $tokenData = $this->emailService->generateVerificationToken($user, $newEmail);
+            $emailSent = $this->emailService->sendVerificationEmail(
+                $user,
+                $tokenData['verification_url'],
+                $tokenData['verification_code']
+            );
+
+            // If user was previously verified, notify old email
+            if ($wasVerified && $oldEmail) {
+                // Simulate notification to old email (real implementation would send an email)
+                \Log::info('Notify old email of email change', [
+                    'user_id' => $user->id,
+                    'old_email' => $oldEmail,
+                    'new_email' => $newEmail,
+                ]);
+            }
+
+            // Log the change for audit
+            \Log::info('User updated email', [
+                'user_id' => $user->id,
+                'old_email' => $oldEmail,
+                'new_email' => $newEmail,
+                'ip' => $request->ip(),
+            ]);
+
+            return $this->respondWithSuccess('Email updated successfully. Please check your new email for a verification link.', 200, [
+                'verification_email_sent' => $emailSent,
+                'email' => $newEmail
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error updating email', [
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage()
+            ]);
+            return $this->respondWithError('Error updating email: ' . $e->getMessage(), 500);
+        }
+    }
 }
