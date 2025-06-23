@@ -327,6 +327,36 @@ const updateEmail = async (newEmail: string, password: string, token: string) =>
 - On error, display the error message from the API (e.g., already verified, email in use, validation error, incorrect password).
 - If successful, update the email in your local user state/profile.
 
+**Response Structure:**
+- Success:
+```json
+{
+    "message": "Email updated successfully. Please check your new email for a verification link.",
+    "status": 200,
+    "data": {
+        "verification_email_sent": true,
+        "email": "new@email.com"
+    }
+}
+```
+- Error (validation):
+```json
+{
+    "message": "The given data was invalid",
+    "status": 422,
+    "errors": {
+        "email": ["The email field is required."]
+    }
+}
+```
+- Error (other):
+```json
+{
+    "message": "Incorrect password.",
+    "status": 401
+}
+```
+
 ### Security & UX Notes
 - This action is rate-limited (max 3 per hour).
 - Password re-entry is required for all users.
