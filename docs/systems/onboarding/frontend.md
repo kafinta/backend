@@ -349,3 +349,46 @@ describe('Onboarding Flow', () => {
 2. Check the [Roadmap](roadmap.md) for upcoming features
 3. Implement additional security measures
 4. Add error tracking and monitoring 
+
+## Handling Responses
+
+All onboarding API responses follow a standard structure:
+
+- Success:
+```json
+{
+    "success": true,
+    "status": "success",
+    "status_code": 200,
+    "message": "Business profile updated successfully",
+    "data": {
+        "seller": {
+            "id": 1,
+            "profile_completed_at": "2024-06-10T12:00:00Z"
+        }
+    }
+}
+```
+- Error (validation):
+```json
+{
+    "success": false,
+    "status": "fail",
+    "status_code": 422,
+    "message": "Validation failed",
+    "errors": {
+        "business_name": ["The business name field is required."]
+    }
+}
+```
+- Error (other):
+```json
+{
+    "success": false,
+    "status": "fail",
+    "status_code": 401,
+    "message": "Unauthenticated"
+}
+```
+
+When handling responses in your frontend code, always check the `success` and `status` fields, and display the `message` or validation `errors` as appropriate. 
