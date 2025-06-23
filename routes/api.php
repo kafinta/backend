@@ -36,6 +36,8 @@ Route::middleware(['throttle:6,1'])->prefix('user')->group(function () {
     Route::middleware(['auth:sanctum,web'])->group(function () {
         Route::post('/resend-verification-email', [UserController::class, 'resendVerificationEmail']);
         Route::get('/email-verification-status', [UserController::class, 'checkEmailVerification']);
+        // Allow users to update their email address (verified or unverified)
+        Route::patch('/update-email', [UserController::class, 'updateEmail'])->middleware('throttle:3,60');
     });
 });
 
