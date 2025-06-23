@@ -294,6 +294,48 @@ const validateForm = (formData: any) => {
 };
 ```
 
+## Handling Email Update (Verified or Unverified Users)
+
+If a user wants to change their email address (whether verified or unverified), provide an option in the UI to update their email. Password re-entry is required for security.
+
+### When to Show This Option
+- User is authenticated and wants to change their email (e.g., typo, lost access, or new address)
+
+### Example UI/UX Flow
+1. Show a message: "Want to change your email? Enter your new email and current password."
+2. Provide inputs for the new email and password, and a button to submit the change.
+3. On submit, call the API endpoint below.
+
+### Example API Call
+```typescript
+// PATCH /api/user/update-email
+const updateEmail = async (newEmail: string, password: string, token: string) => {
+    const response = await fetch('/api/user/update-email', {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ email: newEmail, password })
+    });
+    return await response.json();
+};
+```
+
+### Handling Responses
+- On success, show: "Email updated successfully. Please check your new email for a verification link."
+- On error, display the error message from the API (e.g., already verified, email in use, validation error, incorrect password).
+- If successful, update the email in your local user state/profile.
+
+### Security & UX Notes
+- This action is rate-limited (max 3 per hour).
+- Password re-entry is required for all users.
+- All previous verification links/codes are invalidated when the email is changed.
+- If the user was previously verified, the old email will be notified (when real email is enabled).
+- No information is disclosed about whether the new email is already registered/verified (generic error message).
+
+For full request/response details, see the [API Documentation](api.md#email-verification--update).
+
 ## Testing
 
 ### 1. Unit Tests
