@@ -66,7 +66,8 @@ class UserController extends ImprovedController
             );
             DB::commit();
             request()->session()->regenerate();
-            Auth::guard('web')->login($user);
+            // Persistent login: always remember on signup
+            Auth::guard('web')->login($user, true); // Persistent login (remember me)
             $response = $this->respondWithSuccess("Account Created Successfully", 200, [
                 'user' => new UserAccountResource($user),
                 'email_verification_required' => true,
@@ -108,7 +109,8 @@ class UserController extends ImprovedController
             $minutes = $request->remember_me ? 60 * 24 * 30 : 60 * 24;
             config(['session.lifetime' => $minutes]);
             $request->session()->regenerate();
-            Auth::guard('web')->login($user, $request->remember_me);
+            // Persistent login: only if remember_me is true
+            Auth::guard('web')->login($user, $request->remember_me ? true : false);
             
             return $this->respondWithSuccess("Login successful", 200, [
                 'user' => new UserAccountResource($user)
