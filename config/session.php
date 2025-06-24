@@ -31,9 +31,9 @@ return [
     |
     */
 
-    'lifetime' => env('SESSION_LIFETIME', 120),
+    'lifetime' => env('SESSION_LIFETIME', 10080), // 1 week persistent session
 
-    'expire_on_close' => false,
+    'expire_on_close' => false, // Persistent session, does not expire on browser close
 
     /*
     |--------------------------------------------------------------------------
