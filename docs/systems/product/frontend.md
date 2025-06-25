@@ -351,3 +351,27 @@ const { data, meta } = (await productService.myProducts({ per_page: 10 })).data;
 ---
 
 For full API details, see the [API Documentation](api.md).
+
+---
+
+## Subcategory Attribute Fetching (IMPORTANT)
+When creating a product, after the seller selects a subcategory, fetch the attributes for that subcategory using:
+
+```http
+GET /api/attributes/subcategory/{subcategoryId}
+```
+
+This should be done before showing the attribute selection UI. Example integration:
+
+```typescript
+// After subcategory selection
+const { data, status } = await axios.get(`/api/attributes/subcategory/${subcategoryId}`);
+if (status === 200 && data.success) {
+    // data.data is the array of attributes (with values)
+    // Show attribute selection UI
+}
+```
+
+**Why?**
+- Each subcategory can have different attributes.
+- This ensures sellers only see relevant attributes for the selected subcategory.

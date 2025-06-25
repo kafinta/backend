@@ -14,6 +14,7 @@
   - [Get My Products](#get-my-products)
   - [Get My Product Stats](#get-my-product-stats)
   - [Bulk Update Product Status](#bulk-update-product-status)
+  - [Get Subcategory Attributes](#get-subcategory-attributes)
 - [Product Variants](#product-variants)
 - [Inventory Management](#inventory-management)
 - [Error Responses](#error-responses)
@@ -332,6 +333,51 @@ PATCH /api/products/bulk-status
   "data": { /* result fields */ }
 }
 ```
+
+---
+
+### Get Subcategory Attributes
+```http
+GET /api/attributes/subcategory/{subcategoryId}
+```
+**Description:** Get all attributes (and their values) for a given subcategory. Use this endpoint before the seller selects product attributes.
+
+**Example:**
+```
+GET /api/attributes/subcategory/5
+```
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "status": "success",
+  "status_code": 200,
+  "message": "Attributes fetched successfully",
+  "data": [
+    {
+      "id": 1,
+      "name": "Color",
+      "values": [
+        { "id": 10, "name": "Red" },
+        { "id": 11, "name": "Blue" }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Size",
+      "values": [
+        { "id": 20, "name": "Small" },
+        { "id": 21, "name": "Large" }
+      ]
+    }
+  ]
+}
+```
+
+**Note:**
+- The frontend should call this endpoint after the seller selects a subcategory and before displaying the attribute selection UI.
+- This ensures the correct attributes and values are shown for the selected subcategory.
 
 ---
 
