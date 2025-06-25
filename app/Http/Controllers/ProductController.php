@@ -163,10 +163,31 @@ class ProductController extends ImprovedController
     // ===== STEP-BY-STEP PRODUCT CREATION METHODS =====
 
     /**
+     * Generate a unique slug for the product
+     * Appends a number if the slug already exists
+     * @param string $name
+     * @return string
+     */
+    private function generateUniqueSlug($name)
+    {
+        $baseSlug = \Illuminate\Support\Str::slug($name);
+        $slug = $baseSlug;
+        $i = 2;
+        // Check for global uniqueness
+        while (\App\Models\Product::where('slug', $slug)->exists()) {
+            $slug = $baseSlug . '-' . $i;
+            $i++;
+        }
+        return $slug;
+    }
+
+    /**
      * Step 1: Create basic product information (including inventory)
      */
     public function createBasicInfo(Request $request)
     {
+        // Use a DB transaction for safety
+        \DB::beginTransaction();
         try {
             $validator = Validator::make($request->all(), [
                 'name' => 'required|string|max:255',
@@ -180,13 +201,15 @@ class ProductController extends ImprovedController
             ]);
 
             if ($validator->fails()) {
+                \DB::rollBack();
                 return $this->respondWithError($validator->errors(), 422);
             }
 
             $data = $validator->validated();
             $data['user_id'] = auth()->id();
             $data['status'] = $data['status'] ?? 'draft';
-            $data['slug'] = \Illuminate\Support\Str::slug($data['name']);
+            // Use robust unique slug generation
+            $data['slug'] = $this->generateUniqueSlug($data['name']);
 
             // Set default stock quantity if not managing stock
             if (!$data['manage_stock']) {
@@ -205,13 +228,22 @@ class ProductController extends ImprovedController
             // Fire product created event
             event(new ProductCreated($product, $isFirstProduct));
 
+            \DB::commit();
             return $this->respondWithSuccess(
                 'Basic product information and inventory saved successfully',
                 201,
                 new ProductResource($product->load(['subcategory', 'location', 'images', 'attributeValues']))
             );
 
+        } catch (\Illuminate\Database\QueryException $e) {
+            \DB::rollBack();
+            // Check for duplicate slug error (SQLSTATE 23000, error code 1062)
+            if ($e->getCode() === '23000' && str_contains($e->getMessage(), 'products_slug_unique')) {
+                return $this->respondWithError('You already have a product with a similar name. Please choose a different name.', 422);
+            }
+            return $this->respondWithError('Failed to create basic product info: ' . $e->getMessage(), 500);
         } catch (\Exception $e) {
+            \DB::rollBack();
             return $this->respondWithError('Failed to create basic product info: ' . $e->getMessage(), 500);
         }
     }
