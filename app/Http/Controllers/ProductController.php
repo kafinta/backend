@@ -642,4 +642,34 @@ class ProductController extends ImprovedController
             return $this->respondWithError('Error updating product status: ' . $e->getMessage(), 500);
         }
     }
+
+    /**
+     * Get the attributes and their values for a specific product.
+     */
+    public function getAttributes(Product $product)
+    {
+        try {
+            // Ensure attributeValues and their attributes are loaded
+            $product->load(['attributeValues.attribute']);
+            $attributes = $product->attributeValues->map(function ($attributeValue) {
+                return [
+                    'id' => $attributeValue->attribute->id,
+                    'name' => $attributeValue->attribute->name,
+                    'value' => [
+                        'id' => $attributeValue->id,
+                        'name' => $attributeValue->name,
+                        'representation' => $attributeValue->representation,
+                    ]
+                ];
+            });
+            return $this->respondWithSuccess('Product attributes retrieved successfully', 200, $attributes);
+        } catch (\Exception $e) {
+            \Log::error('Error retrieving product attributes', [
+                'error' => $e->getMessage(),
+                'product_id' => $product->id ?? null,
+                'trace' => $e->getTraceAsString()
+            ]);
+            return $this->respondWithError('Error retrieving product attributes', 500);
+        }
+    }
 }
