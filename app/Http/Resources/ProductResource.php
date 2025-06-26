@@ -20,20 +20,23 @@ class ProductResource extends JsonResource
             'slug' => $this->slug,
             'description' => $this->description,
             'price' => $this->price,
+            'user_id' => $this->user_id,
             'status' => $this->status,
-            'is_featured' => $this->is_featured,
             'denial_reason' => $this->when($this->denial_reason, $this->denial_reason),
+            'is_featured' => $this->is_featured,
+            'stock_quantity' => $this->stock_quantity,
+            'manage_stock' => $this->manage_stock,
+            'created_at' => $this->created_at,
+            'updated_at' => $this->updated_at,
 
             // Inventory information
-            'manage_stock' => $this->manage_stock,
-            'stock_quantity' => $this->stock_quantity,
             'is_in_stock' => $this->isInStock(),
             'is_out_of_stock' => $this->isOutOfStock(),
 
-            // Relationships
-            'subcategory' => new SubcategoryResource($this->whenLoaded('subcategory')),
-            'category' => new CategoryResource($this->whenLoaded('category')),
-            'location' => new LocationResource($this->whenLoaded('location')),
+            // Relationships (always include as objects)
+            'subcategory' => new SubcategoryResource($this->subcategory),
+            'category' => new CategoryResource($this->category),
+            'location' => new LocationResource($this->location),
             'seller_name' => $this->when(isset($this->seller_name), $this->seller_name),
 
             // Images
