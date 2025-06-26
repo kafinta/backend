@@ -398,3 +398,38 @@ if (status === 200 && data.success) {
 ```
 
 **Note:** Always use the `subcategory`, `category`, and `location` objects for display and logic. Do not expect the old *_id fields at the top level.
+
+---
+
+## Fetching Product Attributes
+To get all attributes and their values for a specific product, use:
+
+```http
+GET /api/products/{product}/attributes
+```
+
+**Example integration:**
+```typescript
+const { data, status } = await axios.get(`/api/products/${productId}/attributes`);
+if (status === 200 && data.success) {
+    // data.data is the array of attributes for this product
+}
+```
+
+**Response example:**
+```json
+[
+  {
+    "id": 1,
+    "name": "Color",
+    "value": { "id": 10, "name": "Red", "representation": null }
+  },
+  {
+    "id": 2,
+    "name": "Size",
+    "value": { "id": 20, "name": "Large", "representation": null }
+  }
+]
+```
+
+This is useful for displaying a product's selected attributes on detail or edit pages.
