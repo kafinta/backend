@@ -375,3 +375,26 @@ if (status === 200 && data.success) {
 **Why?**
 - Each subcategory can have different attributes.
 - This ensures sellers only see relevant attributes for the selected subcategory.
+
+---
+
+## Product Object Structure (Updated)
+- The product object now always includes `subcategory`, `category`, and `location` as objects (with at least `id` and `name`).
+- The fields `subcategory_id`, `category_id`, and `location_id` are no longer present as top-level fields.
+- Example:
+
+```json
+{
+  "id": 1,
+  "name": "Test Product",
+  "slug": "test-product",
+  "description": "A sample product.",
+  "price": 100.0,
+  "subcategory": { "id": 2, "name": "Shoes" },
+  "category": { "id": 1, "name": "Fashion" },
+  "location": { "id": 3, "name": "New York" },
+  // ... other product fields ...
+}
+```
+
+**Note:** Always use the `subcategory`, `category`, and `location` objects for display and logic. Do not expect the old *_id fields at the top level.

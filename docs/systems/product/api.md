@@ -81,7 +81,62 @@ GET /api/products/{product}
   "status": "success",
   "status_code": 200,
   "message": "Product retrieved successfully",
-  "data": { /* product fields */ }
+  "data": {
+    "id": 1,
+    "name": "Test Product",
+    "slug": "test-product",
+    "description": "A sample product.",
+    "price": 100.0,
+    "subcategory": { "id": 2, "name": "Shoes" },
+    "category": { "id": 1, "name": "Fashion" },
+    "location": { "id": 3, "name": "New York" },
+    // ... other product fields ...
+  }
+}
+```
+
+**Note:**
+- The `subcategory`, `category`, and `location` objects are always included for convenience. Their IDs and names are always present; additional fields may be included as needed.
+
+### Get Product by Slug
+```http
+GET /api/products/slug/{slug}
+```
+**Description:** Get a single product by its slug. Useful for SEO-friendly URLs and product detail pages.
+
+**Example:**
+```
+GET /api/products/slug/test-product-2
+```
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "status": "success",
+  "status_code": 200,
+  "message": "Product retrieved successfully",
+  "data": {
+    "id": 1,
+    "name": "Test Product",
+    "slug": "test-product",
+    "description": "A sample product.",
+    "price": 100.0,
+    "subcategory": { "id": 2, "name": "Shoes" },
+    "category": { "id": 1, "name": "Fashion" },
+    "location": { "id": 3, "name": "New York" },
+    // ... other product fields ...
+  }
+}
+```
+
+**Error (404):**
+```json
+{
+  "success": false,
+  "status": "fail",
+  "status_code": 404,
+  "message": "Product not found"
 }
 ```
 
@@ -115,7 +170,17 @@ POST /api/products/basic-info
   "status": "success",
   "status_code": 201,
   "message": "Basic product information and inventory saved successfully",
-  "data": { /* product fields */ }
+  "data": {
+    "id": 1,
+    "name": "Test Product",
+    "slug": "test-product",
+    "description": "A sample product.",
+    "price": 100.0,
+    "subcategory": { "id": 2, "name": "Shoes" },
+    "category": { "id": 1, "name": "Fashion" },
+    "location": { "id": 3, "name": "New York" },
+    // ... other product fields ...
+  }
 }
 ```
 
