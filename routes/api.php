@@ -502,6 +502,8 @@ Route::prefix('products')->group(function () {
     Route::get('/{product}', [ProductController::class, 'show'])->name('products.show');
     // Get product by slug
     Route::get('/slug/{slug}', [ProductController::class, 'showBySlug'])->name('products.show-by-slug');
+    // Get product attributes
+    Route::get('/{product}/attributes', [ProductController::class, 'getAttributes'])->name('products.get-attributes');
 
     // Variant routes
     Route::get('/variants/{id}', [VariantController::class, 'show'])->name('variants.show');
