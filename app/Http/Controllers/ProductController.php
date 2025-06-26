@@ -103,8 +103,6 @@ class ProductController extends ImprovedController
         }
     }
 
-
-
     /**
      * Display the specified product.
      */
@@ -135,7 +133,40 @@ class ProductController extends ImprovedController
         }
     }
 
+    /**
+     * Display the specified product by slug.
+     */
+    public function showBySlug($slug)
+    {
+        try {
+            $product = Product::where('slug', $slug)
+                ->with([
+                    'category',
+                    'subcategory',
+                    'images',
+                    'attributeValues.attribute',
+                    'user' => function($query) {
+                        $query->select('id');
+                        $query->with(['seller' => function($query) {
+                            $query->select('id', 'user_id', 'business_name');
+                        }]);
+                    }
+                ])->first();
 
+            if (!$product) {
+                return $this->respondWithError('Product not found', 404);
+            }
+
+            return $this->respondWithSuccess('Product retrieved successfully', 200, new ProductResource($product));
+        } catch (\Exception $e) {
+            \Log::error('Error retrieving product by slug', [
+                'error' => $e->getMessage(),
+                'slug' => $slug,
+                'trace' => $e->getTraceAsString()
+            ]);
+            return $this->respondWithError('Error retrieving product', 500);
+        }
+    }
 
     /**
      * Remove the specified product.
@@ -415,8 +446,6 @@ class ProductController extends ImprovedController
             return $this->respondWithError('Failed to upload images: ' . $e->getMessage(), 500);
         }
     }
-
-
 
     /**
      * Step 4: Review and publish (automatically sets to active)
