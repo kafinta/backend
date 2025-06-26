@@ -140,6 +140,39 @@ GET /api/products/slug/test-product-2
 }
 ```
 
+### Get Product Attributes
+```http
+GET /api/products/{product}/attributes
+```
+**Description:** Get all attributes and their values for a specific product.
+
+**Example:**
+```
+GET /api/products/1/attributes
+```
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "status": "success",
+  "status_code": 200,
+  "message": "Product attributes retrieved successfully",
+  "data": [
+    {
+      "id": 1,
+      "name": "Color",
+      "value": { "id": 10, "name": "Red", "representation": null }
+    },
+    {
+      "id": 2,
+      "name": "Size",
+      "value": { "id": 20, "name": "Large", "representation": null }
+    }
+  ]
+}
+```
+
 ---
 
 ## Product Management (Seller/Admin)
