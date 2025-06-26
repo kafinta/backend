@@ -498,6 +498,10 @@ Route::middleware(['auth:sanctum,web'])->group(function () {
 Route::prefix('products')->group(function () {
     // Unified product listing with comprehensive filtering
     Route::get('/', [ProductController::class, 'index'])->name('products.index');
+    // Get product by ID
+    Route::get('/{product}', [ProductController::class, 'show'])->name('products.show');
+    // Get product by slug
+    Route::get('/slug/{slug}', [ProductController::class, 'showBySlug'])->name('products.show-by-slug');
 
     // Variant routes
     Route::get('/variants/{id}', [VariantController::class, 'show'])->name('variants.show');
