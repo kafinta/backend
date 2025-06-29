@@ -99,12 +99,9 @@ class VariantController extends ImprovedController
     {
         try {
             $product = Product::findOrFail($productId);
-
-            // Check if user has permission to create variants for this product
             if (!auth()->user()->hasRole('admin') && auth()->id() !== $product->user_id) {
                 return $this->respondWithError('Unauthorized access', 403);
             }
-
             $validator = Validator::make($request->all(), [
                 'name' => 'required|string|max:255',
                 'price' => 'required|numeric|min:0',
@@ -114,31 +111,23 @@ class VariantController extends ImprovedController
                 'attributes.*.attribute_id' => 'required|exists:attributes,id',
                 'attributes.*.value_id' => 'required|exists:attribute_values,id',
                 'images' => 'sometimes|array',
-                'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048'
+                'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
             ]);
-
             if ($validator->fails()) {
                 return $this->respondWithError($validator->errors(), 422);
             }
-
             $variant = $this->variantService->createVariant($product, $validator->validated());
-
-            // Process images if provided
+            // Handle image upload
             if ($request->hasFile('images')) {
-                $uploadedImages = [];
-                foreach ($request->file('images') as $image) {
-                    $path = $image->store('variants', 'public');
-                    $uploadedImage = $variant->images()->create([
-                        'path' => '/storage/' . $path
-                    ]);
-                    $uploadedImages[] = $uploadedImage;
+                foreach ($request->file('images') as $imageFile) {
+                    $directory = 'variants/' . $variant->id;
+                    $path = app(\App\Services\FileService::class)->uploadFile($imageFile, $directory);
+                    if ($path) {
+                        $variant->images()->create(['path' => $path]);
+                    }
                 }
-
-                // Reload the variant with images
-                $variant->load('images');
             }
-
-            return $this->respondWithSuccess('Variant created successfully', 201, new VariantResource($variant));
+            return $this->respondWithSuccess('Variant created successfully', 201, new VariantResource($variant->load('images')));
         } catch (\Exception $e) {
             Log::error('Error creating variant', [
                 'product_id' => $productId,
@@ -160,12 +149,9 @@ class VariantController extends ImprovedController
         try {
             $variant = Variant::findOrFail($id);
             $product = $variant->product;
-
-            // Check if user has permission to update this variant
             if (!auth()->user()->hasRole('admin') && auth()->id() !== $product->user_id) {
                 return $this->respondWithError('Unauthorized access', 403);
             }
-
             $validator = Validator::make($request->all(), [
                 'name' => 'sometimes|string|max:255',
                 'price' => 'sometimes|numeric|min:0',
@@ -177,50 +163,39 @@ class VariantController extends ImprovedController
                 'images' => 'sometimes|array',
                 'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
                 'delete_image_ids' => 'sometimes|array',
-                'delete_image_ids.*' => 'required_with:delete_image_ids|exists:images,id'
+                'delete_image_ids.*' => 'integer|exists:images,id',
             ]);
-
             if ($validator->fails()) {
                 return $this->respondWithError($validator->errors(), 422);
             }
-
             $variant = $this->variantService->updateVariant($variant, $validator->validated());
-
-            // Process images if provided
+            // Handle image upload
             if ($request->hasFile('images')) {
-                $uploadedImages = [];
-                foreach ($request->file('images') as $image) {
-                    $path = $image->store('variants', 'public');
-                    $uploadedImage = $variant->images()->create([
-                        'path' => '/storage/' . $path
-                    ]);
-                    $uploadedImages[] = $uploadedImage;
+                foreach ($request->file('images') as $imageFile) {
+                    $directory = 'variants/' . $variant->id;
+                    $path = app(\App\Services\FileService::class)->uploadFile($imageFile, $directory);
+                    if ($path) {
+                        $variant->images()->create(['path' => $path]);
+                    }
                 }
             }
-
-            // Delete images if requested
+            // Handle image deletion
             if ($request->has('delete_image_ids') && is_array($request->input('delete_image_ids'))) {
                 foreach ($request->input('delete_image_ids') as $imageId) {
                     $image = $variant->images()->find($imageId);
                     if ($image) {
-                        // Delete the file from storage
-                        Storage::disk('public')->delete(str_replace('/storage/', '', $image->path));
-                        // Delete the image record
+                        app(\App\Services\FileService::class)->deleteFile($image->path);
                         $image->delete();
                     }
                 }
             }
-
-            // Reload the variant with images
             $variant->load('images');
-
             return $this->respondWithSuccess('Variant updated successfully', 200, new VariantResource($variant));
         } catch (\Exception $e) {
             Log::error('Error updating variant', [
                 'variant_id' => $id,
                 'error' => $e->getMessage()
             ]);
-
             return $this->respondWithError($e->getMessage(), 500);
         }
     }
@@ -248,91 +223,6 @@ class VariantController extends ImprovedController
         } catch (\Exception $e) {
             Log::error('Error deleting variant', [
                 'variant_id' => $id,
-                'error' => $e->getMessage()
-            ]);
-
-            return $this->respondWithError($e->getMessage(), 500);
-        }
-    }
-
-    /**
-     * Upload images for a variant
-     *
-     * @param Request $request
-     * @param int $id
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function uploadImages(Request $request, $id)
-    {
-        try {
-            $variant = Variant::findOrFail($id);
-            $product = $variant->product;
-
-            // Check if user has permission to upload images for this variant
-            if (!auth()->user()->hasRole('admin') && auth()->id() !== $product->user_id) {
-                return $this->respondWithError('Unauthorized access', 403);
-            }
-
-            $validator = Validator::make($request->all(), [
-                'images' => 'required|array',
-                'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048'
-            ]);
-
-            if ($validator->fails()) {
-                return $this->respondWithError($validator->errors(), 422);
-            }
-
-            $uploadedImages = [];
-            foreach ($request->file('images') as $image) {
-                $path = $image->store('variants', 'public');
-                $uploadedImage = $variant->images()->create([
-                    'path' => '/storage/' . $path
-                ]);
-                $uploadedImages[] = $uploadedImage;
-            }
-
-            return $this->respondWithSuccess('Images uploaded successfully', 200, $uploadedImages);
-        } catch (\Exception $e) {
-            Log::error('Error uploading variant images', [
-                'variant_id' => $id,
-                'error' => $e->getMessage()
-            ]);
-
-            return $this->respondWithError($e->getMessage(), 500);
-        }
-    }
-
-    /**
-     * Delete an image from a variant
-     *
-     * @param int $id
-     * @param int $imageId
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function deleteImage($id, $imageId)
-    {
-        try {
-            $variant = Variant::findOrFail($id);
-            $product = $variant->product;
-
-            // Check if user has permission to delete images for this variant
-            if (!auth()->user()->hasRole('admin') && auth()->id() !== $product->user_id) {
-                return $this->respondWithError('Unauthorized access', 403);
-            }
-
-            $image = $variant->images()->findOrFail($imageId);
-
-            // Delete the file from storage
-            Storage::disk('public')->delete(str_replace('/storage/', '', $image->path));
-
-            // Delete the image record
-            $image->delete();
-
-            return $this->respondWithSuccess('Image deleted successfully', 200);
-        } catch (\Exception $e) {
-            Log::error('Error deleting variant image', [
-                'variant_id' => $id,
-                'image_id' => $imageId,
                 'error' => $e->getMessage()
             ]);
 
