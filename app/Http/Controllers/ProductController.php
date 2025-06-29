@@ -217,7 +217,6 @@ class ProductController extends ImprovedController
      */
     public function createBasicInfo(Request $request)
     {
-        // Use a DB transaction for safety
         \DB::beginTransaction();
         try {
             $validator = Validator::make($request->all(), [
@@ -228,7 +227,9 @@ class ProductController extends ImprovedController
                 'location_id' => 'nullable|exists:locations,id',
                 'status' => 'sometimes|in:draft,active,inactive',
                 'manage_stock' => 'required|boolean',
-                'stock_quantity' => 'required_if:manage_stock,true|integer|min:0'
+                'stock_quantity' => 'required_if:manage_stock,true|integer|min:0',
+                'images' => 'sometimes|array',
+                'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
             ]);
 
             if ($validator->fails()) {
@@ -239,25 +240,25 @@ class ProductController extends ImprovedController
             $data = $validator->validated();
             $data['user_id'] = auth()->id();
             $data['status'] = $data['status'] ?? 'draft';
-            // Use robust unique slug generation
             $data['slug'] = $this->generateUniqueSlug($data['name']);
-
-            // Set default stock quantity if not managing stock
             if (!$data['manage_stock']) {
                 $data['stock_quantity'] = 0;
             }
-
-            // Create basic product with inventory
             $product = Product::create($data);
-
-            // Sync attributes from subcategory
             $product->syncAttributesFromSubcategory();
-
-            // Check if this is the seller's first product
             $isFirstProduct = Product::where('user_id', auth()->id())->count() === 1;
-
-            // Fire product created event
             event(new ProductCreated($product, $isFirstProduct));
+
+            // Handle image upload
+            if ($request->hasFile('images')) {
+                foreach ($request->file('images') as $imageFile) {
+                    $directory = 'products/' . $product->id;
+                    $path = $this->fileService->uploadFile($imageFile, $directory);
+                    if ($path) {
+                        $product->images()->create(['path' => $path]);
+                    }
+                }
+            }
 
             \DB::commit();
             return $this->respondWithSuccess(
@@ -265,10 +266,8 @@ class ProductController extends ImprovedController
                 201,
                 new ProductResource($product->load(['subcategory', 'location', 'images', 'attributeValues']))
             );
-
         } catch (\Illuminate\Database\QueryException $e) {
             \DB::rollBack();
-            // Check for duplicate slug error (SQLSTATE 23000, error code 1062)
             if ($e->getCode() === '23000' && str_contains($e->getMessage(), 'products_slug_unique')) {
                 return $this->respondWithError('You already have a product with a similar name. Please choose a different name.', 422);
             }
@@ -285,11 +284,9 @@ class ProductController extends ImprovedController
     public function updateBasicInfo(Request $request, Product $product)
     {
         try {
-            // Check ownership
             if ($product->user_id !== auth()->id() && !auth()->user()->hasRole('admin')) {
                 return $this->respondWithError('Unauthorized', 403);
             }
-
             $validator = Validator::make($request->all(), [
                 'name' => 'sometimes|string|max:255',
                 'description' => 'sometimes|string',
@@ -297,44 +294,54 @@ class ProductController extends ImprovedController
                 'subcategory_id' => 'sometimes|exists:subcategories,id',
                 'location_id' => 'nullable|exists:locations,id',
                 'manage_stock' => 'sometimes|boolean',
-                'stock_quantity' => 'sometimes|integer|min:0'
+                'stock_quantity' => 'sometimes|integer|min:0',
+                'images' => 'sometimes|array',
+                'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
+                'delete_image_ids' => 'sometimes|array',
+                'delete_image_ids.*' => 'integer|exists:images,id',
             ]);
-
             if ($validator->fails()) {
                 return $this->respondWithError($validator->errors(), 422);
             }
-
             $data = $validator->validated();
-
-            // Update slug if name changed
             if (isset($data['name'])) {
                 $data['slug'] = \Illuminate\Support\Str::slug($data['name']);
             }
-
-            // Handle stock management logic
             if (isset($data['manage_stock'])) {
                 if (!$data['manage_stock']) {
                     $data['stock_quantity'] = 0;
                 }
             }
-
-            // Check if subcategory changed
             $subcategoryChanged = isset($data['subcategory_id']) && $data['subcategory_id'] !== $product->subcategory_id;
-
-            // Update the product
             $product->update($data);
-
-            // If subcategory changed, sync new attributes
             if ($subcategoryChanged) {
                 $product->syncAttributesFromSubcategory();
             }
-
+            // Handle image upload
+            if ($request->hasFile('images')) {
+                foreach ($request->file('images') as $imageFile) {
+                    $directory = 'products/' . $product->id;
+                    $path = $this->fileService->uploadFile($imageFile, $directory);
+                    if ($path) {
+                        $product->images()->create(['path' => $path]);
+                    }
+                }
+            }
+            // Handle image deletion
+            if (isset($data['delete_image_ids'])) {
+                foreach ($data['delete_image_ids'] as $imageId) {
+                    $image = $product->images()->find($imageId);
+                    if ($image) {
+                        $this->fileService->deleteFile($image->path);
+                        $image->delete();
+                    }
+                }
+            }
             return $this->respondWithSuccess(
                 'Basic product information updated successfully',
                 200,
                 new ProductResource($product->load(['subcategory', 'location', 'images', 'attributeValues']))
             );
-
         } catch (\Exception $e) {
             return $this->respondWithError('Failed to update basic product info: ' . $e->getMessage(), 500);
         }
@@ -434,7 +441,13 @@ class ProductController extends ImprovedController
             }
 
             $images = $request->file('images');
-            $uploadedImages = $this->imageService->uploadImages($product, $images);
+            foreach ($images as $imageFile) {
+                $directory = 'products/' . $product->id;
+                $path = $this->fileService->uploadFile($imageFile, $directory);
+                if ($path) {
+                    $product->images()->create(['path' => $path]);
+                }
+            }
 
             return $this->respondWithSuccess(
                 'Images uploaded successfully',
