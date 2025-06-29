@@ -8,49 +8,60 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use App\Models\Image;
 use Illuminate\Support\Facades\Log;
+use App\Services\FileService;
+use Illuminate\Http\UploadedFile;
 
 class ImageController extends ImprovedController
 {
+    protected $fileService;
+
+    public function __construct(FileService $fileService)
+    {
+        $this->fileService = $fileService;
+    }
 
     public function index() {
         $images = Image::all();
         return $this->respondWithSuccess("Images Fetched Successfully", 200, ImageResource::collection($images));
     }
 
-    public function store(Request $request, $parentModel)
+    public function store(Request $request)
     {
-        if (!$request->hasFile('image') && !$request->hasFile('images')) {
-            throw new \Exception('No image file provided');
+        $request->validate([
+            'image' => 'required|file|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'imageable_id' => 'required|integer',
+            'imageable_type' => 'required|string|in:product,variant'
+        ]);
+
+        $imageableTypeMap = [
+            'product' => \App\Models\Product::class,
+            'variant' => \App\Models\Variant::class,
+        ];
+        $imageableType = $request->input('imageable_type');
+        $imageableId = $request->input('imageable_id');
+        $modelClass = $imageableTypeMap[$imageableType] ?? null;
+        if (!$modelClass) {
+            return $this->respondWithError('Invalid imageable type', 422);
         }
-
-        // Handle both single 'image' and array 'images'
-        $imageFile = $request->hasFile('image') ? $request->file('image') : $request->file('images');
-
-        // Validate image
-        if (!$imageFile->isValid()) {
-            throw new \Exception('Invalid image file');
+        $parentModel = $modelClass::find($imageableId);
+        if (!$parentModel) {
+            return $this->respondWithError('Parent model not found', 404);
         }
-
-        try {
-            // Get the model type for the storage path
-            $modelType = strtolower(class_basename($parentModel));
-
-            // Store the image file
-            $path = $imageFile->store($modelType, 'public');
-
-            // Create image record
-            $imageRecord = $parentModel->images()->create([
-                'path' => '/storage/' . $path,
-                'imageable_id' => $parentModel->id,
-                'imageable_type' => get_class($parentModel)
-            ]);
-
-            return $imageRecord;
-
-        } catch (\Exception $e) {
-            \Log::error('Image storage failed: ' . $e->getMessage());
-            throw new \Exception('Failed to store image: ' . $e->getMessage());
+        $imageFile = $request->file('image');
+        if (!$imageFile instanceof UploadedFile || !$imageFile->isValid()) {
+            return $this->respondWithError('Invalid image file', 422);
         }
+        $directory = strtolower(class_basename($parentModel)) . 's/' . $parentModel->id;
+        $path = $this->fileService->uploadFile($imageFile, $directory);
+        if (!$path) {
+            return $this->respondWithError('Failed to upload image', 500);
+        }
+        $imageRecord = $parentModel->images()->create([
+            'path' => $path,
+            'imageable_id' => $parentModel->id,
+            'imageable_type' => $modelClass
+        ]);
+        return $this->respondWithSuccess('Image uploaded successfully', 201, new ImageResource($imageRecord));
     }
 
     public function update(Request $request, $image)
@@ -95,29 +106,17 @@ class ImageController extends ImprovedController
     {
         try {
             $image = Image::findOrFail($id);
-
-            // Check ownership - user must own the parent model (product, variant, etc.)
             $parentModel = $image->imageable;
-
             if (!$parentModel) {
                 return $this->respondWithError('Parent model not found', 404);
             }
-
-            // Check if user owns the parent model or is admin
             $user = auth()->user();
-            if (!$user->hasRole('admin') && $parentModel->user_id !== $user->id) {
+            if (!$user->hasRole('admin') && ($parentModel->user_id ?? null) !== $user->id) {
                 return $this->respondWithError('Unauthorized', 403);
             }
-
-            // Delete the file
-            $path = str_replace('/storage/', '', $image->path);
-            $this->deleteImage($path);
-
-            // Delete the database record
+            $this->fileService->deleteFile($image->path);
             $image->delete();
-
             return $this->respondWithSuccess('Image deleted successfully', 200);
-
         } catch (\Exception $e) {
             \Log::error('Image deletion failed: ' . $e->getMessage());
             return $this->respondWithError('Failed to delete image: ' . $e->getMessage(), 500);
