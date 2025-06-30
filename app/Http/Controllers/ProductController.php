@@ -587,22 +587,29 @@ class ProductController extends ImprovedController
     {
         try {
             $validator = Validator::make($request->all(), [
-                'per_page' => 'sometimes|integer|min:1|max:100',
                 'status' => 'sometimes|in:draft,active,paused,denied,out_of_stock',
                 'sort_by' => 'sometimes|in:name,price,created_at,updated_at,stock_quantity',
                 'sort_direction' => 'sometimes|in:asc,desc',
-                'stock_status' => 'sometimes|in:in_stock,out_of_stock,low_stock'
+                'stock_status' => 'sometimes|in:in_stock,out_of_stock,low_stock',
+                'keyword' => 'sometimes|string|max:255',
+                'category_id' => 'sometimes|integer|exists:categories,id',
+                'location_id' => 'sometimes|integer|exists:locations,id',
+                'subcategory_id' => 'sometimes|integer|exists:subcategories,id',
             ]);
 
             if ($validator->fails()) {
                 return $this->respondWithError($validator->errors(), 422);
             }
 
-            $perPage = $request->input('per_page', 15);
-            $filters = $request->only(['status', 'sort_by', 'sort_direction', 'stock_status']);
+            $filters = $request->only(['status', 'sort_by', 'sort_direction', 'stock_status', 'keyword', 'category_id', 'location_id']);
+            // Only include subcategory_id if both category_id and location_id are present
+            if ($request->filled('category_id') && $request->filled('location_id') && $request->filled('subcategory_id')) {
+                $filters['subcategory_id'] = $request->input('subcategory_id');
+            }
             $filters['seller_id'] = auth()->id();
+            $pageSize = 10; // Fixed page size
 
-            $products = $this->productService->searchProducts($filters, $perPage, false);
+            $products = $this->productService->searchProducts($filters, $pageSize, false);
 
             return $this->respondWithSuccess('Your products retrieved successfully', 200, $products);
         } catch (\Exception $e) {
