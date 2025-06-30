@@ -57,7 +57,7 @@ For general Postman testing guidelines, environment setup, and best practices, p
    - Bulk stock updates
 
 #### Product-Specific Debug Routes
-- `/api/products/my-products`: List seller's products
+- `/api/products/my-products`: List seller's products (filters: status, sort_by, sort_direction, stock_status, keyword [name only], category_id, location_id, subcategory_id [if both category and location], fixed page size 10)
 - `/api/products/my-stats`: View product statistics
 - `/api/products/{product}/status`: Check product status
 
