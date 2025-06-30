@@ -214,7 +214,9 @@ await productService.updateStatus(productId, 'active');
 ### Seller-Specific Endpoints
 ```typescript
 // My Products (paginated)
-const { data, meta } = (await productService.myProducts({ per_page: 10, status: 'active' })).data;
+const { data, meta } = (await productService.myProducts({ status: 'active', keyword: 'shoe', category_id: 1, location_id: 2, subcategory_id: 3 })).data;
+// Filters: status, sort_by, sort_direction, stock_status, keyword (name only), category_id, location_id, subcategory_id (only if both category and location)
+// Page size is fixed at 10
 
 // My Stats
 const stats = (await productService.myStats()).data;
@@ -336,9 +338,11 @@ try {
 
 ## Example: Paginated Product List
 ```typescript
-const { data, meta } = (await productService.myProducts({ per_page: 10 })).data;
+const { data, meta } = (await productService.myProducts({ status: 'active', keyword: 'shoe', category_id: 1, location_id: 2, subcategory_id: 3 })).data;
 // data: array of products
 // meta: pagination info (current_page, last_page, per_page, total)
+// Filters: status, sort_by, sort_direction, stock_status, keyword (name only), category_id, location_id, subcategory_id (only if both category and location)
+// Page size is fixed at 10
 ```
 
 ---

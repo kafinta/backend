@@ -367,10 +367,15 @@ PATCH /api/products/{product}/status
 ```http
 GET /api/products/my-products
 ```
-**Description:** List products for the authenticated seller. Supports filters: per_page, status, sort_by, sort_direction, stock_status.
+**Description:** List products for the authenticated seller. Supports filters: status, sort_by, sort_direction, stock_status, keyword (search by name only), category_id, location_id, subcategory_id (only if both category_id and location_id are present).
 
 **Query Parameters:**
-- `per_page`, `status`, `sort_by`, `sort_direction`, `stock_status`
+- `status`, `sort_by`, `sort_direction`, `stock_status`, `keyword`, `category_id`, `location_id`, `subcategory_id`
+
+- The page size is fixed at 10 products per page.
+- The `keyword` filter only searches the product name (not description).
+- Sellers cannot filter by is_featured or attributes.
+- The `subcategory_id` filter is only applied if both `category_id` and `location_id` are present in the request.
 
 **Response (200 OK):**
 ```json
