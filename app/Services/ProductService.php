@@ -74,8 +74,7 @@ class ProductService
             if (isset($filters['keyword']) && !empty($filters['keyword'])) {
                 $keyword = $filters['keyword'];
                 $query->where(function($q) use ($keyword) {
-                    $q->where('name', 'like', "%{$keyword}%")
-                      ->orWhere('description', 'like', "%{$keyword}%");
+                    $q->where('name', 'like', "%{$keyword}%");
                 });
             }
 
@@ -168,10 +167,9 @@ class ProductService
                     CASE
                         WHEN name LIKE ? THEN 1
                         WHEN name LIKE ? THEN 2
-                        WHEN description LIKE ? THEN 3
-                        ELSE 4
+                        ELSE 3
                     END, name ASC
-                ", ["{$keyword}%", "%{$keyword}%", "%{$keyword}%"]);
+                ", ["{$keyword}%", "%{$keyword}%"]);
             } else {
                 $query->orderBy($sortBy, $sortDirection);
             }
@@ -1037,8 +1035,7 @@ class ProductService
         if (isset($filters['keyword']) && !empty($filters['keyword'])) {
             $keyword = $filters['keyword'];
             $priceQuery->where(function($q) use ($keyword) {
-                $q->where('name', 'LIKE', "%{$keyword}%")
-                  ->orWhere('description', 'LIKE', "%{$keyword}%");
+                $q->where('name', 'LIKE', "%{$keyword}%");
             });
         }
 
