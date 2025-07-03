@@ -37,7 +37,10 @@ class ProductResource extends JsonResource
             'subcategory' => new SubcategoryResource($this->subcategory),
             'category' => new CategoryResource($this->category),
             'location' => new LocationResource($this->location),
-            'seller_name' => $this->when(isset($this->seller_name), $this->seller_name),
+            'seller_name' => $this->when(
+                isset($this->seller_name) && auth()->id() !== $this->user_id,
+                $this->seller_name
+            ),
 
             // Images
             'images' => ImageResource::collection($this->whenLoaded('images')),
