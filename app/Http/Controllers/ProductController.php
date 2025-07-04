@@ -95,8 +95,20 @@ class ProductController extends ImprovedController
 
             // Get products with targeted filtering
             $result = $this->productService->getTargetedProductListing($filters, $perPage);
+            $products = $result['products'];
+            $filtersMeta = $result['filters'];
 
-            return $this->respondWithSuccess('Products retrieved successfully', 200, $result);
+            return $this->respondWithSuccess('Products retrieved successfully', 200, [
+                'products' => ProductResource::collection($products->items()),
+                'pagination' => [
+                    'current_page' => $products->currentPage(),
+                    'last_page' => $products->lastPage(),
+                    'per_page' => $products->perPage(),
+                    'total' => $products->total(),
+                    'has_more_pages' => $products->hasMorePages(),
+                ],
+                'filters' => $filtersMeta
+            ]);
         } catch (\Exception $e) {
             Log::error('Error retrieving products', ['error' => $e->getMessage()]);
             return $this->respondWithError('Error retrieving products: ' . $e->getMessage(), 500);
@@ -611,7 +623,16 @@ class ProductController extends ImprovedController
 
             $products = $this->productService->searchProducts($filters, $pageSize, false);
 
-            return $this->respondWithSuccess('Your products retrieved successfully', 200, $products);
+            return $this->respondWithSuccess('Your products retrieved successfully', 200, [
+                'products' => ProductResource::collection($products->items()),
+                'pagination' => [
+                    'current_page' => $products->currentPage(),
+                    'last_page' => $products->lastPage(),
+                    'per_page' => $products->perPage(),
+                    'total' => $products->total(),
+                    'has_more_pages' => $products->hasMorePages(),
+                ]
+            ]);
         } catch (\Exception $e) {
             Log::error('Error retrieving seller products', ['error' => $e->getMessage()]);
             return $this->respondWithError('Error retrieving your products: ' . $e->getMessage(), 500);
