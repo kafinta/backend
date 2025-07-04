@@ -60,11 +60,7 @@ class ProductService
                         $query->select('id', 'user_id', 'business_name');
                     }]);
                 }]);
-
-                // Use a custom query to limit images to 3 per product
-                $query->with(['images' => function($query) {
-                    $query->limit(3);
-                }]);
+                // Do NOT eager load images here
             } else {
                 // For detailed view, load all relationships
                 $query->with(['subcategory.category', 'images', 'attributeValues.attribute', 'user.seller']);
@@ -109,11 +105,7 @@ class ProductService
             }
 
             if (isset($filters['seller_id']) && !empty($filters['seller_id'])) {
-                $query->whereHas('user', function($q) use ($filters) {
-                    $q->whereHas('seller', function($sq) use ($filters) {
-                        $sq->where('id', $filters['seller_id']);
-                    });
-                });
+                $query->where('user_id', $filters['seller_id']);
             }
 
             if (isset($filters['location_id']) && !empty($filters['location_id'])) {
@@ -176,6 +168,12 @@ class ProductService
 
             // Execute the query with pagination
             $products = $query->paginate($perPage);
+
+            // Manually load up to 3 images per product after pagination
+            $products->getCollection()->each(function ($product) {
+                $images = $product->images()->limit(3)->get();
+                $product->setRelation('images', $images);
+            });
 
             // Transform the products based on view type
             $products->getCollection()->transform(function ($product) use ($isDetailedView) {
