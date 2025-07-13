@@ -371,7 +371,7 @@ class Product extends Model
     }
 
     /**
-     * Reduce stock quantity (for sales) - Enhanced version
+     * Reduce stock quantity (for sales) - Enhanced version with atomic check
      *
      * @param int $quantity
      * @param string $reason
@@ -382,27 +382,30 @@ class Product extends Model
     {
         if (!$this->manage_stock) return true;
 
-        if ($this->stock_quantity < $quantity) {
+        // Atomic decrement with stock check
+        $updated = self::where('id', $this->id)
+            ->where('stock_quantity', '>=', $quantity)
+            ->decrement('stock_quantity', $quantity);
+
+        if (!$updated) {
             throw new \Exception(
-                "Insufficient stock. Available: {$this->stock_quantity}, Requested: {$quantity}"
+                "Insufficient stock. Available: {$this->fresh()->stock_quantity}, Requested: {$quantity}"
             );
         }
 
-        $previousStock = $this->stock_quantity;
-        $this->stock_quantity -= $quantity;
+        // Refresh the model
+        $this->refresh();
 
         // Auto-set out_of_stock status if stock reaches 0
         $previousStatus = $this->status;
         if ($this->stock_quantity <= 0 && $this->status === 'active') {
             $this->status = 'out_of_stock';
+            $this->save();
         }
 
-        $this->save();
-
         // Log stock movement for audit trail
-        \Log::info('Stock reduced', [
+        \Log::info('Stock reduced (atomic)', [
             'product_id' => $this->id,
-            'previous_stock' => $previousStock,
             'quantity_reduced' => $quantity,
             'new_stock' => $this->stock_quantity,
             'reason' => $reason,
