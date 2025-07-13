@@ -520,4 +520,38 @@ class Product extends Model
 
         return number_format(($orders / $views) * 100, 2);
     }
+
+    public function reviews()
+    {
+        return $this->hasMany(\App\Models\Review::class);
+    }
+
+    // Aspect rating averages
+    public function getAverageValueForMoneyAttribute()
+    {
+        return round($this->reviews()->where('status', 'active')->avg('value_for_money'), 2);
+    }
+    public function getAverageTrueToDescriptionAttribute()
+    {
+        return round($this->reviews()->where('status', 'active')->avg('true_to_description'), 2);
+    }
+    public function getAverageProductQualityAttribute()
+    {
+        return round($this->reviews()->where('status', 'active')->avg('product_quality'), 2);
+    }
+    public function getAverageShippingAttribute()
+    {
+        return round($this->reviews()->where('status', 'active')->avg('shipping'), 2);
+    }
+
+    public function getOverallRatingAttribute()
+    {
+        $reviews = $this->reviews()->where('status', 'active')->whereNull('parent_review_id')->get();
+        $averages = $reviews->map(function ($review) {
+            $sum = $review->value_for_money + $review->true_to_description + $review->product_quality + $review->shipping;
+            return ($sum > 0) ? $sum / 4 : null;
+        })->filter();
+        if ($averages->count() === 0) return null;
+        return round($averages->avg(), 2);
+    }
 }
