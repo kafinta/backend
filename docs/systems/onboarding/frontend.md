@@ -1,394 +1,130 @@
-# Frontend Integration Guide
+# Onboarding Frontend Integration Guide
 
-## Overview
-This guide provides instructions for integrating the onboarding system with frontend applications. The system implements a step-by-step approach for seller registration with required and optional steps.
+## How to Use This Guide
+This document provides practical notes for integrating the onboarding API into any frontend application. For each endpoint, you’ll find:
+- **Endpoint path and method**
+- **Purpose/description**
+- **Who can call it**
+- **Required/optional fields**
+- **Dependencies (what must be done before/after)**
+- **Order in workflow**
+- **Auth requirements**
+- **Error handling notes**
+- **Common pitfalls**
+- **Special notes for frontend devs**
 
-## Implementation Steps
+No code samples are included—use your preferred HTTP client. For request/response examples, see the API documentation.
 
-### 1. Setup Onboarding Service
+---
 
-```typescript
-// onboarding.service.ts
-export class OnboardingService {
-    private baseURL: string;
+## Onboarding Management
 
-    constructor() {
-        this.baseURL = '/api/seller';
-    }
+### Start Onboarding
+- **Endpoint:** `POST /api/seller/start-onboarding`
+- **Purpose:** Begin the onboarding process for a new seller
+- **Who can call:** Anyone (public)
+- **Required fields:** `business_name`, `business_category`, `phone_number`
+- **Order:** First step in onboarding
 
-    public async startOnboarding(data: {
-        business_name: string;
-        business_category: string;
-        phone_number: string;
-    }) {
-        try {
-            const response = await fetch(`${this.baseURL}/start-onboarding`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data)
-            });
-            return await response.json();
-        } catch (error) {
-            throw this.handleError(error);
-        }
-    }
+### Get Onboarding Progress
+- **Endpoint:** `GET /api/seller/progress`
+- **Purpose:** Retrieve current onboarding progress and required/optional steps
+- **Who can call:** Authenticated sellers
+- **Notes:** Use to show progress bars or step lists in UI
 
-    public async checkProgress() {
-        try {
-            const response = await fetch(`${this.baseURL}/progress`);
-            return await response.json();
-        } catch (error) {
-            throw this.handleError(error);
-        }
-    }
+---
 
-    public async verifyPhone(data: {
-        phone_number: string;
-        verification_code: string;
-    }) {
-        try {
-            const response = await fetch(`${this.baseURL}/verify-phone`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data)
-            });
-            return await response.json();
-        } catch (error) {
-            throw this.handleError(error);
-        }
-    }
+## Verification
 
-    public async updateProfile(data: {
-        business_name?: string;
-        business_description?: string;
-        business_category?: string;
-        business_address?: string;
-        business_phone?: string;
-        business_email?: string;
-    }) {
-        try {
-            const response = await fetch(`${this.baseURL}/update-profile`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data)
-            });
-            return await response.json();
-        } catch (error) {
-            throw this.handleError(error);
-        }
-    }
+### Phone Verification
+- **Endpoint:** `POST /api/seller/verify-phone`
+- **Purpose:** Verify seller’s phone number
+- **Who can call:** Authenticated sellers
+- **Required fields:** `phone_number`, `verification_code`
+- **Dependencies:** Must have started onboarding
+- **Order:** After starting onboarding, before profile completion
 
-    public async acceptAgreement() {
-        try {
-            const response = await fetch(`${this.baseURL}/accept-agreement`, {
-                method: 'POST'
-            });
-            return await response.json();
-        } catch (error) {
-            throw this.handleError(error);
-        }
-    }
+### KYC Verification
+- **Endpoint:** `POST /api/seller/verify-kyc`
+- **Purpose:** Submit KYC documents for verification
+- **Who can call:** Authenticated sellers
+- **Required fields:** `id_type`, `id_number`, `id_document` (file)
+- **Order:** Optional, but may be required for full verification
 
-    public async updatePaymentInfo(data: {
-        bank_name: string;
-        account_number: string;
-        account_name: string;
-        payment_methods: string[];
-    }) {
-        try {
-            const response = await fetch(`${this.baseURL}/update-payment-info`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data)
-            });
-            return await response.json();
-        } catch (error) {
-            throw this.handleError(error);
-        }
-    }
+---
 
-    public async updateSocialMedia(data: {
-        facebook?: string;
-        instagram?: string;
-        twitter?: string;
-        website?: string;
-    }) {
-        try {
-            const response = await fetch(`${this.baseURL}/update-social-media`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data)
-            });
-            return await response.json();
-        } catch (error) {
-            throw this.handleError(error);
-        }
-    }
+## Business Profile
 
-    public async completeOnboarding() {
-        try {
-            const response = await fetch(`${this.baseURL}/complete-onboarding`, {
-                method: 'POST'
-            });
-            return await response.json();
-        } catch (error) {
-            throw this.handleError(error);
-        }
-    }
+### Update Business Profile
+- **Endpoint:** `POST /api/seller/update-profile`
+- **Purpose:** Update seller’s business profile information
+- **Who can call:** Authenticated sellers
+- **Required fields:** See API docs
+- **Order:** After phone verification, before agreement
 
-    private handleError(error: any) {
-        if (error.response) {
-            return error.response.data;
-        }
-        return new Error('An unexpected error occurred');
-    }
-}
-```
+---
 
-### 2. State Management
-The onboarding service can be integrated with any state management solution. Here's an example using a simple store pattern:
+## Agreement
 
-```typescript
-// onboarding.store.ts
-export class OnboardingStore {
-    private progress: any = null;
-    private loading: boolean = false;
-    private error: any = null;
-    private onboardingService: OnboardingService;
+### Accept Seller Agreement
+- **Endpoint:** `POST /api/seller/accept-agreement`
+- **Purpose:** Accept the seller agreement
+- **Who can call:** Authenticated sellers
+- **Order:** After profile completion, before onboarding completion
 
-    constructor() {
-        this.onboardingService = new OnboardingService();
-    }
+---
 
-    async startOnboarding(data: any) {
-        try {
-            this.loading = true;
-            const response = await this.onboardingService.startOnboarding(data);
-            this.progress = response.progress;
-            this.error = null;
-            return response;
-        } catch (error) {
-            this.error = error;
-            throw error;
-        } finally {
-            this.loading = false;
-        }
-    }
+## Payment Information
 
-    // ... similar methods for other operations
-}
-```
+### Update Payment Information
+- **Endpoint:** `POST /api/seller/update-payment-info`
+- **Purpose:** Add or update seller’s payment information
+- **Who can call:** Authenticated sellers
+- **Required fields:** See API docs
+- **Order:** Optional, but recommended before completing onboarding
 
-### 3. Component Example
-Here's a framework-agnostic example of an onboarding form component:
+---
 
-```typescript
-// OnboardingForm.ts
-export class OnboardingForm {
-    private formData = {
-        business_name: '',
-        business_category: '',
-        phone_number: ''
-    };
+## Social Media
 
-    constructor(private onboardingStore: OnboardingStore) {}
+### Update Social Media
+- **Endpoint:** `POST /api/seller/update-social-media`
+- **Purpose:** Add or update seller’s social media links
+- **Who can call:** Authenticated sellers
+- **Order:** Optional
 
-    async handleSubmit(event: Event) {
-        event.preventDefault();
-        try {
-            await this.onboardingStore.startOnboarding(this.formData);
-            // Handle success
-        } catch (error) {
-            // Handle error
-        }
-    }
+---
 
-    updateField(field: string, value: any) {
-        this.formData[field] = value;
-    }
-}
-```
+## Completion
+
+### Complete Onboarding
+- **Endpoint:** `POST /api/seller/complete-onboarding`
+- **Purpose:** Mark onboarding as complete
+- **Who can call:** Authenticated sellers
+- **Dependencies:** All required steps must be completed
+- **Order:** Final step
+
+---
+
+## Error Handling & Response Structure
+- All API responses follow a standard structure: see API docs for details
+- Always check `success` and `status` fields
+- For validation errors, display the `errors` object
+- For other errors, display the `message` field
+- For authentication errors, handle session expiration and redirect to login as needed
+
+---
 
 ## Best Practices
+- Validate user input before sending to API
+- Show loading and error states for all API calls
+- Use the `message` field for user feedback
+- Track onboarding progress and required steps in the UI
+- For file uploads, validate file type and size before sending
 
-### 1. Progress Management
-- Track completion status
-- Save progress automatically
-- Handle session timeouts
-- Implement proper validation
+---
 
-### 2. Error Handling
-- Show clear error messages
-- Handle validation errors
-- Implement retry mechanism
-- Log errors properly
-
-### 3. User Experience
-- Show clear progress
-- Provide helpful guidance
-- Handle loading states
-- Implement proper validation
-
-### 4. Security
-- Validate all inputs
-- Handle sensitive data
-- Implement proper error handling
-- Follow security best practices
-
-## Common Issues and Solutions
-
-### 1. Progress Tracking
-```typescript
-// Handle progress tracking
-const handleProgressTracking = async () => {
-    try {
-        const progress = await checkProgress();
-        if (progress.required_steps.some(step => !step.completed)) {
-            // Handle incomplete required steps
-            showIncompleteSteps(progress.required_steps);
-        }
-    } catch (error) {
-        // Handle error
-        showError(error.message);
-    }
-};
-```
-
-### 2. Phone Verification
-```typescript
-// Handle phone verification
-const handlePhoneVerification = async (phoneNumber: string, code: string) => {
-    try {
-        if (!phoneNumber || !code) {
-            throw new Error('Phone number and verification code are required.');
-        }
-
-        await verifyPhone({ phone_number: phoneNumber, verification_code: code });
-    } catch (error) {
-        // Handle error
-        showError(error.message);
-    }
-};
-```
-
-### 3. Profile Update
-```typescript
-// Handle profile update
-const handleProfileUpdate = async (profileData: any) => {
-    try {
-        // Validate required fields
-        const requiredFields = ['business_name', 'business_category'];
-        const missingFields = requiredFields.filter(field => !profileData[field]);
-        
-        if (missingFields.length > 0) {
-            throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
-        }
-
-        await updateProfile(profileData);
-    } catch (error) {
-        // Handle error
-        showError(error.message);
-    }
-};
-```
-
-## Testing
-
-### 1. Unit Tests
-```typescript
-// onboarding.service.test.ts
-describe('OnboardingService', () => {
-    it('should start onboarding successfully', async () => {
-        const onboardingService = new OnboardingService();
-        const response = await onboardingService.startOnboarding({
-            business_name: 'Test Business',
-            business_category: 'Retail',
-            phone_number: '+1234567890'
-        });
-        expect(response.progress).toBeDefined();
-    });
-});
-```
-
-### 2. Integration Tests
-```typescript
-// onboarding.integration.test.ts
-describe('Onboarding Flow', () => {
-    it('should complete full onboarding flow', async () => {
-        // Start onboarding
-        const startResponse = await startOnboarding(data);
-        expect(startResponse.progress).toBeDefined();
-        
-        // Verify phone
-        const verifyResponse = await verifyPhone(phoneData);
-        expect(verifyResponse.verified).toBe(true);
-        
-        // Update profile
-        const profileResponse = await updateProfile(profileData);
-        expect(profileResponse.updated).toBe(true);
-        
-        // Complete onboarding
-        const completeResponse = await completeOnboarding();
-        expect(completeResponse.completed).toBe(true);
-    });
-});
-```
-
-## Next Steps
-1. Review the [API Documentation](api.md) for endpoint details
-2. Check the [Roadmap](roadmap.md) for upcoming features
-3. Implement additional security measures
-4. Add error tracking and monitoring 
-
-## Handling Responses
-
-All onboarding API responses follow a standard structure:
-
-- Success:
-```json
-{
-    "success": true,
-    "status": "success",
-    "status_code": 200,
-    "message": "Business profile updated successfully",
-    "data": {
-        "seller": {
-            "id": 1,
-            "profile_completed_at": "2024-06-10T12:00:00Z"
-        }
-    }
-}
-```
-- Error (validation):
-```json
-{
-    "success": false,
-    "status": "fail",
-    "status_code": 422,
-    "message": "Validation failed",
-    "errors": {
-        "business_name": ["The business name field is required."]
-    }
-}
-```
-- Error (other):
-```json
-{
-    "success": false,
-    "status": "fail",
-    "status_code": 401,
-    "message": "Unauthenticated"
-}
-```
-
-When handling responses in your frontend code, always check the `success` and `status` fields, and display the `message` or validation `errors` as appropriate. 
+## Special Notes
+- Onboarding is a multi-step process; required and optional steps may vary
+- Use `/api/seller/progress` to dynamically build onboarding UI
+- For request/response examples, see the API documentation 
