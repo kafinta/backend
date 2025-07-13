@@ -81,6 +81,45 @@ class ProductResource extends JsonResource
                     'conversion_rate' => $this->getConversionRate(),
                 ];
             }),
+
+            // Review summary
+            'review_summary' => [
+                'overall_rating' => $this->overall_rating,
+                'average_value_for_money' => $this->average_value_for_money,
+                'average_true_to_description' => $this->average_true_to_description,
+                'average_product_quality' => $this->average_product_quality,
+                'average_shipping' => $this->average_shipping,
+                'review_count' => $this->reviews()->where('status', 'active')->count(),
+            ],
+            'latest_reviews' => $this->whenLoaded('reviews', function () {
+                return $this->reviews->where('status', 'active')->sortByDesc('created_at')->take(3)->values()->map(function ($review) {
+                    return [
+                        'id' => $review->id,
+                        'user' => $review->user ? [
+                            'id' => $review->user->id,
+                            'username' => $review->user->username,
+                        ] : null,
+                        'value_for_money' => $review->value_for_money,
+                        'true_to_description' => $review->true_to_description,
+                        'product_quality' => $review->product_quality,
+                        'shipping' => $review->shipping,
+                        'comment' => $review->comment,
+                        'images' => $review->images,
+                        'created_at' => $review->created_at,
+                        'replies' => $review->replies->map(function ($reply) {
+                            return [
+                                'id' => $reply->id,
+                                'user' => $reply->user ? [
+                                    'id' => $reply->user->id,
+                                    'username' => $reply->user->username,
+                                ] : null,
+                                'comment' => $reply->comment,
+                                'created_at' => $reply->created_at,
+                            ];
+                        }),
+                    ];
+                });
+            }),
         ];
     }
 }
