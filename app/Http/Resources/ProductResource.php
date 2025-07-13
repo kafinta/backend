@@ -20,7 +20,8 @@ class ProductResource extends JsonResource
             'slug' => $this->slug,
             'description' => $this->description,
             'price' => $this->price,
-            'user_id' => $this->user_id,
+            // 'user_id' => $this->user_id, // Remove user_id from response
+            'seller_name' => optional($this->user && $this->user->relationLoaded('seller') ? $this->user->seller : ($this->user->seller ?? null))->business_name,
             'status' => $this->status,
             'denial_reason' => $this->when($this->denial_reason, $this->denial_reason),
             'is_featured' => $this->is_featured,
