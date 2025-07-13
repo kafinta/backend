@@ -160,7 +160,7 @@ class Variant extends Model
     }
 
     /**
-     * Reduce stock quantity (for sales)
+     * Reduce stock quantity (for sales) - Enhanced version with atomic check
      *
      * @param int $quantity
      * @return bool
@@ -169,12 +169,17 @@ class Variant extends Model
     {
         if (!$this->manage_stock) return true;
 
-        if ($this->stock_quantity < $quantity) {
+        // Atomic decrement with stock check
+        $updated = self::where('id', $this->id)
+            ->where('stock_quantity', '>=', $quantity)
+            ->decrement('stock_quantity', $quantity);
+
+        if (!$updated) {
             return false; // Not enough stock
         }
 
-        $this->stock_quantity -= $quantity;
-        $this->save();
+        // Refresh the model
+        $this->refresh();
 
         return true;
     }
