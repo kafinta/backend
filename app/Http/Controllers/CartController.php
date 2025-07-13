@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Validator;
 
+// NOTE: All checkout and order flows should use CheckoutController. CartController only handles cart CRUD and transfer logic.
 class CartController extends ImprovedController
 {
     protected $cartService;
@@ -329,67 +330,6 @@ class CartController extends ImprovedController
             return $response;
         } catch (\Exception $e) {
             return $this->respondWithError('Error transferring guest cart: ' . $e->getMessage(), 500);
-        }
-    }
-
-    public function checkout(Request $request)
-    {
-        $user = auth()->user();
-
-        if (!$user) {
-            return $this->respondWithError('User not authenticated', 401);
-        }
-
-        // Validate the cart or perform any additional checks as needed
-
-        // Begin a database transaction
-        DB::beginTransaction();
-
-        try {
-            // Create an order
-            $order = Order::create([
-                'user_id' => $user->id,
-                // Add other necessary fields like total amount, status, etc.
-            ]);
-
-            // Move cart items to order items
-            $cartItems = $user->cartItems;
-
-            foreach ($cartItems as $cartItem) {
-                $order->orderItems()->create([
-                    'product_id' => $cartItem->product_id,
-                    'quantity' => $cartItem->quantity,
-                    // Add other necessary fields like price, subtotal, etc.
-                ]);
-            }
-
-            // Clear the cart
-            $user->cartItems()->delete();
-
-            // Commit the transaction
-            DB::commit();
-
-            return $this->respondWithSuccess('Checkout successful', 200, [
-                'order_id' => $order->id
-            ]);
-        } catch (\Exception $e) {
-            // An error occurred, rollback the transaction
-            DB::rollBack();
-
-            return $this->respondWithError('Checkout failed: ' . $e->getMessage(), 500);
-        }
-    }
-
-    public function viewOrderSummary(Request $request)
-    {
-        try {
-            // Retrieve and display the order summary
-            // This is a placeholder for future implementation
-            return $this->respondWithSuccess('Order summary retrieved successfully', 200, [
-                'summary' => 'Order summary will be implemented here'
-            ]);
-        } catch (\Exception $e) {
-            return $this->respondWithError('Error retrieving order summary: ' . $e->getMessage(), 500);
         }
     }
 }
