@@ -6,6 +6,8 @@ namespace App\Providers;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use App\Models\Product;
 use App\Policies\ProductPolicy;
+use App\Models\Review;
+use App\Policies\ReviewPolicy;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -23,6 +25,8 @@ class AuthServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        $this->registerPolicies();
+        // Register ReviewPolicy
+        \Illuminate\Support\Facades\Gate::policy(Review::class, ReviewPolicy::class);
     }
 }
