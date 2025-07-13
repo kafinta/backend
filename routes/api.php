@@ -513,6 +513,17 @@ Route::prefix('products')->group(function () {
     Route::get('/{product}', [ProductController::class, 'show'])->name('products.show');
 });
 
+// Review system
+Route::get('/products/{product}/reviews', [\App\Http\Controllers\ReviewController::class, 'index']);
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/products/{product}/reviews', [\App\Http\Controllers\ReviewController::class, 'store']);
+    Route::patch('/reviews/{id}', [\App\Http\Controllers\ReviewController::class, 'update']);
+    Route::delete('/reviews/{id}', [\App\Http\Controllers\ReviewController::class, 'destroy']);
+    Route::post('/reviews/{id}/reply', [\App\Http\Controllers\ReviewController::class, 'reply']);
+    Route::post('/reviews/{id}/flag', [\App\Http\Controllers\ReviewController::class, 'flag']);
+    Route::post('/reviews/{id}/helpful', [\App\Http\Controllers\ReviewController::class, 'helpful']);
+});
+
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {
     // User routes
