@@ -23,7 +23,12 @@ class Product extends Model
         'is_featured',
         // Inventory fields
         'stock_quantity',
-        'manage_stock'
+        'manage_stock',
+        // Discount fields
+        'discount_type',
+        'discount_value',
+        'discount_start',
+        'discount_end',
     ];
 
     /**
@@ -56,6 +61,9 @@ class Product extends Model
         'is_active' => 'boolean',
         'is_featured' => 'boolean',
         'manage_stock' => 'boolean',
+        'discount_value' => 'decimal:2',
+        'discount_start' => 'datetime',
+        'discount_end' => 'datetime',
     ];
 
     public function subcategory()
@@ -423,6 +431,58 @@ class Product extends Model
     public function isOutOfStock()
     {
         return $this->manage_stock && $this->stock_quantity <= 0;
+    }
+
+    /**
+     * Determine if the product has an active discount
+     *
+     * @return bool
+     */
+    public function hasActiveDiscount()
+    {
+        if (!$this->discount_type || !$this->discount_value) {
+            return false;
+        }
+        $now = now();
+        if ($this->discount_start && $now->lt($this->discount_start)) {
+            return false;
+        }
+        if ($this->discount_end && $now->gt($this->discount_end)) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Get the discounted price if a discount is active, otherwise return the original price
+     *
+     * @return float
+     */
+    public function getDiscountedPrice()
+    {
+        if (!$this->hasActiveDiscount()) {
+            return (float) $this->price;
+        }
+        if ($this->discount_type === 'percent') {
+            $discount = ($this->discount_value / 100) * $this->price;
+            return max(0, (float) ($this->price - $discount));
+        } elseif ($this->discount_type === 'fixed') {
+            return max(0, (float) ($this->price - $this->discount_value));
+        }
+        return (float) $this->price;
+    }
+
+    /**
+     * Get the discount amount if a discount is active, otherwise 0
+     *
+     * @return float
+     */
+    public function getDiscountAmount()
+    {
+        if (!$this->hasActiveDiscount()) {
+            return 0.0;
+        }
+        return (float) ($this->price - $this->getDiscountedPrice());
     }
 
     /**
