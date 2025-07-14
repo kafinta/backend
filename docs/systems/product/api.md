@@ -708,4 +708,109 @@ PATCH /api/products/{product}/stock
   "status_code": 409,
   "message": "Variant with these attributes already exists"
 }
-``` 
+```
+
+## Product Discount API
+
+### 1. Product Creation/Update (Step 1)
+Discount fields can be included in the product creation and update requests:
+
+**Fields:**
+- `discount_type`: `percent` or `fixed` (optional)
+- `discount_value`: decimal (optional, required if `discount_type` is set)
+- `discount_start`: datetime (optional)
+- `discount_end`: datetime (optional, must be after or equal to `discount_start`)
+
+**Example Request (POST /products/basic-info):**
+```json
+{
+  "name": "Sample Product",
+  "description": "A great product.",
+  "price": 100.00,
+  "subcategory_id": 1,
+  "manage_stock": true,
+  "stock_quantity": 10,
+  "discount_type": "percent",
+  "discount_value": 20,
+  "discount_start": "2024-07-01T00:00:00Z",
+  "discount_end": "2024-07-10T23:59:59Z"
+}
+```
+
+**Validation:**
+- If `discount_type` is set, `discount_value` is required.
+- `percent` discounts: 0–100.
+- `fixed` discounts: must not exceed product price.
+- `discount_end` must not be before `discount_start`.
+
+---
+
+### 2. Standalone Discount Endpoints
+
+#### Set/Update Discount
+- **PUT /products/{product}/discount**
+- **Body:**
+```json
+{
+  "discount_type": "fixed",
+  "discount_value": 10,
+  "discount_start": "2024-07-01T00:00:00Z",
+  "discount_end": "2024-07-10T23:59:59Z"
+}
+```
+- **Permissions:** Only the product owner or admin.
+- **Validation:** Same as above.
+- **Response:** Returns the updated product resource with discount info.
+
+#### Remove Discount
+- **DELETE /products/{product}/discount**
+- **Permissions:** Only the product owner or admin.
+- **Response:** Returns the updated product resource with discount fields set to null.
+
+---
+
+### 3. API Response Fields
+
+**Product Resource:**
+```json
+{
+  "id": 1,
+  "name": "Sample Product",
+  "price": 100.00,
+  "discount_type": "percent",
+  "discount_value": 20,
+  "discount_start": "2024-07-01T00:00:00Z",
+  "discount_end": "2024-07-10T23:59:59Z",
+  "has_active_discount": true,
+  "discount_amount": 20.00,
+  "discounted_price": 80.00,
+  ...
+}
+```
+
+**Cart Item Resource:**
+```json
+{
+  "id": 1,
+  "product": { ... },
+  "price": 80.00,
+  "original_price": 100.00,
+  "discounted_price": 80.00,
+  "discount_amount": 20.00,
+  "has_active_discount": true,
+  ...
+}
+```
+
+---
+
+### 4. Permissions & Error Responses
+- Only the product owner or admin can set/update/remove discounts.
+- Validation errors return 422 with details.
+- Unauthorized access returns 403.
+
+---
+
+### 5. Notes
+- Discounts are always product-specific and automatic (no coupon required).
+- Discounts are reflected in all relevant API responses. 

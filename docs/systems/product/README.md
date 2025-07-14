@@ -211,3 +211,47 @@ In development mode, status changes are logged:
 - View status history at `GET /api/products/{product}/status-history`
 - Simulate status change at `POST /api/products/{product}/simulate-status`
 - Clear status history at `DELETE /api/products/{product}/status-history` 
+
+## Product Discounts
+
+### Overview
+The Product Discount System allows sellers to set automatic, product-specific discounts (sales) on their products. Discounts can be set during product creation, updated later, or managed via dedicated endpoints. Discounts are automatically applied in the cart and reflected in all relevant API responses.
+
+### Supported Discount Types
+- **Percent**: e.g., 20% off
+- **Fixed**: e.g., $5 off
+
+### How Sellers Set Discounts
+- **During Product Creation (Step 1):**
+  - Sellers can include discount fields when creating a product.
+- **During Product Update:**
+  - Sellers can update discount fields as part of the product update flow.
+- **Standalone Endpoints:**
+  - Sellers can update or remove a product's discount using dedicated endpoints:
+    - `PUT /products/{product}/discount` (set/update)
+    - `DELETE /products/{product}/discount` (remove)
+
+### Discount Fields
+- `discount_type`: `percent` or `fixed`
+- `discount_value`: decimal, the value of the discount
+- `discount_start`: datetime, when the discount becomes active (optional)
+- `discount_end`: datetime, when the discount expires (optional)
+
+### Permissions & Validation
+- Only the product owner (seller) or an admin can set, update, or remove discounts.
+- Validation ensures:
+  - Percent discounts are between 0 and 100.
+  - Fixed discounts do not exceed the product price.
+  - End date is not before start date.
+
+### How Discounts Are Reflected
+- **Product API Responses:**
+  - Discount fields and the calculated discounted price are included in all product API responses.
+- **Cart API Responses:**
+  - If a product in the cart has an active discount, the discounted price is used for calculations and shown in the cart API response.
+- **Order/Checkout:**
+  - Discounts are applied at checkout and reflected in order totals.
+
+### Example Use Cases
+- Sellers can run sales on specific products for a limited time.
+- Buyers see discounted prices automatically in product listings and their cart. 
