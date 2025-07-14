@@ -220,7 +220,10 @@ class CartService
 
         foreach ($cartItems as $cartItem) {
             // Determine the price (use variant price if available, otherwise product price)
-            $price = $cartItem->variant ? $cartItem->variant->price : $cartItem->product->price;
+            $product = $cartItem->product;
+            $price = $cartItem->variant ? $cartItem->variant->price : ($product->hasActiveDiscount() ? $product->getDiscountedPrice() : $product->price);
+            $original_price = $cartItem->variant ? $cartItem->variant->price : $product->price;
+            $discount_amount = $cartItem->variant ? 0 : ($product->hasActiveDiscount() ? $product->getDiscountAmount() : 0);
             $subtotal = $price * $cartItem->quantity;
             $totalPrice += $subtotal;
 
@@ -229,11 +232,18 @@ class CartService
                 'id' => $cartItem->id,
                 'quantity' => $cartItem->quantity,
                 'price' => $price,
+                'original_price' => $original_price,
+                'discount_amount' => $discount_amount,
                 'subtotal' => $subtotal,
                 'product' => [
-                    'id' => $cartItem->product->id,
-                    'name' => $cartItem->product->name,
-                    'image' => $cartItem->product->images->first() ? $cartItem->product->images->first()->path : null,
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'image' => $product->images->first() ? $product->images->first()->path : null,
+                    'has_active_discount' => $product->hasActiveDiscount(),
+                    'discount_type' => $product->discount_type,
+                    'discount_value' => $product->discount_value,
+                    'discount_start' => $product->discount_start,
+                    'discount_end' => $product->discount_end,
                 ],
                 'variant' => null
             ];
