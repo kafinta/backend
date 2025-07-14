@@ -29,6 +29,12 @@ return new class extends Migration
             $table->integer('stock_quantity')->default(0);
             $table->boolean('manage_stock')->default(true);
 
+            // Discount fields
+            $table->enum('discount_type', ['percent', 'fixed'])->nullable();
+            $table->decimal('discount_value', 8, 2)->nullable();
+            $table->dateTime('discount_start')->nullable();
+            $table->dateTime('discount_end')->nullable();
+
             $table->timestamps();
 
             // Add performance indexes
