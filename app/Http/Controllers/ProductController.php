@@ -628,6 +628,62 @@ class ProductController extends ImprovedController
         }
     }
 
+    /**
+     * Update or set a product's discount (standalone endpoint)
+     * Route: PUT /products/{product}/discount
+     */
+    public function updateDiscount(Request $request, Product $product)
+    {
+        // Only owner or admin
+        if ($product->user_id !== auth()->id() && !auth()->user()->hasRole('admin')) {
+            return $this->respondWithError('Unauthorized', 403);
+        }
+        $validator = Validator::make($request->all(), [
+            'discount_type' => 'required|in:percent,fixed',
+            'discount_value' => 'required|numeric|min:0',
+            'discount_start' => 'nullable|date',
+            'discount_end' => 'nullable|date|after_or_equal:discount_start',
+        ]);
+        if ($validator->fails()) {
+            return $this->respondWithError($validator->errors(), 422);
+        }
+        $data = $validator->validated();
+        // Discount validation
+        if ($data['discount_type'] === 'percent' && ($data['discount_value'] < 0 || $data['discount_value'] > 100)) {
+            return $this->respondWithError('Percent discount must be between 0 and 100.', 422);
+        }
+        $price = $product->price;
+        if ($data['discount_type'] === 'fixed' && $data['discount_value'] > $price) {
+            return $this->respondWithError('Fixed discount cannot exceed the product price.', 422);
+        }
+        $product->update([
+            'discount_type' => $data['discount_type'],
+            'discount_value' => $data['discount_value'],
+            'discount_start' => $data['discount_start'] ?? null,
+            'discount_end' => $data['discount_end'] ?? null,
+        ]);
+        return $this->respondWithSuccess('Product discount updated successfully', 200, new ProductResource($product));
+    }
+
+    /**
+     * Remove a product's discount (standalone endpoint)
+     * Route: DELETE /products/{product}/discount
+     */
+    public function removeDiscount(Request $request, Product $product)
+    {
+        // Only owner or admin
+        if ($product->user_id !== auth()->id() && !auth()->user()->hasRole('admin')) {
+            return $this->respondWithError('Unauthorized', 403);
+        }
+        $product->update([
+            'discount_type' => null,
+            'discount_value' => null,
+            'discount_start' => null,
+            'discount_end' => null,
+        ]);
+        return $this->respondWithSuccess('Product discount removed successfully', 200, new ProductResource($product));
+    }
+
     // ===== SELLER-SPECIFIC PRODUCT MANAGEMENT =====
 
     /**
