@@ -20,7 +20,14 @@ class ProductResource extends JsonResource
             'slug' => $this->slug,
             'description' => $this->description,
             'price' => $this->price,
-            // 'user_id' => $this->user_id, // Remove user_id from response
+            // Discount info
+            'discount_type' => $this->discount_type,
+            'discount_value' => $this->discount_value,
+            'discount_start' => $this->discount_start,
+            'discount_end' => $this->discount_end,
+            'has_active_discount' => $this->hasActiveDiscount(),
+            'discount_amount' => $this->getDiscountAmount(),
+            'discounted_price' => $this->getDiscountedPrice(),
             'seller_name' => optional($this->user && $this->user->relationLoaded('seller') ? $this->user->seller : ($this->user->seller ?? null))->business_name,
             'status' => $this->status,
             'denial_reason' => $this->when($this->denial_reason, $this->denial_reason),
