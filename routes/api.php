@@ -533,6 +533,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user/roles', [UserController::class, 'getRoles']);
 });
 
+// Product discount management
+Route::middleware('auth:sanctum')->group(function () {
+    Route::put('products/{product}/discount', [\App\Http\Controllers\ProductController::class, 'updateDiscount']);
+    Route::delete('products/{product}/discount', [\App\Http\Controllers\ProductController::class, 'removeDiscount']);
+});
+
 // Simulated Email API Routes (Development Only)
 if (config('app.env') === 'local') {
     Route::get('/simulated-emails', [SimulatedEmailController::class, 'index']);
