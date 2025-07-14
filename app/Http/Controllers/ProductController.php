@@ -242,6 +242,11 @@ class ProductController extends ImprovedController
                 'stock_quantity' => 'required_if:manage_stock,true|integer|min:0',
                 'images' => 'sometimes|array',
                 'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
+                // Discount fields
+                'discount_type' => 'nullable|in:percent,fixed',
+                'discount_value' => 'nullable|numeric|min:0',
+                'discount_start' => 'nullable|date',
+                'discount_end' => 'nullable|date|after_or_equal:discount_start',
             ]);
 
             if ($validator->fails()) {
@@ -255,6 +260,21 @@ class ProductController extends ImprovedController
             $data['slug'] = $this->generateUniqueSlug($data['name']);
             if (!$data['manage_stock']) {
                 $data['stock_quantity'] = 0;
+            }
+            // Discount validation
+            if (isset($data['discount_type'])) {
+                if (!isset($data['discount_value'])) {
+                    \DB::rollBack();
+                    return $this->respondWithError('Discount value is required when discount type is set.', 422);
+                }
+                if ($data['discount_type'] === 'percent' && ($data['discount_value'] < 0 || $data['discount_value'] > 100)) {
+                    \DB::rollBack();
+                    return $this->respondWithError('Percent discount must be between 0 and 100.', 422);
+                }
+                if ($data['discount_type'] === 'fixed' && isset($data['price']) && $data['discount_value'] > $data['price']) {
+                    \DB::rollBack();
+                    return $this->respondWithError('Fixed discount cannot exceed the product price.', 422);
+                }
             }
             $product = Product::create($data);
             $product->syncAttributesFromSubcategory();
@@ -311,11 +331,29 @@ class ProductController extends ImprovedController
                 'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
                 'delete_image_ids' => 'sometimes|array',
                 'delete_image_ids.*' => 'integer|exists:images,id',
+                // Discount fields
+                'discount_type' => 'nullable|in:percent,fixed',
+                'discount_value' => 'nullable|numeric|min:0',
+                'discount_start' => 'nullable|date',
+                'discount_end' => 'nullable|date|after_or_equal:discount_start',
             ]);
             if ($validator->fails()) {
                 return $this->respondWithError($validator->errors(), 422);
             }
             $data = $validator->validated();
+            // Discount validation
+            if (isset($data['discount_type'])) {
+                if (!isset($data['discount_value'])) {
+                    return $this->respondWithError('Discount value is required when discount type is set.', 422);
+                }
+                if ($data['discount_type'] === 'percent' && ($data['discount_value'] < 0 || $data['discount_value'] > 100)) {
+                    return $this->respondWithError('Percent discount must be between 0 and 100.', 422);
+                }
+                $price = $data['price'] ?? $product->price;
+                if ($data['discount_type'] === 'fixed' && $data['discount_value'] > $price) {
+                    return $this->respondWithError('Fixed discount cannot exceed the product price.', 422);
+                }
+            }
             if (isset($data['name'])) {
                 $data['slug'] = \Illuminate\Support\Str::slug($data['name']);
             }
