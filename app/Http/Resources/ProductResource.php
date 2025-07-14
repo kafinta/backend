@@ -28,7 +28,7 @@ class ProductResource extends JsonResource
             'has_active_discount' => $this->hasActiveDiscount(),
             'discount_amount' => $this->getDiscountAmount(),
             'discounted_price' => $this->getDiscountedPrice(),
-            'seller_name' => optional($this->user && $this->user->relationLoaded('seller') ? $this->user->seller : ($this->user->seller ?? null))->business_name,
+            'seller' => optional($this->user && $this->user->relationLoaded('seller') ? $this->user->seller : ($this->user->seller ?? null))->business_name,
             'status' => $this->status,
             'denial_reason' => $this->when($this->denial_reason, $this->denial_reason),
             'is_featured' => $this->is_featured,
@@ -45,10 +45,6 @@ class ProductResource extends JsonResource
             'subcategory' => new SubcategoryResource($this->subcategory),
             'category' => new CategoryResource($this->category),
             'location' => new LocationResource($this->location),
-            'seller_name' => $this->when(
-                isset($this->seller_name) && auth()->id() !== $this->user_id,
-                $this->seller_name
-            ),
 
             // Images
             'images' => ImageResource::collection($this->whenLoaded('images')),
