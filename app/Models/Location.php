@@ -14,6 +14,21 @@ class Location extends Model
         'image_path',
     ];
 
+    protected static function boot()
+    {
+        parent::boot();
+        static::creating(function ($location) {
+            $baseSlug = \Illuminate\Support\Str::slug($location->name);
+            $slug = $baseSlug;
+            $i = 2;
+            while (self::where('slug', $slug)->exists()) {
+                $slug = $baseSlug . '-' . $i;
+                $i++;
+            }
+            $location->slug = $slug;
+        });
+    }
+
     public function products()
     {
         return $this->hasMany(Product::class);
