@@ -52,6 +52,21 @@ class Subcategory extends Model
     'category_id',
   ];
 
+  protected static function boot()
+  {
+    parent::boot();
+    static::creating(function ($subcategory) {
+      $baseSlug = \Illuminate\Support\Str::slug($subcategory->name);
+      $slug = $baseSlug;
+      $i = 2;
+      while (self::where('slug', $slug)->exists()) {
+        $slug = $baseSlug . '-' . $i;
+        $i++;
+      }
+      $subcategory->slug = $slug;
+    });
+  }
+
   // Get available attributes with their values
   public function getAvailableAttributes()
   {
