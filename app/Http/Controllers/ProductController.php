@@ -53,7 +53,8 @@ class ProductController extends ImprovedController
         try {
             $validator = Validator::make($request->all(), [
                 'per_page' => 'sometimes|integer|min:1|max:100',
-                'keyword' => 'sometimes|string|max:255',
+                'search' => 'sometimes|string|max:255',
+                'keyword' => 'sometimes|string|max:255', // Backward compatibility
                 'category_id' => 'sometimes|integer|exists:categories,id',
                 'subcategory_id' => 'sometimes|array',
                 'subcategory_id.*' => 'integer|exists:subcategories,id',
@@ -74,21 +75,25 @@ class ProductController extends ImprovedController
                 return $this->respondWithError($validator->errors(), 422);
             }
 
-            // Require either keyword search OR subcategory selection (or both)
-            $hasKeyword = $request->filled('keyword') && !empty(trim($request->input('keyword')));
+            // Accept either 'search' or 'keyword', prefer 'search'
+            $searchTerm = $request->filled('search') ? $request->input('search') : $request->input('keyword');
+            $hasSearch = $searchTerm && !empty(trim($searchTerm));
             $hasSubcategory = $request->filled('subcategory_id') && !empty($request->input('subcategory_id'));
 
-            if (!$hasKeyword && !$hasSubcategory) {
-                return $this->respondWithError('Either keyword search or subcategory selection is required', 400);
+            if (!$hasSearch && !$hasSubcategory) {
+                return $this->respondWithError('Either search or subcategory selection is required', 400);
             }
 
             $perPage = $request->input('per_page', 15);
             $filters = $request->only([
-                'keyword', 'category_id', 'subcategory_id',
+                'category_id', 'subcategory_id',
                 'min_price', 'max_price',
                 'is_featured', 'seller_id', 'location_id',
                 'sort_by', 'sort_direction', 'stock_status', 'attributes'
             ]);
+            if ($hasSearch) {
+                $filters['search'] = $searchTerm;
+            }
 
             // Force only active products for public listing
             $filters['status'] = 'active';
