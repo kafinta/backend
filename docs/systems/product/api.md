@@ -31,7 +31,8 @@ GET /api/products
 
 **Query Parameters:**
 - `per_page` (integer, default 15)
-- `keyword` (string)
+- `search` (string): Keyword or phrase to search for products (preferred)
+- `keyword` (string): (deprecated, still accepted for backward compatibility)
 - `category_id` (integer)
 - `subcategory_id` (array of integers)
 - `min_price`, `max_price` (numeric)
@@ -45,7 +46,7 @@ GET /api/products
 
 **Example:**
 ```
-GET /api/products?keyword=shoes&per_page=10&sort_by=price&sort_direction=asc
+GET /api/products?search=shoes&per_page=10&sort_by=price&sort_direction=asc
 ```
 
 **Response (200 OK):**
