@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use App\Services\FileService;
 use App\Services\VariantService;
+use App\Models\Location;
 
 // Events
 use App\Events\Product\ProductCreated;
@@ -995,7 +996,7 @@ class ProductService
 
         // Always provide locations for filtering
         $metadata['available_locations'] = Location::orderBy('name')
-            ->get(['id', 'name', 'state', 'country']);
+            ->get(['id', 'name']);
 
         // Get available attributes based on selected subcategories
         if (isset($filters['subcategory_id']) && !empty($filters['subcategory_id'])) {

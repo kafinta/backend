@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use App\Models\Location;
 
 class ProductResource extends JsonResource
 {
@@ -42,9 +43,11 @@ class ProductResource extends JsonResource
             'is_out_of_stock' => $this->isOutOfStock(),
 
             // Relationships (always include as objects)
-            'subcategory' => new SubcategoryResource($this->subcategory),
-            'category' => new CategoryResource($this->category),
-            'location' => new LocationResource($this->location),
+            // Remove these from the public listing response:
+            // 'subcategory' => new SubcategoryResource($this->subcategory),
+            // 'category' => new CategoryResource($this->category),
+            // 'location' => new LocationResource($this->location),
+            // 'analytics' => $this->when($this->status === 'active', ...),
 
             // Images
             'images' => ImageResource::collection($this->whenLoaded('images')),
@@ -73,16 +76,6 @@ class ProductResource extends JsonResource
             }),
             'progress_percentage' => $this->when($this->status === 'draft', function () {
                 return $this->getProgressPercentage();
-            }),
-
-            // Analytics for active products
-            'analytics' => $this->when($this->status === 'active', function () {
-                return [
-                    'views' => $this->views ?? 0,
-                    'orders' => $this->orders_count ?? 0,
-                    'revenue' => $this->total_revenue ?? '0.00',
-                    'conversion_rate' => $this->getConversionRate(),
-                ];
             }),
 
             // Review summary
