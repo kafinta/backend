@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('attributes', function (Blueprint $table) {
             $table->id();
             $table->string('name')->unique();
+            $table->string('slug')->unique();
             // Removed 'type' column - simplified approach, all attributes are universal
             $table->boolean('is_variant_generator')->default(false);
             $table->text('help_text')->nullable(); // Help text for sellers
