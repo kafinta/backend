@@ -21,6 +21,21 @@ class Attribute extends Model
         'is_variant_generator' => 'boolean'
     ];
 
+    protected static function boot()
+    {
+        parent::boot();
+        static::creating(function ($attribute) {
+            $baseSlug = \Illuminate\Support\Str::slug($attribute->name);
+            $slug = $baseSlug;
+            $i = 2;
+            while (self::where('slug', $slug)->exists()) {
+                $slug = $baseSlug . '-' . $i;
+                $i++;
+            }
+            $attribute->slug = $slug;
+        });
+    }
+
     public function values()
     {
         return $this->hasMany(AttributeValue::class);
