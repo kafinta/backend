@@ -19,6 +19,21 @@ class AttributeValue extends Model
         'representation' => 'array'
     ];
 
+    protected static function boot()
+    {
+        parent::boot();
+        static::creating(function ($value) {
+            $baseSlug = \Illuminate\Support\Str::slug($value->name);
+            $slug = $baseSlug;
+            $i = 2;
+            while (self::where('slug', $slug)->exists()) {
+                $slug = $baseSlug . '-' . $i;
+                $i++;
+            }
+            $value->slug = $slug;
+        });
+    }
+
     public function attribute()
     {
         return $this->belongsTo(Attribute::class);
