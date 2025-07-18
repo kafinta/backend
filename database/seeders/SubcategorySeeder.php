@@ -70,26 +70,6 @@ class SubcategorySeeder extends Seeder
         ])->locations()->attach($living->id);
 
         Subcategory::create([
-            'name' => 'Futons',
-            'category_id' => $furniture->id,
-        ])->locations()->attach($living->id);
-
-        Subcategory::create([
-            'name' => 'Futon Covers',
-            'category_id' => $furniture->id,
-        ])->locations()->attach($living->id);
-        
-        Subcategory::create([
-            'name' => 'Futon Frames',
-            'category_id' => $furniture->id,
-        ])->locations()->attach($living->id);
-        
-        Subcategory::create([
-            'name' => 'Futon Mattresses',
-            'category_id' => $furniture->id,
-        ])->locations()->attach($living->id);
-
-        Subcategory::create([
             'name' => 'Coffee Tables',
             'category_id' => $furniture->id,
         ])->locations()->attach($living->id);
@@ -212,7 +192,7 @@ class SubcategorySeeder extends Seeder
         Subcategory::create([
             'name' => 'Bookcases',
             'category_id' => $storage->id,
-        ])->locations()->attach([$office->id, $kids->id]);
+        ])->locations()->attach([$office->id, $kids->id, $living->id]);
     
         Subcategory::create([
             'name' => 'Filing Cabinets',
