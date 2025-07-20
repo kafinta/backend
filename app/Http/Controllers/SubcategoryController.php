@@ -62,6 +62,34 @@ class SubcategoryController extends ImprovedController
         }
     }
 
+    public function showBySlug($slug)
+    {
+        $subcategory = Subcategory::where('slug', $slug)->with(['attributes.values', 'category', 'locations'])->first();
+        if (!$subcategory) {
+            return $this->respondWithError('Subcategory not found', 404);
+        }
+        return $this->respondWithSuccess('Subcategory fetched successfully', 200, new SubcategoryResource($subcategory));
+    }
+
+    public function filterByCategoryAndLocation(Request $request)
+    {
+        $categorySlug = $request->query('category');
+        $locationSlug = $request->query('location');
+        $query = Subcategory::query()->with(['locations', 'category']);
+        if ($categorySlug) {
+            $query->whereHas('category', function ($q) use ($categorySlug) {
+                $q->where('slug', $categorySlug);
+            });
+        }
+        if ($locationSlug) {
+            $query->whereHas('locations', function ($q) use ($locationSlug) {
+                $q->where('slug', $locationSlug);
+            });
+        }
+        $subcategories = $query->get();
+        return $this->respondWithSuccess('Subcategories fetched successfully', 200, SubcategoryResource::collection($subcategories));
+    }
+
     public function store(Request $request)
     {
         try {

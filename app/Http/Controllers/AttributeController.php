@@ -42,6 +42,15 @@ class AttributeController extends ImprovedController
         return $this->respondWithSuccess('Attribute fetched successfully', 200, new AttributeResource($attribute));
     }
 
+    public function showBySlug($slug)
+    {
+        $attribute = Attribute::where('slug', $slug)->with('values')->first();
+        if (!$attribute) {
+            return $this->respondWithError('Attribute not found', 404);
+        }
+        return $this->respondWithSuccess('Attribute fetched successfully', 200, new AttributeResource($attribute));
+    }
+
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [

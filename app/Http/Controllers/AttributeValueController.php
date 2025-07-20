@@ -25,6 +25,16 @@ class AttributeValueController extends ImprovedController
         return $this->respondWithSuccess('Attribute value fetched successfully', 200, $value);
     }
 
+    public function showBySlug($attributeId, $slug)
+    {
+        $attribute = Attribute::findOrFail($attributeId);
+        $value = $attribute->values()->where('slug', $slug)->first();
+        if (!$value) {
+            return $this->respondWithError('Attribute value not found', 404);
+        }
+        return $this->respondWithSuccess('Attribute value fetched successfully', 200, $value);
+    }
+
     public function store(Request $request, Attribute $attribute)
     {
         $validator = Validator::make($request->all(), [

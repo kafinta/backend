@@ -20,6 +20,15 @@ class LocationController extends ImprovedController
         return $this->respondWithSuccess("Location Fetched Successfully", 200, new LocationResource($location));
     }
 
+    public function showBySlug($slug)
+    {
+        $location = Location::where('slug', $slug)->first();
+        if (!$location) {
+            return $this->respondWithError('Location not found', 404);
+        }
+        return $this->respondWithSuccess('Location fetched successfully', 200, new LocationResource($location));
+    }
+
     public function store(Request $request)
     {
         try {
