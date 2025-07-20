@@ -17,6 +17,7 @@ class AttributeResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
+            'slug' => $this->slug,
             'is_variant_generator' => $this->is_variant_generator,
             'help_text' => $this->help_text,
             'sort_order' => $this->sort_order,

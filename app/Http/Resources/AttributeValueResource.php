@@ -12,6 +12,7 @@ class AttributeValueResource extends JsonResource
     return [
       'id' => $this->id,
       'name' => $this->name,
+      'slug' => $this->slug,
       'representation' => $this->representation,
       'attribute_id' => $this->attribute_id
     ];
