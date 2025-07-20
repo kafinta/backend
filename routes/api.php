@@ -546,3 +546,12 @@ if (config('app.env') === 'local') {
     Route::delete('/simulated-emails/{filename}', [SimulatedEmailController::class, 'destroy']);
     Route::delete('/simulated-emails', [SimulatedEmailController::class, 'clearAll']);
 }
+
+// RESTful slug-based fetch routes
+Route::get('/categories/slug/{slug}', [CategoryController::class, 'showBySlug']);
+Route::get('/subcategories/slug/{slug}', [SubcategoryController::class, 'showBySlug']);
+Route::get('/locations/slug/{slug}', [LocationController::class, 'showBySlug']);
+Route::get('/attributes/slug/{slug}', [AttributeController::class, 'showBySlug']);
+Route::get('/attributes/{attribute}/values/slug/{slug}', [AttributeValueController::class, 'showBySlug']);
+// Subcategory filter by category/location slug
+Route::get('/subcategories/filter', [SubcategoryController::class, 'filterByCategoryAndLocation']);

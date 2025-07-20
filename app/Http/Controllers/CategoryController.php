@@ -34,6 +34,15 @@ class CategoryController extends ImprovedController
         }
     }
 
+    public function showBySlug($slug)
+    {
+        $category = Category::where('slug', $slug)->with('subcategories')->first();
+        if (!$category) {
+            return $this->respondWithError('Category not found', 404);
+        }
+        return $this->respondWithSuccess('Category fetched successfully', 200, new CategoryResource($category));
+    }
+
     public function store(Request $request)
     {
         try {
