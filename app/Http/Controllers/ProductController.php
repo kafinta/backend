@@ -51,25 +51,33 @@ class ProductController extends ImprovedController
     public function index(Request $request)
     {
         try {
-            $validator = Validator::make($request->all(), [
+            // Validation rules - removed redundant category_id and location_id
+            $rules = [
                 'per_page' => 'sometimes|integer|min:1|max:100',
                 'search' => 'sometimes|string|max:255',
                 'keyword' => 'sometimes|string|max:255', // Backward compatibility
-                'category_id' => 'sometimes|integer|exists:categories,id',
-                'subcategory_id' => 'sometimes|array',
-                'subcategory_id.*' => 'integer|exists:subcategories,id',
                 'min_price' => 'sometimes|numeric|min:0',
                 'max_price' => 'sometimes|numeric|min:0',
                 'is_featured' => 'sometimes|boolean',
                 'seller_id' => 'sometimes|integer|exists:users,id',
-                'location_id' => 'sometimes|array',
-                'location_id.*' => 'integer|exists:locations,id',
                 'sort_by' => 'sometimes|in:name,price,created_at,updated_at,relevance',
                 'sort_direction' => 'sometimes|in:asc,desc',
                 'stock_status' => 'sometimes|in:in_stock,out_of_stock',
                 'attributes' => 'sometimes|array',
                 'attributes.*' => 'integer|exists:attribute_values,id'
-            ]);
+            ];
+
+            // Handle subcategory_id - can be single integer or array
+            if ($request->has('subcategory_id')) {
+                if (is_array($request->input('subcategory_id'))) {
+                    $rules['subcategory_id'] = 'array';
+                    $rules['subcategory_id.*'] = 'integer|exists:subcategories,id';
+                } else {
+                    $rules['subcategory_id'] = 'integer|exists:subcategories,id';
+                }
+            }
+
+            $validator = Validator::make($request->all(), $rules);
 
             if ($validator->fails()) {
                 return $this->respondWithError($validator->errors(), 422);
@@ -86,9 +94,9 @@ class ProductController extends ImprovedController
 
             $perPage = $request->input('per_page', 15);
             $filters = $request->only([
-                'category_id', 'subcategory_id',
+                'subcategory_id',
                 'min_price', 'max_price',
-                'is_featured', 'seller_id', 'location_id',
+                'is_featured', 'seller_id',
                 'sort_by', 'sort_direction', 'stock_status', 'attributes'
             ]);
             if ($hasSearch) {
