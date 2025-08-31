@@ -75,12 +75,6 @@ class ProductService
                 });
             }
 
-            if (isset($filters['category_id']) && !empty($filters['category_id'])) {
-                $query->whereHas('subcategory', function($q) use ($filters) {
-                    $q->where('category_id', $filters['category_id']);
-                });
-            }
-
             if (isset($filters['subcategory_id']) && !empty($filters['subcategory_id'])) {
                 if (is_array($filters['subcategory_id'])) {
                     $query->whereIn('subcategory_id', $filters['subcategory_id']);
@@ -109,14 +103,7 @@ class ProductService
                 $query->where('user_id', $filters['seller_id']);
             }
 
-            if (isset($filters['location_id']) && !empty($filters['location_id'])) {
-                // If location_id is an array, search for products in any of those locations
-                if (is_array($filters['location_id'])) {
-                    $query->whereIn('location_id', $filters['location_id']);
-                } else {
-                    $query->where('location_id', $filters['location_id']);
-                }
-            }
+
 
             // Apply stock status filtering
             if (isset($filters['stock_status']) && !empty($filters['stock_status'])) {
