@@ -1,43 +1,32 @@
-# Project Documentation
+# Kafinta Documentation
 
-## Structure
-```
-docs/
-├── README.md                 # This file
-├── systems/                  # Core system documentation
-│   ├── auth/                 # Authentication system
-│   │   ├── README.md        # Overview and quick start
-│   │   ├── api.md           # API documentation
-│   │   ├── frontend.md      # Frontend integration guide
-│   │   └── roadmap.md       # Post-MVP features and timeline
-│   ├── orders/              # Order management system
-│   │   ├── README.md
-│   │   ├── api.md
-│   │   ├── frontend.md
-│   │   └── roadmap.md
-│   └── products/            # Product management system
-│       ├── README.md
-│       ├── api.md
-│       ├── frontend.md
-│       └── roadmap.md
-├── features/                # Feature-specific documentation
-│   ├── email/              # Email system features
-│   │   ├── README.md
-│   │   ├── templates.md
-│   │   └── roadmap.md
-│   ├── notifications/      # Notification system
-│   │   ├── README.md
-│   │   ├── channels.md
-│   │   └── roadmap.md
-│   └── payments/          # Payment system
-│       ├── README.md
-│       ├── providers.md
-│       └── roadmap.md
-└── development/           # Development guides
-    ├── setup.md          # Development environment setup
-    ├── testing.md        # Testing guidelines
-    └── deployment.md     # Deployment procedures
-```
+## 🚀 Quick Start for Frontend Developers
+
+**👉 Start here: [Frontend Integration Guide](FRONTEND-GUIDE.md)**
+
+This is your main resource for building the Nuxt.js frontend. It contains:
+- Complete API documentation with examples
+- Authentication setup and flows
+- Product discovery and cart management
+- Nuxt.js implementation examples
+- Security best practices
+
+## 📚 Additional Documentation
+
+### For Frontend Development
+- **[Frontend Guide](FRONTEND-GUIDE.md)** - Complete frontend integration guide ⭐
+- **[API Quick Reference](API-QUICK-REFERENCE.md)** - Essential API endpoints cheat sheet 🚀
+- **[API Reference](frontend-api-guide.md)** - Detailed API endpoint documentation
+- **[Environment Setup](environment-setup.md)** - Development and production setup
+
+### For Backend Development
+- **[Systems Documentation](systems/)** - Detailed backend system documentation
+  - [Authentication System](systems/auth/)
+  - [Product Management](systems/product/)
+  - [Cart & Orders](systems/cart/)
+  - [Email System](systems/email-queue.md)
+
+## 🎯 Documentation Structure
 
 ## Documentation Guidelines
 
