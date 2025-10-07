@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\EmailVerificationToken;
 use App\Models\User;
+use App\Jobs\SendEmailJob;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
@@ -13,6 +14,50 @@ use Illuminate\Support\Facades\Cache;
 
 class EmailService
 {
+    /**
+     * Dispatch email via queue system
+     *
+     * @param \Illuminate\Mail\Mailable $mailable
+     * @param string $recipient
+     * @param string $emailType
+     * @param int|null $userId
+     * @param bool $immediate - Send immediately without queue (for critical emails)
+     * @return bool
+     */
+    private function dispatchEmail($mailable, string $recipient, string $emailType, int $userId = null, bool $immediate = false): bool
+    {
+        try {
+            if ($immediate || config('queue.default') === 'sync') {
+                // Send immediately
+                Mail::to($recipient)->send($mailable);
+
+                Log::info('Email sent immediately', [
+                    'email_type' => $emailType,
+                    'recipient' => $recipient,
+                    'user_id' => $userId
+                ]);
+            } else {
+                // Queue the email
+                SendEmailJob::dispatch($mailable, $recipient, $emailType, $userId);
+
+                Log::info('Email queued for delivery', [
+                    'email_type' => $emailType,
+                    'recipient' => $recipient,
+                    'user_id' => $userId
+                ]);
+            }
+
+            return true;
+        } catch (\Exception $e) {
+            Log::error('Failed to dispatch email', [
+                'email_type' => $emailType,
+                'recipient' => $recipient,
+                'user_id' => $userId,
+                'error' => $e->getMessage()
+            ]);
+            return false;
+        }
+    }
     /**
      * Generate a verification token for a user's email
      * Returns data including a verification URL that points to the frontend application
@@ -79,23 +124,8 @@ class EmailService
      */
     public function sendVerificationEmail(User $user, string $verificationUrl, string $verificationCode = null): bool
     {
-        try {
-            // Use Brevo API for sending emails
-            Mail::to($user->email)->send(new \App\Mail\VerificationEmail($user, $verificationUrl, $verificationCode));
-
-            Log::info('Verification email sent via Brevo', [
-                'user_id' => $user->id,
-                'email' => $user->email
-            ]);
-            return true;
-        } catch (\Exception $e) {
-            Log::error('Error sending verification email via Brevo', [
-                'user_id' => $user->id,
-                'email' => $user->email,
-                'error' => $e->getMessage()
-            ]);
-            return false;
-        }
+        $mailable = new \App\Mail\VerificationEmail($user, $verificationUrl, $verificationCode);
+        return $this->dispatchEmail($mailable, $user->email, 'verification', $user->id);
     }
 
 
@@ -344,22 +374,8 @@ class EmailService
      */
     public function sendPasswordResetEmail(User $user, string $resetUrl, string $resetCode): bool
     {
-        try {
-            Mail::to($user->email)->send(new \App\Mail\PasswordResetEmail($user, $resetUrl, $resetCode));
-
-            Log::info('Password reset email sent via Brevo', [
-                'user_id' => $user->id,
-                'email' => $user->email
-            ]);
-            return true;
-        } catch (\Exception $e) {
-            Log::error('Error sending password reset email via Brevo', [
-                'user_id' => $user->id,
-                'email' => $user->email,
-                'error' => $e->getMessage()
-            ]);
-            return false;
-        }
+        $mailable = new \App\Mail\PasswordResetEmail($user, $resetUrl, $resetCode);
+        return $this->dispatchEmail($mailable, $user->email, 'password_reset', $user->id);
     }
 
     /**
@@ -503,19 +519,8 @@ class EmailService
      */
     public function sendWelcomeEmail(User $user): bool
     {
-        try {
-            Mail::to($user->email)->send(new \App\Mail\WelcomeEmail($user));
-
-            Log::info('Welcome email sent', ['user_id' => $user->id, 'email' => $user->email]);
-            return true;
-        } catch (\Exception $e) {
-            Log::error('Failed to send welcome email', [
-                'user_id' => $user->id,
-                'email' => $user->email,
-                'error' => $e->getMessage()
-            ]);
-            return false;
-        }
+        $mailable = new \App\Mail\WelcomeEmail($user);
+        return $this->dispatchEmail($mailable, $user->email, 'welcome', $user->id);
     }
 
     /**
@@ -523,24 +528,8 @@ class EmailService
      */
     public function sendOrderConfirmation(User $user, $order): bool
     {
-        try {
-            Mail::to($user->email)->send(new \App\Mail\OrderConfirmationEmail($user, $order));
-
-            Log::info('Order confirmation email sent', [
-                'user_id' => $user->id,
-                'order_id' => $order->id,
-                'email' => $user->email
-            ]);
-            return true;
-        } catch (\Exception $e) {
-            Log::error('Failed to send order confirmation email', [
-                'user_id' => $user->id,
-                'order_id' => $order->id ?? null,
-                'email' => $user->email,
-                'error' => $e->getMessage()
-            ]);
-            return false;
-        }
+        $mailable = new \App\Mail\OrderConfirmationEmail($user, $order);
+        return $this->dispatchEmail($mailable, $user->email, 'order_confirmation', $user->id);
     }
 
     /**
@@ -548,26 +537,8 @@ class EmailService
      */
     public function sendNotification(User $user, string $subject, string $template, array $data = []): bool
     {
-        try {
-            Mail::to($user->email)->send(new \App\Mail\NotificationEmail($user, $subject, $template, $data));
-
-            Log::info('Notification email sent', [
-                'user_id' => $user->id,
-                'email' => $user->email,
-                'template' => $template,
-                'subject' => $subject
-            ]);
-            return true;
-        } catch (\Exception $e) {
-            Log::error('Failed to send notification email', [
-                'user_id' => $user->id,
-                'email' => $user->email,
-                'template' => $template,
-                'subject' => $subject,
-                'error' => $e->getMessage()
-            ]);
-            return false;
-        }
+        $mailable = new \App\Mail\NotificationEmail($user, $subject, $template, $data);
+        return $this->dispatchEmail($mailable, $user->email, 'notification', $user->id);
     }
 
     /**
@@ -575,23 +546,7 @@ class EmailService
      */
     public function sendSellerApplicationStatus(User $user, string $status, string $reason = null): bool
     {
-        try {
-            Mail::to($user->email)->send(new \App\Mail\SellerApplicationStatusEmail($user, $status, $reason));
-
-            Log::info('Seller application status email sent', [
-                'user_id' => $user->id,
-                'email' => $user->email,
-                'status' => $status
-            ]);
-            return true;
-        } catch (\Exception $e) {
-            Log::error('Failed to send seller application status email', [
-                'user_id' => $user->id,
-                'email' => $user->email,
-                'status' => $status,
-                'error' => $e->getMessage()
-            ]);
-            return false;
-        }
+        $mailable = new \App\Mail\SellerApplicationStatusEmail($user, $status, $reason);
+        return $this->dispatchEmail($mailable, $user->email, 'seller_status', $user->id);
     }
 }
