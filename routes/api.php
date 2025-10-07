@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\SellerController;
@@ -16,10 +17,56 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\SellerOrderController;
-use App\Http\Controllers\SimulatedEmailController;
+use App\Http\Controllers\InventoryController;
+
 use App\Http\Controllers\VerificationTokenController;
 use App\Http\Controllers\SocialAuthController;
 use App\Http\Controllers\NotificationController;
+
+// Test email routes (remove in production)
+Route::get('/test-email', function () {
+    try {
+        Mail::raw('This is a test email from Kafinta using Brevo API!', function ($message) {
+            $message->to('chelseajames529@gmail.com')
+                    ->subject('Kafinta Brevo API Test');
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Test email sent successfully via Brevo API!'
+        ]);
+    } catch (Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Email failed: ' . $e->getMessage()
+        ]);
+    }
+});
+
+Route::get('/test-welcome-email', function () {
+    try {
+        $emailService = app(\App\Services\EmailService::class);
+
+        // Create a test user (or use existing)
+        $testUser = new \App\Models\User([
+            'name' => 'Test User',
+            'email' => 'chelseajames529@gmail.com',
+            'username' => 'testuser'
+        ]);
+
+        $result = $emailService->sendWelcomeEmail($testUser);
+
+        return response()->json([
+            'success' => $result,
+            'message' => $result ? 'Welcome email sent successfully!' : 'Failed to send welcome email'
+        ]);
+    } catch (Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Email failed: ' . $e->getMessage()
+        ]);
+    }
+});
 
 /*
 |--------------------------------------------------------------------------
@@ -118,40 +165,7 @@ Route::post('/verify-email/token', [UserController::class, 'verifyEmailToken'])-
 Route::get('/verify-email/{token}', [UserController::class, 'verifyEmailToken'])->name('verify.email');
 Route::post('/verify-email/code', [UserController::class, 'verifyEmailCode'])->name('verify.email.code');
 
-// Simulated Email Routes (Development Only)
-Route::prefix('simulated-emails')->group(function () {
-    Route::get('/', [SimulatedEmailController::class, 'index'])->name('simulated-emails.index');
-    Route::get('/{filename}', [SimulatedEmailController::class, 'show'])->name('simulated-emails.show');
-    Route::delete('/{filename}', [SimulatedEmailController::class, 'destroy'])->name('simulated-emails.destroy');
-    Route::delete('/', [SimulatedEmailController::class, 'destroyAll'])->name('simulated-emails.destroy-all');
-});
 
-// Debug route for simulated emails
-Route::get('/debug/simulated-emails', function() {
-    $emailsDir = storage_path('simulated-emails');
-    $files = \Illuminate\Support\Facades\File::files($emailsDir);
-
-    $emails = [];
-    foreach ($files as $file) {
-        $emails[] = [
-            'filename' => $file->getFilename(),
-            'size' => $file->getSize(),
-            'created_at' => date('Y-m-d H:i:s', $file->getMTime()),
-            'content' => \Illuminate\Support\Facades\File::get($file->getPathname()),
-        ];
-    }
-
-    return response()->json([
-        'success' => true,
-        'message' => 'Debug: Simulated emails retrieved directly',
-        'data' => [
-            'emails_directory' => $emailsDir,
-            'directory_exists' => \Illuminate\Support\Facades\File::exists($emailsDir),
-            'email_count' => count($emails),
-            'emails' => $emails,
-        ]
-    ]);
-});
 
 // Verification Token Routes (Development Only)
 Route::prefix('verification-tokens')->group(function () {
@@ -539,13 +553,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('products/{product}/discount', [\App\Http\Controllers\ProductController::class, 'removeDiscount']);
 });
 
-// Simulated Email API Routes (Development Only)
-if (config('app.env') === 'local') {
-    Route::get('/simulated-emails', [SimulatedEmailController::class, 'index']);
-    Route::get('/simulated-emails/{filename}', [SimulatedEmailController::class, 'show']);
-    Route::delete('/simulated-emails/{filename}', [SimulatedEmailController::class, 'destroy']);
-    Route::delete('/simulated-emails', [SimulatedEmailController::class, 'clearAll']);
-}
+
 
 // RESTful slug-based fetch routes
 Route::get('/categories/slug/{slug}', [CategoryController::class, 'showBySlug']);
