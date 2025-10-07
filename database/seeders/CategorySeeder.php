@@ -6,6 +6,7 @@ use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use App\Models\Category;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\File;
 
 class CategorySeeder extends Seeder
 {
@@ -14,6 +15,10 @@ class CategorySeeder extends Seeder
      */
     public function run(): void
     {
+        // Copy seeder images to storage before seeding
+        $this->copySeederImages();
+
+        // Seed categories
         Category::create([
             'name' => 'Furniture',
             'image_path' => '/storage/categories/furniture.jpg'
@@ -63,5 +68,36 @@ class CategorySeeder extends Seeder
             'name' => 'Personal Care & Hygiene',
             'image_path' => '/storage/categories/hygiene.jpg'
         ]);
+    }
+
+    /**
+     * Copy seeder images to storage directory
+     */
+    private function copySeederImages(): void
+    {
+        $sourceDir = database_path('seeders/images/categories');
+        $targetDir = storage_path('app/public/categories');
+
+        // Create target directory if it doesn't exist
+        if (!File::exists($targetDir)) {
+            File::makeDirectory($targetDir, 0755, true);
+        }
+
+        // Copy all images from seeder directory to storage
+        if (File::exists($sourceDir)) {
+            $files = File::files($sourceDir);
+            foreach ($files as $file) {
+                $filename = $file->getFilename();
+                $targetPath = $targetDir . DIRECTORY_SEPARATOR . $filename;
+
+                // Only copy if file doesn't exist or is different
+                if (!File::exists($targetPath) || File::hash($file->getPathname()) !== File::hash($targetPath)) {
+                    File::copy($file->getPathname(), $targetPath);
+                    $this->command->info("Copied category image: {$filename}");
+                }
+            }
+        } else {
+            $this->command->warn("Seeder images directory not found: {$sourceDir}");
+        }
     }
 }

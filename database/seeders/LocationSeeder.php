@@ -5,12 +5,17 @@ namespace Database\Seeders;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\File;
 use App\Models\Location;
 
 class LocationSeeder extends Seeder
 {
     public function run(): void
     {
+        // Copy seeder images to storage before seeding
+        $this->copySeederImages();
+
+        // Seed locations
         $locations = [
             [
                 'name' => 'Living Room',
@@ -100,6 +105,37 @@ class LocationSeeder extends Seeder
 
         foreach ($locations as $location) {
             Location::create($location);
+        }
+    }
+
+    /**
+     * Copy seeder images to storage directory
+     */
+    private function copySeederImages(): void
+    {
+        $sourceDir = database_path('seeders/images/locations');
+        $targetDir = storage_path('app/public/locations');
+
+        // Create target directory if it doesn't exist
+        if (!File::exists($targetDir)) {
+            File::makeDirectory($targetDir, 0755, true);
+        }
+
+        // Copy all images from seeder directory to storage
+        if (File::exists($sourceDir)) {
+            $files = File::files($sourceDir);
+            foreach ($files as $file) {
+                $filename = $file->getFilename();
+                $targetPath = $targetDir . DIRECTORY_SEPARATOR . $filename;
+
+                // Only copy if file doesn't exist or is different
+                if (!File::exists($targetPath) || File::hash($file->getPathname()) !== File::hash($targetPath)) {
+                    File::copy($file->getPathname(), $targetPath);
+                    $this->command->info("Copied location image: {$filename}");
+                }
+            }
+        } else {
+            $this->command->warn("Seeder images directory not found: {$sourceDir}");
         }
     }
 }
