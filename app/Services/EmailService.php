@@ -10,7 +10,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\File;
 
 class EmailService
 {
@@ -68,47 +67,10 @@ class EmailService
         ];
     }
 
-    /**
-     * Handle simulated email in development environment
-     *
-     * @param User $user
-     * @param string $verificationUrl
-     * @param string|null $verificationCode
-     * @return bool
-     */
-    private function handleSimulatedEmail(User $user, string $verificationUrl, string $verificationCode = null): bool
-    {
-        try {
-            $emailsDir = storage_path('simulated-emails');
-            if (!File::exists($emailsDir)) {
-                File::makeDirectory($emailsDir, 0755, true);
-            }
 
-            // Add timestamp to keep history of emails
-            $timestamp = now()->format('Y-m-d_H-i-s');
-            $filename = "verification_{$user->id}_{$timestamp}.html";
-            $filepath = $emailsDir . '/' . $filename;
-
-            $html = $this->createHtmlEmail($user, $verificationUrl, $verificationCode);
-            File::put($filepath, $html);
-
-            Log::info('Saved simulated verification email', [
-                'file' => $filename,
-                'user_id' => $user->id,
-                'timestamp' => $timestamp
-            ]);
-            return true;
-        } catch (\Exception $e) {
-            Log::error('Error saving simulated email', [
-                'user_id' => $user->id,
-                'error' => $e->getMessage()
-            ]);
-            return false;
-        }
-    }
 
     /**
-     * Send a verification email to the user
+     * Send a verification email to the user using Brevo API
      *
      * @param User $user
      * @param string $verificationUrl
@@ -118,134 +80,27 @@ class EmailService
     public function sendVerificationEmail(User $user, string $verificationUrl, string $verificationCode = null): bool
     {
         try {
-            // Check if mail configuration is properly set up
-            $mailConfig = config('mail');
-            $hasMailConfig = !empty($mailConfig['default']) && 
-                            !empty($mailConfig['mailers'][$mailConfig['default']]) &&
-                            !empty($mailConfig['mailers'][$mailConfig['default']]['host']);
-
-            if (!$hasMailConfig) {
-                return $this->handleSimulatedEmail($user, $verificationUrl, $verificationCode);
-            }
-
+            // Use Brevo API for sending emails
             Mail::to($user->email)->send(new \App\Mail\VerificationEmail($user, $verificationUrl, $verificationCode));
+
+            Log::info('Verification email sent via Brevo', [
+                'user_id' => $user->id,
+                'email' => $user->email
+            ]);
             return true;
         } catch (\Exception $e) {
-            Log::error('Error sending verification email', [
+            Log::error('Error sending verification email via Brevo', [
                 'user_id' => $user->id,
+                'email' => $user->email,
                 'error' => $e->getMessage()
             ]);
-            // Fall back to simulated email if real email fails
-            return $this->handleSimulatedEmail($user, $verificationUrl, $verificationCode);
+            return false;
         }
     }
 
-    /**
-     * Delete the email files associated with a user
-     *
-     * @param EmailVerificationToken $token
-     * @return bool
-     */
-    private function deleteEmailFile(EmailVerificationToken $token): bool
-    {
-        // Find all email files for this user
-        $pattern = 'verification_' . $token->user_id . '_*.html';
-        $files = glob(storage_path('simulated-emails/' . $pattern));
 
-        if (!empty($files)) {
-            foreach ($files as $file) {
-                unlink($file);
-                Log::info('Deleted email file', ['file' => basename($file)]);
-            }
-            return true;
-        }
 
-        return false;
-    }
 
-    /**
-     * Create an HTML email for verification
-     *
-     * @param User $user
-     * @param string $verificationUrl Frontend URL for email verification
-     * @param string|null $verificationCode
-     * @return string
-     */
-    private function createHtmlEmail(User $user, string $verificationUrl, string $verificationCode = null): string
-    {
-        $appName = config('app.name', 'Laravel');
-
-        return <<<HTML
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>Verify Your Email Address</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        .header {
-            background-color: #4a76a8;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 5px 5px 0 0;
-        }
-        .content {
-            border: 1px solid #ddd;
-            border-top: none;
-            padding: 20px;
-            border-radius: 0 0 5px 5px;
-        }
-        .button {
-            display: inline-block;
-            background-color: #4a76a8;
-            color: white;
-            text-decoration: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            margin: 20px 0;
-        }
-        .footer {
-            margin-top: 20px;
-            font-size: 12px;
-            color: #777;
-        }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h2>{$appName}</h2>
-    </div>
-    <div class="content">
-        <h3>Hello {$user->username},</h3>
-        <p>Thank you for registering with {$appName}. Please click the button below to verify your email address.</p>
-        <p><a href="{$verificationUrl}" class="button">Verify Email Address</a></p>
-
-        " . ($verificationCode ? "
-        <div style='margin: 20px 0; padding: 15px; background-color: #f8f9fa; border-radius: 5px; text-align: center;'>
-            <p style='margin-bottom: 10px;'>Or enter this verification code:</p>
-            <h2 style='letter-spacing: 5px; font-size: 24px; margin: 0;'>{$verificationCode}</h2>
-        </div>
-        " : "") . "
-
-        <p>If you did not create an account, no further action is required.</p>
-        <p>If you're having trouble clicking the button, copy and paste the URL below into your web browser:</p>
-        <p>{$verificationUrl}</p>
-        <div class="footer">
-            <p>This is a simulated email for development purposes.</p>
-            <p>© {$appName} - " . date('Y') . "</p>
-        </div>
-    </div>
-</body>
-</html>
-HTML;
-    }
 
     /**
      * Verify a token and mark the user's email as verified
@@ -490,25 +345,20 @@ HTML;
     public function sendPasswordResetEmail(User $user, string $resetUrl, string $resetCode): bool
     {
         try {
-            // Check if mail configuration is properly set up
-            $mailConfig = config('mail');
-            $hasMailConfig = !empty($mailConfig['default']) && 
-                            !empty($mailConfig['mailers'][$mailConfig['default']]) &&
-                            !empty($mailConfig['mailers'][$mailConfig['default']]['host']);
-
-            if (!$hasMailConfig) {
-                return $this->handleSimulatedEmail($user, $resetUrl, $resetCode);
-            }
-
             Mail::to($user->email)->send(new \App\Mail\PasswordResetEmail($user, $resetUrl, $resetCode));
+
+            Log::info('Password reset email sent via Brevo', [
+                'user_id' => $user->id,
+                'email' => $user->email
+            ]);
             return true;
         } catch (\Exception $e) {
-            Log::error('Error sending password reset email', [
+            Log::error('Error sending password reset email via Brevo', [
                 'user_id' => $user->id,
+                'email' => $user->email,
                 'error' => $e->getMessage()
             ]);
-            // Fall back to simulated email if real email fails
-            return $this->handleSimulatedEmail($user, $resetUrl, $resetCode);
+            return false;
         }
     }
 
@@ -555,8 +405,7 @@ HTML;
             ->where('email', $user->email)
             ->delete();
 
-        // Delete any password reset email files
-        $this->deletePasswordResetEmailFiles($user);
+
 
         Cache::forget("password_reset_{$token}");
 
@@ -588,28 +437,7 @@ HTML;
         return $this->resetPasswordWithToken($token, $password);
     }
 
-    /**
-     * Delete password reset email files for a user
-     *
-     * @param User $user
-     * @return bool
-     */
-    private function deletePasswordResetEmailFiles(User $user): bool
-    {
-        // Find all password reset email files for this user
-        $pattern = 'password_reset_' . $user->id . '_*.html';
-        $files = glob(storage_path('simulated-emails/' . $pattern));
 
-        if (!empty($files)) {
-            foreach ($files as $file) {
-                unlink($file);
-                Log::info('Deleted password reset email file', ['file' => basename($file)]);
-            }
-            return true;
-        }
-
-        return false;
-    }
 
     /**
      * Verify a password reset token
@@ -668,5 +496,102 @@ HTML;
         }
 
         return $this->verifyPasswordResetToken($token);
+    }
+
+    /**
+     * Send welcome email after successful registration
+     */
+    public function sendWelcomeEmail(User $user): bool
+    {
+        try {
+            Mail::to($user->email)->send(new \App\Mail\WelcomeEmail($user));
+
+            Log::info('Welcome email sent', ['user_id' => $user->id, 'email' => $user->email]);
+            return true;
+        } catch (\Exception $e) {
+            Log::error('Failed to send welcome email', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'error' => $e->getMessage()
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * Send order confirmation email
+     */
+    public function sendOrderConfirmation(User $user, $order): bool
+    {
+        try {
+            Mail::to($user->email)->send(new \App\Mail\OrderConfirmationEmail($user, $order));
+
+            Log::info('Order confirmation email sent', [
+                'user_id' => $user->id,
+                'order_id' => $order->id,
+                'email' => $user->email
+            ]);
+            return true;
+        } catch (\Exception $e) {
+            Log::error('Failed to send order confirmation email', [
+                'user_id' => $user->id,
+                'order_id' => $order->id ?? null,
+                'email' => $user->email,
+                'error' => $e->getMessage()
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * Send notification email (general purpose)
+     */
+    public function sendNotification(User $user, string $subject, string $template, array $data = []): bool
+    {
+        try {
+            Mail::to($user->email)->send(new \App\Mail\NotificationEmail($user, $subject, $template, $data));
+
+            Log::info('Notification email sent', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'template' => $template,
+                'subject' => $subject
+            ]);
+            return true;
+        } catch (\Exception $e) {
+            Log::error('Failed to send notification email', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'template' => $template,
+                'subject' => $subject,
+                'error' => $e->getMessage()
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * Send seller application status email
+     */
+    public function sendSellerApplicationStatus(User $user, string $status, string $reason = null): bool
+    {
+        try {
+            Mail::to($user->email)->send(new \App\Mail\SellerApplicationStatusEmail($user, $status, $reason));
+
+            Log::info('Seller application status email sent', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'status' => $status
+            ]);
+            return true;
+        } catch (\Exception $e) {
+            Log::error('Failed to send seller application status email', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'status' => $status,
+                'error' => $e->getMessage()
+            ]);
+            return false;
+        }
     }
 }
