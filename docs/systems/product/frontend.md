@@ -23,8 +23,9 @@ No code samples are included—use your preferred HTTP client. For request/respo
 - **Endpoint:** `GET /api/products`
 - **Purpose:** List products with filters (keyword, subcategory, etc.)
 - **Who can call:** Anyone (public)
-- **Required:** At least one of `keyword` or `subcategory_id`
-- **Notes:** Supports pagination, sorting, and attribute filtering. See API docs for all filters.
+- **Required:** At least one of `search` or `subcategory_id`
+- **Available filters:** `subcategory_id` (single ID or array), `min_price`, `max_price`, `is_featured`, `seller_id`, `sort_by`, `sort_direction`, `stock_status`, `attributes`
+- **Notes:** `category_id` and `location_id` are not needed when `subcategory_id` is provided since subcategories already define these relationships.
 
 ### Get Single Product
 - **Endpoint:** `GET /api/products/{product}`
