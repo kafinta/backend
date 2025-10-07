@@ -15,6 +15,7 @@ use App\Services\VariantService;
 use App\Services\CartService;
 use App\Services\OrderService;
 use App\Services\SellerOrderService;
+use App\Services\NotificationService;
 
 class AppServiceProvider extends ServiceProvider
 {
