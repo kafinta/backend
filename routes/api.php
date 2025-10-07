@@ -2,11 +2,9 @@
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Mail;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\SellerController;
-use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\SubcategoryController;
@@ -23,50 +21,7 @@ use App\Http\Controllers\VerificationTokenController;
 use App\Http\Controllers\SocialAuthController;
 use App\Http\Controllers\NotificationController;
 
-// Test email routes (remove in production)
-Route::get('/test-email', function () {
-    try {
-        Mail::raw('This is a test email from Kafinta using Brevo API!', function ($message) {
-            $message->to('chelseajames529@gmail.com')
-                    ->subject('Kafinta Brevo API Test');
-        });
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Test email sent successfully via Brevo API!'
-        ]);
-    } catch (Exception $e) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Email failed: ' . $e->getMessage()
-        ]);
-    }
-});
-
-Route::get('/test-welcome-email', function () {
-    try {
-        $emailService = app(\App\Services\EmailService::class);
-
-        // Create a test user (or use existing)
-        $testUser = new \App\Models\User([
-            'name' => 'Test User',
-            'email' => 'chelseajames529@gmail.com',
-            'username' => 'testuser'
-        ]);
-
-        $result = $emailService->sendWelcomeEmail($testUser);
-
-        return response()->json([
-            'success' => $result,
-            'message' => $result ? 'Welcome email sent successfully!' : 'Failed to send welcome email'
-        ]);
-    } catch (Exception $e) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Email failed: ' . $e->getMessage()
-        ]);
-    }
-});
 
 /*
 |--------------------------------------------------------------------------
@@ -538,14 +493,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/reviews/{id}/helpful', [\App\Http\Controllers\ReviewController::class, 'helpful']);
 });
 
-// Protected routes
-Route::middleware('auth:sanctum')->group(function () {
-    // User routes
-    Route::get('/user/profile', [UserController::class, 'getProfile']);
-    Route::put('/user/profile', [UserController::class, 'updateProfile']);
-    Route::post('/user/profile/picture', [UserController::class, 'uploadProfilePicture']);
-    Route::get('/user/roles', [UserController::class, 'getRoles']);
-});
+
 
 // Product discount management
 Route::middleware('auth:sanctum')->group(function () {
