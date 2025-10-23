@@ -35,7 +35,6 @@ class VerificationEmail extends Mailable
     public function build()
     {
         return $this->subject('Verify Your Email Address')
-                    ->from('aquadirmuhammad@gmail.com', 'Kafinta')
                     ->markdown('emails.verification');
     }
 } 
