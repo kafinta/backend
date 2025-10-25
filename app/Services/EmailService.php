@@ -95,7 +95,7 @@ class EmailService
         ]);
 
         // Generate verification URL pointing to the frontend
-        $verificationUrl = "http://localhost:3000/auth/verify?token=" . $token;
+        $verificationUrl = "http://localhost:3000/auth/verify-email/token?token=" . $token;
 
         // Store token and code in cache for 24 hours
         Cache::put("verification_token_{$token}", [
