@@ -23,7 +23,8 @@ class DatabaseSeeder extends Seeder
             LocationSeeder::class,
             CategorySeeder::class,
             SubcategorySeeder::class,
-            AttributeValueSeeder::class
+            AttributeValueSeeder::class,
+            ProductSeeder::class
         ]);
     }
 }
