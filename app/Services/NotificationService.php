@@ -87,15 +87,16 @@ class NotificationService
                 return false;
             }
 
-            $emailContent = [
-                'to' => $user->email,
-                'subject' => $notification->title,
-                'body' => $notification->message . "\n\n" .
-                         "You can view more details in your account dashboard.\n\n" .
-                         "Best regards,\nKafinta Team"
-            ];
-
-            return $this->emailService->saveEmailToFile($emailContent);
+            // Send notification email using EmailService
+            return $this->emailService->sendNotification(
+                $user,
+                $notification->title,
+                'notification',
+                [
+                    'message' => $notification->message,
+                    'type' => $notification->type,
+                ]
+            );
         } catch (\Exception $e) {
             Log::error('Failed to send email notification', [
                 'notification_id' => $notification->id,
