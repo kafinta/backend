@@ -42,12 +42,16 @@ class ProductResource extends JsonResource
             'is_in_stock' => $this->isInStock(),
             'is_out_of_stock' => $this->isOutOfStock(),
 
-            // Relationships (always include as objects)
-            // Remove these from the public listing response:
-            // 'subcategory' => new SubcategoryResource($this->subcategory),
-            // 'category' => new CategoryResource($this->category),
-            // 'location' => new LocationResource($this->location),
-            // 'analytics' => $this->when($this->status === 'active', ...),
+            // Taxonomy relationships
+            'category' => $this->when($this->relationLoaded('category'), function () {
+                return new CategoryResource($this->category);
+            }),
+            'subcategory' => $this->when($this->relationLoaded('subcategory'), function () {
+                return new SubcategoryResource($this->subcategory);
+            }),
+            'location' => $this->when($this->relationLoaded('location'), function () {
+                return new LocationResource($this->location);
+            }),
 
             // Images
             'images' => ImageResource::collection($this->whenLoaded('images')),
