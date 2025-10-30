@@ -167,14 +167,18 @@ GET /api/subcategories?category_id=1
 GET /api/cart
 
 // Add to cart
-POST /api/cart/add
+POST /api/cart/items
 {
   "product_id": 1,
-  "variant_id": 2, // optional
+  "quantity": 1
+}
+// OR for variants:
+{
+  "variant_id": 2,
   "quantity": 1
 }
 
-// Update cart item
+// Update cart item quantity
 PUT /api/cart/items/{item_id}
 { "quantity": 3 }
 
@@ -182,7 +186,13 @@ PUT /api/cart/items/{item_id}
 DELETE /api/cart/items/{item_id}
 
 // Clear cart
-DELETE /api/cart/clear
+DELETE /api/cart
+
+// Transfer guest cart after login (authenticated only)
+POST /api/cart/transfer
+{
+  "session_id": "optional_session_id"
+}
 ```
 
 ### Orders
