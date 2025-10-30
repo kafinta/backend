@@ -309,7 +309,7 @@ class ProductController extends ImprovedController
             return $this->respondWithSuccess(
                 'Basic product information and inventory saved successfully',
                 201,
-                new ProductResource($product->load(['subcategory', 'location', 'images', 'attributeValues']))
+                new ProductResource($product->load(['category', 'subcategory', 'location', 'images', 'attributeValues']))
             );
         } catch (\Illuminate\Database\QueryException $e) {
             \DB::rollBack();
@@ -403,7 +403,7 @@ class ProductController extends ImprovedController
             return $this->respondWithSuccess(
                 'Basic product information updated successfully',
                 200,
-                new ProductResource($product->load(['subcategory', 'location', 'images', 'attributeValues']))
+                new ProductResource($product->load(['category', 'subcategory', 'location', 'images', 'attributeValues']))
             );
         } catch (\Exception $e) {
             return $this->respondWithError('Failed to update basic product info: ' . $e->getMessage(), 500);
@@ -475,7 +475,7 @@ class ProductController extends ImprovedController
             return $this->respondWithSuccess(
                 'Product attributes updated successfully',
                 200,
-                new ProductResource($product->load(['attributeValues.attribute', 'subcategory', 'location', 'images']))
+                new ProductResource($product->load(['category', 'subcategory', 'location', 'attributeValues.attribute', 'images']))
             );
 
         } catch (\Exception $e) {
@@ -515,7 +515,7 @@ class ProductController extends ImprovedController
             return $this->respondWithSuccess(
                 'Images uploaded successfully',
                 200,
-                new ProductResource($product->load(['images', 'subcategory', 'location', 'attributeValues.attribute']))
+                new ProductResource($product->load(['category', 'subcategory', 'location', 'images', 'attributeValues.attribute']))
             );
 
         } catch (\Exception $e) {
@@ -555,7 +555,7 @@ class ProductController extends ImprovedController
             return $this->respondWithSuccess(
                 'Product published successfully',
                 200,
-                new ProductResource($product->load(['images', 'attributeValues.attribute', 'subcategory', 'location']))
+                new ProductResource($product->load(['category', 'subcategory', 'location', 'images', 'attributeValues.attribute']))
             );
 
         } catch (\Exception $e) {
@@ -633,7 +633,7 @@ class ProductController extends ImprovedController
             return $this->respondWithSuccess(
                 $message,
                 200,
-                new ProductResource($product->load(['images', 'attributeValues.attribute', 'subcategory', 'location']))
+                new ProductResource($product->load(['category', 'subcategory', 'location', 'images', 'attributeValues.attribute']))
             );
 
         } catch (\Exception $e) {
@@ -675,7 +675,7 @@ class ProductController extends ImprovedController
             'discount_start' => $data['discount_start'] ?? null,
             'discount_end' => $data['discount_end'] ?? null,
         ]);
-        return $this->respondWithSuccess('Product discount updated successfully', 200, new ProductResource($product));
+        return $this->respondWithSuccess('Product discount updated successfully', 200, new ProductResource($product->load(['category', 'subcategory', 'location', 'images', 'attributeValues.attribute'])));
     }
 
     /**
@@ -694,7 +694,7 @@ class ProductController extends ImprovedController
             'discount_start' => null,
             'discount_end' => null,
         ]);
-        return $this->respondWithSuccess('Product discount removed successfully', 200, new ProductResource($product));
+        return $this->respondWithSuccess('Product discount removed successfully', 200, new ProductResource($product->load(['category', 'subcategory', 'location', 'images', 'attributeValues.attribute'])));
     }
 
     // ===== SELLER-SPECIFIC PRODUCT MANAGEMENT =====
