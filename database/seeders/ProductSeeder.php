@@ -9,6 +9,8 @@ use App\Models\Seller;
 use App\Models\Product;
 use App\Models\Subcategory;
 use App\Models\Role;
+use App\Models\Attribute;
+use App\Models\AttributeValue;
 use Illuminate\Support\Str;
 
 class ProductSeeder extends Seeder
@@ -122,29 +124,64 @@ class ProductSeeder extends Seeder
                 'description' => 'Spacious L-shaped sectional sofa with comfortable cushions. Perfect for large living rooms. Features durable fabric and wooden frame.',
                 'price' => 1299.99,
                 'stock_quantity' => 15,
+                'attributes' => [
+                    'Color' => 'Gray',
+                    'Style' => 'Modern',
+                    'Upholstery Material' => 'Polyester',
+                    'Configuration' => 'L-Shaped',
+                    'Cushion Fill' => 'Polyester',
+                    'Frame Material' => 'Wood',
+                ],
             ],
             [
                 'name' => 'Classic Leather Sofa',
                 'description' => 'Premium leather sofa with elegant design. Comfortable seating for 3-4 people. Easy to clean and maintain.',
                 'price' => 1899.99,
                 'stock_quantity' => 8,
+                'attributes' => [
+                    'Color' => 'Black',
+                    'Style' => 'Traditional',
+                    'Upholstery Material' => 'Leather',
+                    'Seating Capacity' => 'Seats 3',
+                    'Cushion Fill' => 'Feather & Down',
+                    'Frame Material' => 'Wood',
+                ],
             ],
             [
                 'name' => 'Compact Apartment Sofa',
                 'description' => 'Perfect for small spaces. Stylish and comfortable 2-seater sofa. Available in multiple colors.',
                 'price' => 599.99,
                 'stock_quantity' => 25,
+                'attributes' => [
+                    'Color' => 'Beige',
+                    'Style' => 'Contemporary',
+                    'Upholstery Material' => 'Linen',
+                    'Seating Capacity' => 'Seats 2',
+                    'Cushion Fill' => 'Memory Foam',
+                    'Frame Material' => 'Wood',
+                ],
             ],
             [
                 'name' => 'Luxury Velvet Sofa',
                 'description' => 'Luxurious velvet upholstery with modern design. Adds elegance to any living room. Includes decorative pillows.',
                 'price' => 2199.99,
                 'stock_quantity' => 5,
+                'attributes' => [
+                    'Color' => 'Blue',
+                    'Style' => 'Modern',
+                    'Upholstery Material' => 'Velvet',
+                    'Seating Capacity' => 'Seats 4',
+                    'Cushion Fill' => 'Feather & Down',
+                    'Frame Material' => 'Wood',
+                ],
             ],
         ];
 
         foreach ($sofaProducts as $index => $product) {
-            Product::create([
+            $attributes = $product['attributes'];
+            unset($product['attributes']);
+
+            $createdProduct = Product::create([
                 'name' => $product['name'],
                 'slug' => Str::slug($product['name']) . '-' . uniqid(),
                 'description' => $product['description'],
@@ -155,6 +192,9 @@ class ProductSeeder extends Seeder
                 'stock_quantity' => $product['stock_quantity'],
                 'manage_stock' => true,
             ]);
+
+            // Attach attributes
+            $this->attachAttributesToProduct($createdProduct, $attributes);
         }
     }
 
@@ -171,29 +211,52 @@ class ProductSeeder extends Seeder
                 'description' => 'Sturdy platform bed with storage drawers. Solid wood construction. Fits standard queen mattress.',
                 'price' => 799.99,
                 'stock_quantity' => 12,
+                'attributes' => [
+                    'Color' => 'Brown',
+                    'Style' => 'Modern',
+                    'Assembly' => 'Requires Assembly',
+                ],
             ],
             [
                 'name' => 'King Size Upholstered Bed',
                 'description' => 'Luxurious upholstered bed frame with headboard. Perfect for master bedrooms. Includes slats.',
                 'price' => 1299.99,
                 'stock_quantity' => 7,
+                'attributes' => [
+                    'Color' => 'Gray',
+                    'Style' => 'Contemporary',
+                    'Assembly' => 'Requires Assembly',
+                ],
             ],
             [
                 'name' => 'Twin Bed with Trundle',
                 'description' => 'Space-saving twin bed with pull-out trundle. Ideal for kids rooms or guest bedrooms.',
                 'price' => 449.99,
                 'stock_quantity' => 20,
+                'attributes' => [
+                    'Color' => 'White',
+                    'Style' => 'Modern',
+                    'Assembly' => 'Requires Assembly',
+                ],
             ],
             [
                 'name' => 'Adjustable Electric Bed',
                 'description' => 'Modern adjustable bed with remote control. Customizable firmness and position. Queen size.',
                 'price' => 1599.99,
                 'stock_quantity' => 4,
+                'attributes' => [
+                    'Color' => 'Black',
+                    'Style' => 'Modern',
+                    'Assembly' => 'Fully Assembled',
+                ],
             ],
         ];
 
         foreach ($bedProducts as $index => $product) {
-            Product::create([
+            $attributes = $product['attributes'];
+            unset($product['attributes']);
+
+            $createdProduct = Product::create([
                 'name' => $product['name'],
                 'slug' => Str::slug($product['name']) . '-' . uniqid(),
                 'description' => $product['description'],
@@ -204,6 +267,9 @@ class ProductSeeder extends Seeder
                 'stock_quantity' => $product['stock_quantity'],
                 'manage_stock' => true,
             ]);
+
+            // Attach attributes
+            $this->attachAttributesToProduct($createdProduct, $attributes);
         }
     }
 
@@ -220,29 +286,48 @@ class ProductSeeder extends Seeder
                 'description' => 'Contemporary pendant light with LED technology. Energy-efficient and long-lasting. Dimmable.',
                 'price' => 89.99,
                 'stock_quantity' => 30,
+                'attributes' => [
+                    'Color' => 'Black',
+                    'Style' => 'Modern',
+                ],
             ],
             [
                 'name' => 'Crystal Chandelier',
                 'description' => 'Elegant crystal chandelier for dining rooms. Adds sophistication to any space. Includes 6 bulbs.',
                 'price' => 349.99,
                 'stock_quantity' => 6,
+                'attributes' => [
+                    'Color' => 'White',
+                    'Style' => 'Traditional',
+                ],
             ],
             [
                 'name' => 'Minimalist Floor Lamp',
                 'description' => 'Sleek floor lamp with adjustable brightness. Perfect for reading or ambient lighting.',
                 'price' => 129.99,
                 'stock_quantity' => 18,
+                'attributes' => [
+                    'Color' => 'Gray',
+                    'Style' => 'Scandinavian',
+                ],
             ],
             [
                 'name' => 'Smart RGB Ceiling Light',
                 'description' => 'WiFi-enabled ceiling light with color changing options. Control via smartphone app.',
                 'price' => 199.99,
                 'stock_quantity' => 10,
+                'attributes' => [
+                    'Color' => 'White',
+                    'Style' => 'Modern',
+                ],
             ],
         ];
 
         foreach ($lightingProducts as $index => $product) {
-            Product::create([
+            $attributes = $product['attributes'];
+            unset($product['attributes']);
+
+            $createdProduct = Product::create([
                 'name' => $product['name'],
                 'slug' => Str::slug($product['name']) . '-' . uniqid(),
                 'description' => $product['description'],
@@ -253,6 +338,28 @@ class ProductSeeder extends Seeder
                 'stock_quantity' => $product['stock_quantity'],
                 'manage_stock' => true,
             ]);
+
+            // Attach attributes
+            $this->attachAttributesToProduct($createdProduct, $attributes);
+        }
+    }
+
+    /**
+     * Attach attributes to a product
+     */
+    private function attachAttributesToProduct($product, $attributeNames)
+    {
+        foreach ($attributeNames as $attributeName => $valueName) {
+            $attribute = Attribute::where('name', $attributeName)->first();
+            if (!$attribute) continue;
+
+            $attributeValue = AttributeValue::where('attribute_id', $attribute->id)
+                ->where('name', $valueName)
+                ->first();
+
+            if ($attributeValue) {
+                $product->attributeValues()->attach($attributeValue->id);
+            }
         }
     }
 }
