@@ -820,4 +820,133 @@ class ProductController extends ImprovedController
             return $this->respondWithError('Error retrieving product attributes', 500);
         }
     }
+
+    /**
+     * Get top products by sales for home page
+     * Returns the 10 best-selling products
+     */
+    public function topProducts(Request $request)
+    {
+        try {
+            $limit = 10;
+
+            $products = Product::where('status', 'active')
+                ->with([
+                    'category',
+                    'subcategory',
+                    'images',
+                    'user' => function($q) {
+                        $q->select('id')->with(['seller' => function($q) {
+                            $q->select('id', 'user_id', 'business_name');
+                        }]);
+                    }
+                ])
+                ->withCount(['orderItems' => function($q) {
+                    $q->whereHas('order', function($q) {
+                        $q->where('status', '!=', 'cancelled');
+                    });
+                }])
+                ->orderBy('order_items_count', 'desc')
+                ->orderBy('created_at', 'desc')
+                ->limit($limit)
+                ->get();
+
+            // Enhance products with additional metrics
+            $products = $products->map(function($product) {
+                $product->sales_count = $product->orderItems()
+                    ->whereHas('order', function($q) {
+                        $q->where('status', '!=', 'cancelled');
+                    })
+                    ->sum('quantity');
+
+                $reviews = $product->reviews()->where('status', 'approved')->get();
+                if ($reviews->count() > 0) {
+                    $product->average_rating = $reviews->avg(function($review) {
+                        return ($review->value_for_money + $review->true_to_description +
+                                $review->product_quality + $review->shipping) / 4;
+                    });
+                    $product->review_count = $reviews->count();
+                } else {
+                    $product->average_rating = null;
+                    $product->review_count = 0;
+                }
+
+                return $product;
+            });
+
+            return $this->respondWithSuccess('Top products retrieved successfully', 200, [
+                'products' => ProductResource::collection($products),
+                'count' => $products->count()
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error retrieving top products', ['error' => $e->getMessage()]);
+            return $this->respondWithError('Error retrieving top products: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Get featured products for home page
+     * Returns the 10 featured products, sorted by sales
+     */
+    public function featuredProducts(Request $request)
+    {
+        try {
+            $limit = 10;
+
+            $products = Product::where('status', 'active')
+                ->where('is_featured', true)
+                ->with([
+                    'category',
+                    'subcategory',
+                    'images',
+                    'user' => function($q) {
+                        $q->select('id')->with(['seller' => function($q) {
+                            $q->select('id', 'user_id', 'business_name');
+                        }]);
+                    }
+                ])
+                ->withCount(['orderItems' => function($q) {
+                    $q->whereHas('order', function($q) {
+                        $q->where('status', '!=', 'cancelled');
+                    });
+                }])
+                ->orderBy('order_items_count', 'desc')
+                ->orderBy('created_at', 'desc')
+                ->limit($limit)
+                ->get();
+
+            // Enhance products with additional metrics
+            $products = $products->map(function($product) {
+                $product->sales_count = $product->orderItems()
+                    ->whereHas('order', function($q) {
+                        $q->where('status', '!=', 'cancelled');
+                    })
+                    ->sum('quantity');
+
+                $reviews = $product->reviews()->where('status', 'approved')->get();
+                if ($reviews->count() > 0) {
+                    $product->average_rating = $reviews->avg(function($review) {
+                        return ($review->value_for_money + $review->true_to_description +
+                                $review->product_quality + $review->shipping) / 4;
+                    });
+                    $product->review_count = $reviews->count();
+                } else {
+                    $product->average_rating = null;
+                    $product->review_count = 0;
+                }
+
+                return $product;
+            });
+
+            return $this->respondWithSuccess('Featured products retrieved successfully', 200, [
+                'products' => ProductResource::collection($products),
+                'count' => $products->count()
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error retrieving featured products', ['error' => $e->getMessage()]);
+            return $this->respondWithError('Error retrieving featured products: ' . $e->getMessage(), 500);
+        }
+    }
 }

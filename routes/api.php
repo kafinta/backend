@@ -325,6 +325,10 @@ Route::middleware(['auth:sanctum,web'])->group(function () {
 
 // Public Product Routes
 Route::prefix('products')->group(function () {
+    // Top products for home page (must come before catch-all routes)
+    Route::get('/top', [ProductController::class, 'topProducts'])->name('products.top');
+    Route::get('/featured', [ProductController::class, 'featuredProducts'])->name('products.featured');
+
     // Unified product listing with comprehensive filtering
     Route::get('/', [ProductController::class, 'index'])->name('products.index');
     // Get product by ID
