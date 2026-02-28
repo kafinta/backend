@@ -26,6 +26,9 @@ class User extends Authenticatable
         'provider_token',
         'provider_refresh_token',
         'provider_token_expires_at',
+        'two_factor_enabled',
+        'two_factor_secret',
+        'two_factor_recovery_codes',
     ];
 
     /**
@@ -36,6 +39,8 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'two_factor_secret',
+        'two_factor_recovery_codes',
     ];
 
     /**
@@ -46,6 +51,7 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'provider_token_expires_at' => 'datetime',
+        'two_factor_enabled' => 'boolean',
     ];
 
     // Profile functionality has been merged into the User model
