@@ -120,6 +120,14 @@ Route::post('/verify-email/token', [UserController::class, 'verifyEmailToken'])-
 Route::get('/verify-email/{token}', [UserController::class, 'verifyEmailToken'])->name('verify.email');
 Route::post('/verify-email/code', [UserController::class, 'verifyEmailCode'])->name('verify.email.code');
 
+// Two-Factor Authentication Routes
+Route::middleware(['auth:sanctum,web'])->prefix('2fa')->group(function () {
+    Route::post('/enable', [UserController::class, 'enableTwoFactor'])->name('2fa.enable');
+    Route::post('/disable', [UserController::class, 'disableTwoFactor'])->name('2fa.disable');
+    Route::post('/verify', [UserController::class, 'verifyTwoFactorCode'])->name('2fa.verify');
+    Route::post('/recovery-codes', [UserController::class, 'getRecoveryCodes'])->name('2fa.recovery-codes');
+});
+
 
 
 // Verification Token Routes (Development Only)

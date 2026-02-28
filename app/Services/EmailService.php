@@ -549,4 +549,76 @@ class EmailService
         $mailable = new \App\Mail\SellerApplicationStatusEmail($user, $status, $reason);
         return $this->dispatchEmail($mailable, $user->email, 'seller_status', $user->id);
     }
+
+    /**
+     * Send email verification success confirmation
+     */
+    public function sendEmailVerifiedConfirmation(User $user): bool
+    {
+        $mailable = new \App\Mail\EmailVerifiedEmail($user);
+        return $this->dispatchEmail($mailable, $user->email, 'email_verified', $user->id);
+    }
+
+    /**
+     * Generate and send a two-factor authentication code
+     */
+    public function generateAndSendTwoFactorCode(User $user): array
+    {
+        $code = sprintf('%06d', mt_rand(100000, 999999));
+        $cacheKey = "2fa_code_{$user->id}";
+        Cache::put($cacheKey, [
+            'code' => $code,
+            'expires_at' => now()->addMinutes(10),
+            'attempts' => 0
+        ], now()->addMinutes(10));
+        
+        $emailSent = $this->sendTwoFactorCode($user, $code);
+        
+        return [
+            'success' => $emailSent,
+            'expires_at' => now()->addMinutes(10),
+        ];
+    }
+
+    /**
+     * Send two-factor authentication code email
+     */
+    public function sendTwoFactorCode(User $user, string $code): bool
+    {
+        $mailable = new \App\Mail\TwoFactorCodeEmail($user, $code);
+        return $this->dispatchEmail($mailable, $user->email, '2fa_code', $user->id, true);
+    }
+
+    /**
+     * Verify a two-factor authentication code
+     */
+    public function verifyTwoFactorCode(User $user, string $code): array
+    {
+        $cacheKey = "2fa_code_{$user->id}";
+        $data = Cache::get($cacheKey);
+        
+        if (!$data) {
+            return ['success' => false, 'message' => 'No 2FA code found or code has expired'];
+        }
+        
+        if ($data['attempts'] >= 5) {
+            Cache::forget($cacheKey);
+            return ['success' => false, 'message' => 'Too many failed attempts. Please request a new code.'];
+        }
+        
+        if (now()->isAfter($data['expires_at'])) {
+            Cache::forget($cacheKey);
+            return ['success' => false, 'message' => '2FA code has expired'];
+        }
+        
+        if ($data['code'] !== $code) {
+            $data['attempts']++;
+            Cache::put($cacheKey, $data, $data['expires_at']);
+            return ['success' => false, 'message' => 'Invalid 2FA code', 'attempts_remaining' => 5 - $data['attempts']];
+        }
+        
+        Cache::forget($cacheKey);
+        return ['success' => true, 'message' => '2FA verification successful'];
+    }
 }
+

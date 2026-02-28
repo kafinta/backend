@@ -106,6 +106,24 @@ class UserController extends ImprovedController
             }
 
             RateLimiter::clear($throttleKey);
+
+            // Check if 2FA is enabled
+            if ($user->two_factor_enabled) {
+                // Generate and send 2FA code
+                $result = $this->emailService->generateAndSendTwoFactorCode($user);
+                
+                if (!$result['success']) {
+                    return $this->respondWithError('Failed to send two-factor code', 500);
+                }
+                
+                // Return partial success - user needs to verify 2FA
+                return $this->respondWithSuccess('Two-factor code sent to your email', 200, [
+                    'requires_2fa' => true,
+                    'user_id' => $user->id,
+                    'expires_at' => $result['expires_at']
+                ]);
+            }
+            
             $minutes = $request->remember_me ? 60 * 24 * 30 : 60 * 24;
             config(['session.lifetime' => $minutes]);
             $request->session()->regenerate();
@@ -756,4 +774,148 @@ class UserController extends ImprovedController
             return $this->respondWithError('Error updating email: ' . $e->getMessage(), 500);
         }
     }
+
+    /**
+     * Enable two-factor authentication for the user
+     */
+    public function enableTwoFactor(Request $request)
+    {
+        try {
+            $user = auth()->user();
+            
+            if ($user->two_factor_enabled) {
+                return $this->respondWithError('Two-factor authentication is already enabled', 400);
+            }
+            
+            // Generate recovery codes
+            $recoveryCodes = [];
+            for ($i = 0; $i < 8; $i++) {
+                $recoveryCodes[] = strtoupper(Str::random(10));
+            }
+            
+            // Update user
+            $user->two_factor_enabled = true;
+            $user->two_factor_recovery_codes = json_encode($recoveryCodes);
+            $user->save();
+            
+            return $this->respondWithSuccess('Two-factor authentication enabled successfully', 200, [
+                'recovery_codes' => $recoveryCodes,
+                'message' => 'Please save these recovery codes in a safe place. They can be used to access your account if you lose your device.'
+            ]);
+        } catch (\Exception $e) {
+            return $this->respondWithError('Error enabling two-factor authentication: ' . $e->getMessage(), 500);
+        }
+    }
+    
+    /**
+     * Disable two-factor authentication for the user
+     */
+    public function disableTwoFactor(Request $request)
+    {
+        try {
+            $user = auth()->user();
+            
+            if (!$user->two_factor_enabled) {
+                return $this->respondWithError('Two-factor authentication is not enabled', 400);
+            }
+            
+            // Verify password before disabling
+            $validator = Validator::make($request->all(), [
+                'password' => 'required|string'
+            ]);
+            
+            if ($validator->fails()) {
+                return $this->respondWithValidationError($validator->errors(), 422);
+            }
+            
+            if (!Hash::check($request->password, $user->password)) {
+                return $this->respondWithError('Invalid password', 401);
+            }
+            
+            // Disable 2FA
+            $user->two_factor_enabled = false;
+            $user->two_factor_secret = null;
+            $user->two_factor_recovery_codes = null;
+            $user->save();
+            
+            return $this->respondWithSuccess('Two-factor authentication disabled successfully', 200);
+        } catch (\Exception $e) {
+            return $this->respondWithError('Error disabling two-factor authentication: ' . $e->getMessage(), 500);
+        }
+    }
+    
+    /**
+     * Verify two-factor authentication code during login
+     */
+    public function verifyTwoFactorCode(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'code' => 'required|string|size:6'
+            ]);
+            
+            if ($validator->fails()) {
+                return $this->respondWithValidationError($validator->errors(), 422);
+            }
+            
+            $user = auth()->user();
+            
+            if (!$user) {
+                return $this->respondWithError('User not authenticated', 401);
+            }
+            
+            // Verify the code
+            $result = $this->emailService->verifyTwoFactorCode($user, $request->code);
+            
+            if (!$result['success']) {
+                return $this->respondWithError($result['message'], 400, [
+                    'attempts_remaining' => $result['attempts_remaining'] ?? null
+                ]);
+            }
+            
+            return $this->respondWithSuccess('Two-factor authentication successful', 200, [
+                'user' => new UserAccountResource($user)
+            ]);
+        } catch (\Exception $e) {
+            return $this->respondWithError('Error verifying two-factor code: ' . $e->getMessage(), 500);
+        }
+    }
+    
+    /**
+     * Get recovery codes for the user
+     */
+    public function getRecoveryCodes(Request $request)
+    {
+        try {
+            $user = auth()->user();
+            
+            if (!$user->two_factor_enabled) {
+                return $this->respondWithError('Two-factor authentication is not enabled', 400);
+            }
+            
+            // Verify password before showing recovery codes
+            $validator = Validator::make($request->all(), [
+                'password' => 'required|string'
+            ]);
+            
+            if ($validator->fails()) {
+                return $this->respondWithValidationError($validator->errors(), 422);
+            }
+            
+            if (!Hash::check($request->password, $user->password)) {
+                return $this->respondWithError('Invalid password', 401);
+            }
+            
+            $recoveryCodes = json_decode($user->two_factor_recovery_codes, true) ?? [];
+            
+            return $this->respondWithSuccess('Recovery codes retrieved successfully', 200, [
+                'recovery_codes' => $recoveryCodes
+            ]);
+        } catch (\Exception $e) {
+            return $this->respondWithError('Error retrieving recovery codes: ' . $e->getMessage(), 500);
+        }
+    }
+
+
 }
+
