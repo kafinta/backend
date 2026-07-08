@@ -88,10 +88,6 @@ class ProductController extends ImprovedController
             $hasSearch = $searchTerm && !empty(trim($searchTerm));
             $hasSubcategory = $request->filled('subcategory_id') && !empty($request->input('subcategory_id'));
 
-            if (!$hasSearch && !$hasSubcategory) {
-                return $this->respondWithError('Either search or subcategory selection is required', 400);
-            }
-
             $perPage = $request->input('per_page', 15);
             $filters = $request->only([
                 'subcategory_id',
@@ -101,6 +97,7 @@ class ProductController extends ImprovedController
             ]);
             if ($hasSearch) {
                 $filters['search'] = $searchTerm;
+                $filters['keyword'] = $searchTerm;
             }
 
             // Force only active products for public listing

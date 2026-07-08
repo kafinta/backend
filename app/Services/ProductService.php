@@ -68,8 +68,15 @@ class ProductService
             }
 
             // Apply filters
-            if (isset($filters['keyword']) && !empty($filters['keyword'])) {
+            $keyword = null;
+            if (isset($filters['search']) && !empty($filters['search'])) {
+                $keyword = $filters['search'];
+            } elseif (isset($filters['keyword']) && !empty($filters['keyword'])) {
                 $keyword = $filters['keyword'];
+            }
+
+            if ($keyword) {
+                $filters['keyword'] = $keyword;
                 $query->where(function($q) use ($keyword) {
                     $q->where('name', 'like', "%{$keyword}%");
                 });
@@ -975,6 +982,10 @@ class ProductService
      */
     private function getTargetedFilterMetadata(array $filters): array
     {
+        if (isset($filters['search']) && !empty($filters['search'])) {
+            $filters['keyword'] = $filters['search'];
+        }
+
         $metadata = [
             'available_locations' => [],
             'available_attributes' => [],
