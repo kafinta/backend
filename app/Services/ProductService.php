@@ -8,6 +8,7 @@ use App\Models\AttributeValue;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use App\Services\FileService;
 use App\Services\VariantService;
 use App\Models\Location;
@@ -118,6 +119,10 @@ class ProductService
                 $query->where('user_id', $filters['seller_id']);
             }
 
+            if (isset($filters['location_id']) && !empty($filters['location_id'])) {
+                $query->where('location_id', $filters['location_id']);
+            }
+
 
 
             // Apply stock status filtering
@@ -145,10 +150,16 @@ class ProductService
 
             // Apply attribute filtering
             if (isset($filters['attributes']) && is_array($filters['attributes']) && !empty($filters['attributes'])) {
-                $attributeValueIds = $filters['attributes'];
-                $query->whereHas('attributeValues', function($q) use ($attributeValueIds) {
-                    $q->whereIn('attribute_value_id', $attributeValueIds);
-                }, '=', count($attributeValueIds)); // Ensure ALL attributes match
+                $attributeGroups = $this->resolveAttributeValueGroups($filters['attributes']);
+                if (empty($attributeGroups)) {
+                    $query->whereRaw('0 = 1');
+                } else {
+                    foreach ($attributeGroups as $attributeValueIds) {
+                        $query->whereHas('attributeValues', function($q) use ($attributeValueIds) {
+                            $q->whereIn('attribute_value_id', $attributeValueIds);
+                        });
+                    }
+                }
             }
 
             // Apply sorting
@@ -235,6 +246,73 @@ class ProductService
             ]);
             throw $e;
         }
+    }
+
+    /**
+     * Resolve frontend attribute filters into attribute value ID groups.
+     *
+     * Supports formats like attributes[Color]=Red and legacy numeric value arrays.
+     */
+    private function resolveAttributeValueGroups(array $attributeFilters): array
+    {
+        $groups = [];
+
+        foreach ($attributeFilters as $attributeKey => $attributeValue) {
+            if (is_numeric($attributeKey)) {
+                $ids = [];
+                if (is_array($attributeValue)) {
+                    foreach ($attributeValue as $valueItem) {
+                        if (is_numeric($valueItem)) {
+                            $ids[] = (int)$valueItem;
+                        }
+                    }
+                } elseif (is_numeric($attributeValue)) {
+                    $ids[] = (int)$attributeValue;
+                }
+
+                if (!empty($ids)) {
+                    $groups[] = $ids;
+                }
+
+                continue;
+            }
+
+            $attribute = Attribute::where('slug', Str::slug($attributeKey))
+                ->orWhere('name', $attributeKey)
+                ->first();
+
+            if (!$attribute) {
+                return [];
+            }
+
+            $valueItems = is_array($attributeValue) ? $attributeValue : [$attributeValue];
+            $ids = [];
+
+            foreach ($valueItems as $valueItem) {
+                if (is_numeric($valueItem)) {
+                    $ids[] = (int)$valueItem;
+                    continue;
+                }
+
+                $attributeValueModel = AttributeValue::where('attribute_id', $attribute->id)
+                    ->where(function ($query) use ($valueItem) {
+                        $query->where('slug', Str::slug($valueItem))
+                              ->orWhere('name', $valueItem);
+                    })->first();
+
+                if ($attributeValueModel) {
+                    $ids[] = $attributeValueModel->id;
+                }
+            }
+
+            if (empty($ids)) {
+                return [];
+            }
+
+            $groups[] = $ids;
+        }
+
+        return $groups;
     }
 
     public function createProduct(array $formData): array
@@ -1044,6 +1122,10 @@ class ProductService
             } else {
                 $priceQuery->where('subcategory_id', $filters['subcategory_id']);
             }
+        }
+
+        if (isset($filters['location_id']) && !empty($filters['location_id'])) {
+            $priceQuery->where('location_id', $filters['location_id']);
         }
 
         $priceStats = $priceQuery->selectRaw('MIN(price) as min_price, MAX(price) as max_price')->first();

@@ -57,6 +57,7 @@ class ProductController extends ImprovedController
                 'per_page' => 'sometimes|integer|min:1|max:100',
                 'search' => 'sometimes|string|max:255',
                 'keyword' => 'sometimes|string|max:255', // Backward compatibility
+                'location_id' => 'sometimes|integer|exists:locations,id',
                 'min_price' => 'sometimes|numeric|min:0',
                 'max_price' => 'sometimes|numeric|min:0',
                 'is_featured' => 'sometimes|boolean',
@@ -64,11 +65,9 @@ class ProductController extends ImprovedController
                 'sort_by' => 'sometimes|in:name,price,created_at,updated_at,relevance',
                 'sort_direction' => 'sometimes|in:asc,desc',
                 'stock_status' => 'sometimes|in:in_stock,out_of_stock',
-                'attributes' => 'sometimes|array',
-                'attributes.*' => 'integer|exists:attribute_values,id'
+                'attributes' => 'sometimes|array'
             ];
 
-            // Handle subcategory_id - can be single integer or array
             if ($request->has('subcategory_id')) {
                 if (is_array($request->input('subcategory_id'))) {
                     $rules['subcategory_id'] = 'array';
@@ -92,6 +91,7 @@ class ProductController extends ImprovedController
             $perPage = $request->input('per_page', 15);
             $filters = $request->only([
                 'subcategory_id',
+                'location_id',
                 'min_price', 'max_price',
                 'is_featured', 'seller_id',
                 'sort_by', 'sort_direction', 'stock_status', 'attributes'

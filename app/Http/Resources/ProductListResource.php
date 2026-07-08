@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use App\Http\Resources\ImageResource;
 
 class ProductListResource extends JsonResource
 {
@@ -23,7 +24,9 @@ class ProductListResource extends JsonResource
             'name' => $this->name,
             'slug' => $this->slug,
             'short_description' => $this->description ? trim(strip_tags(substr($this->description, 0, 120))) : null,
-            'price' => $this->price,
+            'price' => $this->getDiscountedPrice(),
+            'previous_price' => $this->hasActiveDiscount() ? (float) $this->price : null,
+            'discountPrice' => $this->getDiscountedPrice(),
             'discount_type' => $this->discount_type,
             'discount_value' => $this->discount_value,
             'has_active_discount' => $this->hasActiveDiscount(),
@@ -34,11 +37,9 @@ class ProductListResource extends JsonResource
             'manage_stock' => $this->manage_stock,
             'is_in_stock' => $this->isInStock(),
             'is_out_of_stock' => $this->isOutOfStock(),
-            'image' => $productImage ? $productImage->path : null,
+            'image' => $productImage ? $productImage->url : null,
             'images' => $this->whenLoaded('images', function () {
-                return $this->images->map(function ($image) {
-                    return $image->path;
-                });
+                return ImageResource::collection($this->images);
             }),
             'seller_name' => $sellerName,
             'category' => $this->when($this->relationLoaded('subcategory') && $this->subcategory, $this->subcategory->name),

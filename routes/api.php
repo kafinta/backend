@@ -339,8 +339,6 @@ Route::prefix('products')->group(function () {
 
     // Unified product listing with comprehensive filtering
     Route::get('/', [ProductController::class, 'index'])->name('products.index');
-    // Get product by ID
-    Route::get('/{product}', [ProductController::class, 'show'])->name('products.show');
     // Get product by slug
     Route::get('/slug/{slug}', [ProductController::class, 'showBySlug'])->name('products.show-by-slug');
     // Get product attributes
@@ -350,7 +348,7 @@ Route::prefix('products')->group(function () {
     Route::get('/variants/{id}', [VariantController::class, 'show'])->name('variants.show');
     Route::get('/{productId}/variants', [VariantController::class, 'index'])->name('variants.index');
 
-    // Single product view (catch-all route - must be last)
+    // Get product by ID / catch-all route
     Route::get('/{product}', [ProductController::class, 'show'])->name('products.show');
 });
 
