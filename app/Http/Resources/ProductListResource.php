@@ -16,13 +16,13 @@ class ProductListResource extends JsonResource
     public function toArray(Request $request): array
     {
         $productImage = $this->whenLoaded('images') ? $this->images->first() : null;
-        $sellerName = optional($this->whenLoaded('user') && $this->user->relationLoaded('seller') ? $this->user->seller : ($this->user->seller ?? null))->business_name;
+        $sellerName = optional(optional($this->whenLoaded('user') ? $this->user : null)->seller)->business_name;
 
         return [
             'id' => $this->id,
             'name' => $this->name,
             'slug' => $this->slug,
-            'short_description' => optional($this->description) ? strip_tags(substr($this->description, 0, 120)) : null,
+            'short_description' => $this->description ? trim(strip_tags(substr($this->description, 0, 120))) : null,
             'price' => $this->price,
             'discount_type' => $this->discount_type,
             'discount_value' => $this->discount_value,
@@ -35,18 +35,15 @@ class ProductListResource extends JsonResource
             'is_in_stock' => $this->isInStock(),
             'is_out_of_stock' => $this->isOutOfStock(),
             'image' => $productImage ? $productImage->path : null,
-            'images' => ImageResource::collection($this->whenLoaded('images')),
+            'images' => $this->whenLoaded('images', function () {
+                return $this->images->map(function ($image) {
+                    return $image->path;
+                });
+            }),
             'seller_name' => $sellerName,
-            'category' => $this->when($this->relationLoaded('subcategory') && $this->subcategory, function () {
-                return $this->subcategory->name;
-            }),
-            'subcategory' => $this->when($this->relationLoaded('subcategory') && $this->subcategory, function () {
-                return $this->subcategory->name;
-            }),
+            'category' => $this->when($this->relationLoaded('subcategory') && $this->subcategory, $this->subcategory->name),
+            'subcategory' => $this->when($this->relationLoaded('subcategory') && $this->subcategory, $this->subcategory->name),
             'active_reviews_count' => $this->when(isset($this->active_reviews_count), $this->active_reviews_count),
-            'average_rating' => $this->when(isset($this->average_rating), $this->average_rating),
-            'review_count' => $this->when(isset($this->review_count), $this->review_count),
-            'sales_count' => $this->when(isset($this->sales_count), $this->sales_count),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];
