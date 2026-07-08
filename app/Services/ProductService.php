@@ -61,7 +61,9 @@ class ProductService
                             $query->select('id', 'user_id', 'business_name');
                         }]);
                     },
-                    'images'
+                    'images' => function($query) {
+                        $query->limit(3);
+                    }
                 ])->withCount(['reviews as active_reviews_count' => function($query) {
                     $query->where('status', 'active');
                 }]);

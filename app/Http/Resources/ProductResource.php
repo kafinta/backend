@@ -89,7 +89,7 @@ class ProductResource extends JsonResource
                 'average_true_to_description' => $this->average_true_to_description,
                 'average_product_quality' => $this->average_product_quality,
                 'average_shipping' => $this->average_shipping,
-                'review_count' => $this->reviews()->where('status', 'active')->count(),
+                'review_count' => $this->when(isset($this->active_reviews_count), $this->active_reviews_count, $this->reviews()->where('status', 'active')->count()),
             ],
             'latest_reviews' => $this->whenLoaded('reviews', function () {
                 return $this->reviews->where('status', 'active')->sortByDesc('created_at')->take(3)->values()->map(function ($review) {
