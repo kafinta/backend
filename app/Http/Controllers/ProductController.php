@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
+use App\Http\Resources\ProductListResource;
 use App\Http\Resources\ProductResource;
 
 class ProductController extends ImprovedController
@@ -109,7 +110,7 @@ class ProductController extends ImprovedController
             $filtersMeta = $result['filters'];
 
             return $this->respondWithSuccess('Products retrieved successfully', 200, [
-                'products' => ProductResource::collection($products->items()),
+                'products' => ProductListResource::collection($products->items()),
                 'pagination' => [
                     'current_page' => $products->currentPage(),
                     'last_page' => $products->lastPage(),
@@ -872,7 +873,7 @@ class ProductController extends ImprovedController
             });
 
             return $this->respondWithSuccess('Top products retrieved successfully', 200, [
-                'products' => ProductResource::collection($products),
+                'products' => ProductListResource::collection($products),
                 'count' => $products->count()
             ]);
 
@@ -937,7 +938,7 @@ class ProductController extends ImprovedController
             });
 
             return $this->respondWithSuccess('Featured products retrieved successfully', 200, [
-                'products' => ProductResource::collection($products),
+                'products' => ProductListResource::collection($products),
                 'count' => $products->count()
             ]);
 
