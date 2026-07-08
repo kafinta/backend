@@ -52,19 +52,25 @@ class ProductService
             // Start with a base query
             $query = Product::query();
 
-            // For index view, only load minimal data
+            // For index view, load minimal data plus images and seller info
             if (!$isDetailedView) {
-                // Only select specific fields from user and seller
-                $query->with(['user' => function($query) {
-                    $query->select('id');
-                    $query->with(['seller' => function($query) {
-                        $query->select('id', 'user_id', 'business_name');
-                    }]);
+                $query->with([
+                    'user' => function($query) {
+                        $query->select('id');
+                        $query->with(['seller' => function($query) {
+                            $query->select('id', 'user_id', 'business_name');
+                        }]);
+                    },
+                    'images'
+                ])->withCount(['reviews as active_reviews_count' => function($query) {
+                    $query->where('status', 'active');
                 }]);
-                // Do NOT eager load images here
             } else {
                 // For detailed view, load all relationships
-                $query->with(['subcategory.category', 'images', 'attributeValues.attribute', 'user.seller']);
+                $query->with(['subcategory.category', 'images', 'attributeValues.attribute', 'user.seller'])
+                      ->withCount(['reviews as active_reviews_count' => function($query) {
+                          $query->where('status', 'active');
+                      }]);
             }
 
             // Apply filters
@@ -163,12 +169,6 @@ class ProductService
 
             // Execute the query with pagination
             $products = $query->paginate($perPage);
-
-            // Manually load up to 3 images per product after pagination
-            $products->getCollection()->each(function ($product) {
-                $images = $product->images()->limit(3)->get();
-                $product->setRelation('images', $images);
-            });
 
             // Transform the products based on view type
             $products->getCollection()->transform(function ($product) use ($isDetailedView) {
