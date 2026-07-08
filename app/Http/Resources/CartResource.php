@@ -14,6 +14,10 @@ class CartResource extends JsonResource
      */
     public function toArray($request)
     {
+        $totalPrice = $this->when(isset($this->totals['total_price']), $this->totals['total_price']);
+        $itemCount = $this->when(isset($this->totals['item_count']), $this->totals['item_count']);
+        $totalQuantity = $this->when(isset($this->totals['total_quantity']), $this->totals['total_quantity']);
+
         return [
             'id' => $this->id,
             'user_id' => $this->user_id,
@@ -22,8 +26,9 @@ class CartResource extends JsonResource
             'is_expired' => $this->when(method_exists($this->resource, 'isExpired'), $this->isExpired()),
             'items' => CartItemResource::collection($this->whenLoaded('cartItems')),
             'totals' => $this->when(isset($this->totals), $this->totals),
-            'item_count' => $this->when(isset($this->item_count), $this->item_count),
-            'total_quantity' => $this->when(isset($this->total_quantity), $this->total_quantity),
+            'total_price' => $totalPrice,
+            'item_count' => $itemCount ?? $this->whenLoaded('cartItems', fn () => $this->cartItems->count()),
+            'total_quantity' => $totalQuantity ?? $this->whenLoaded('cartItems', fn () => $this->cartItems->sum('quantity')),
         ];
     }
 }

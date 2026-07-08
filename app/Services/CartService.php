@@ -204,22 +204,24 @@ class CartService
     /**
      * Get cart contents with product/variant details
      *
+     * @param string|null $sessionId
+     * @param Cart|null $cart
      * @return array
      */
-    public function getCartContents($sessionId = null)
+    public function getCartContents($sessionId = null, Cart $cart = null)
     {
-        $cart = $this->getCurrentCart($sessionId);
+        if (!$cart) {
+            $cart = $this->getCurrentCart($sessionId);
+        }
 
-        // Load cart items with their related products and variants
         $cartItems = $cart->cartItems()
-            ->with(['product', 'variant', 'variant.attributeValues.attribute'])
+            ->with(['product.images', 'variant.images', 'variant.attributeValues.attribute'])
             ->get();
 
         $items = [];
         $totalPrice = 0;
 
         foreach ($cartItems as $cartItem) {
-            // Determine the price (use variant price if available, otherwise product price)
             $product = $cartItem->product;
             $price = $cartItem->variant ? $cartItem->variant->price : ($product->hasActiveDiscount() ? $product->getDiscountedPrice() : $product->price);
             $original_price = $cartItem->variant ? $cartItem->variant->price : $product->price;
@@ -227,7 +229,11 @@ class CartService
             $subtotal = $price * $cartItem->quantity;
             $totalPrice += $subtotal;
 
-            // Format the item data
+            $cartItem->price = $price;
+            $cartItem->original_price = $original_price;
+            $cartItem->discount_amount = $discount_amount;
+            $cartItem->subtotal = $subtotal;
+
             $item = [
                 'id' => $cartItem->id,
                 'quantity' => $cartItem->quantity,
@@ -248,7 +254,6 @@ class CartService
                 'variant' => null
             ];
 
-            // Add variant details if this is a variant
             if ($cartItem->variant) {
                 $item['variant'] = [
                     'id' => $cartItem->variant->id,
@@ -266,30 +271,35 @@ class CartService
             $items[] = $item;
         }
 
+        $cart->setRelation('cartItems', $cartItems);
+
         $result = [
             'items' => $items,
             'total_price' => $totalPrice,
-            'item_count' => $cartItems->sum('quantity')
+            'item_count' => $cartItems->count(),
+            'total_quantity' => $cartItems->sum('quantity'),
+            'totals' => [
+                'total_price' => $totalPrice,
+                'item_count' => $cartItems->count(),
+                'total_quantity' => $cartItems->sum('quantity'),
+            ],
         ];
 
-        // Include session_id and expires_at for guest carts
         if (!Auth::check() && $cart->session_id) {
             $result['session_id'] = $cart->session_id;
 
-            // Include expiration date if it exists
             if ($cart->expires_at) {
                 $result['expires_at'] = $cart->expires_at->toIso8601String();
                 $result['expires_in_days'] = now()->diffInDays($cart->expires_at, false);
             }
         }
 
-        // Log cart contents
         \Log::info('Cart Contents', [
             'cart_id' => $cart->id,
             'session_id' => $cart->session_id,
             'user_id' => $cart->user_id,
             'is_authenticated' => Auth::check(),
-            'item_count' => count($items),
+            'item_count' => $cartItems->count(),
             'total_price' => $totalPrice,
             'expires_at' => $cart->expires_at ? $cart->expires_at->toIso8601String() : null,
             'expires_in_days' => $cart->expires_at ? now()->diffInDays($cart->expires_at, false) : null
