@@ -37,7 +37,17 @@ class ProductController extends ImprovedController
         ProductAttributeService $attributeService,
         ProductImageService $imageService
     ) {
-        $this->middleware(['auth:sanctum'])->except(['index', 'show', 'byCategory', 'search']);
+        $this->middleware(['auth:sanctum'])->except([
+            'index',
+            'show',
+            'showBySlug',
+            'getAttributes',
+            'topProducts',
+            'trendingProducts',
+            'featuredProducts',
+            'byCategory',
+            'search'
+        ]);
         $this->productService = $productService;
         $this->fileService = $fileService;
         $this->imageController = $imageController;
@@ -826,51 +836,7 @@ class ProductController extends ImprovedController
     public function topProducts(Request $request)
     {
         try {
-            $limit = 10;
-
-            $products = Product::where('status', 'active')
-                ->with([
-                    'category',
-                    'subcategory',
-                    'images',
-                    'user' => function($q) {
-                        $q->select('id')->with(['seller' => function($q) {
-                            $q->select('id', 'user_id', 'business_name');
-                        }]);
-                    }
-                ])
-                ->withCount(['orderItems' => function($q) {
-                    $q->whereHas('order', function($q) {
-                        $q->where('status', '!=', 'cancelled');
-                    });
-                }])
-                ->orderBy('order_items_count', 'desc')
-                ->orderBy('created_at', 'desc')
-                ->limit($limit)
-                ->get();
-
-            // Enhance products with additional metrics
-            $products = $products->map(function($product) {
-                $product->sales_count = $product->orderItems()
-                    ->whereHas('order', function($q) {
-                        $q->where('status', '!=', 'cancelled');
-                    })
-                    ->sum('quantity');
-
-                $reviews = $product->reviews()->where('status', 'approved')->get();
-                if ($reviews->count() > 0) {
-                    $product->average_rating = $reviews->avg(function($review) {
-                        return ($review->value_for_money + $review->true_to_description +
-                                $review->product_quality + $review->shipping) / 4;
-                    });
-                    $product->review_count = $reviews->count();
-                } else {
-                    $product->average_rating = null;
-                    $product->review_count = 0;
-                }
-
-                return $product;
-            });
+            $products = $this->getRankedProducts(10, 'top', false);
 
             return $this->respondWithSuccess('Top products retrieved successfully', 200, [
                 'products' => ProductListResource::collection($products),
@@ -884,58 +850,32 @@ class ProductController extends ImprovedController
     }
 
     /**
+     * Get trending products for home page.
+     * Uses the same ranking logic as top products, exposed under a clearer link.
+     */
+    public function trendingProducts(Request $request)
+    {
+        try {
+            $products = $this->getRankedProducts(10, 'trending', false);
+
+            return $this->respondWithSuccess('Trending products retrieved successfully', 200, [
+                'products' => ProductListResource::collection($products),
+                'count' => $products->count()
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error retrieving trending products', ['error' => $e->getMessage()]);
+            return $this->respondWithError('Error retrieving trending products: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
      * Get featured products for home page
      * Returns the 10 featured products, sorted by sales
      */
     public function featuredProducts(Request $request)
     {
         try {
-            $limit = 10;
-
-            $products = Product::where('status', 'active')
-                ->where('is_featured', true)
-                ->with([
-                    'category',
-                    'subcategory',
-                    'images',
-                    'user' => function($q) {
-                        $q->select('id')->with(['seller' => function($q) {
-                            $q->select('id', 'user_id', 'business_name');
-                        }]);
-                    }
-                ])
-                ->withCount(['orderItems' => function($q) {
-                    $q->whereHas('order', function($q) {
-                        $q->where('status', '!=', 'cancelled');
-                    });
-                }])
-                ->orderBy('order_items_count', 'desc')
-                ->orderBy('created_at', 'desc')
-                ->limit($limit)
-                ->get();
-
-            // Enhance products with additional metrics
-            $products = $products->map(function($product) {
-                $product->sales_count = $product->orderItems()
-                    ->whereHas('order', function($q) {
-                        $q->where('status', '!=', 'cancelled');
-                    })
-                    ->sum('quantity');
-
-                $reviews = $product->reviews()->where('status', 'approved')->get();
-                if ($reviews->count() > 0) {
-                    $product->average_rating = $reviews->avg(function($review) {
-                        return ($review->value_for_money + $review->true_to_description +
-                                $review->product_quality + $review->shipping) / 4;
-                    });
-                    $product->review_count = $reviews->count();
-                } else {
-                    $product->average_rating = null;
-                    $product->review_count = 0;
-                }
-
-                return $product;
-            });
+            $products = $this->getRankedProducts(10, 'top', true);
 
             return $this->respondWithSuccess('Featured products retrieved successfully', 200, [
                 'products' => ProductListResource::collection($products),
@@ -946,5 +886,55 @@ class ProductController extends ImprovedController
             Log::error('Error retrieving featured products', ['error' => $e->getMessage()]);
             return $this->respondWithError('Error retrieving featured products: ' . $e->getMessage(), 500);
         }
+    }
+
+    /**
+     * Fetch ranked products with shared eager loading and aggregate metrics.
+     */
+    private function getRankedProducts(int $limit, string $mode = 'top', bool $featuredOnly = false)
+    {
+        $query = Product::where('status', 'active');
+
+        if ($featuredOnly) {
+            $query->where('is_featured', true);
+        }
+
+        $salesWindow = now()->subDays(14);
+
+        return $query->with([
+                'category',
+                'subcategory',
+                'images',
+                'user' => function($q) {
+                    $q->select('id')->with(['seller' => function($q) {
+                        $q->select('id', 'user_id', 'business_name');
+                    }]);
+                }
+            ])
+            ->withCount([
+                'orderItems as sales_count' => function($q) {
+                    $q->whereHas('order', function($q) {
+                        $q->where('status', '!=', 'cancelled');
+                    });
+                },
+                'reviews as review_count' => function($q) {
+                    $q->where('status', 'active')
+                      ->whereNull('parent_review_id');
+                }
+            ])
+            ->when($mode === 'trending', function($query) use ($salesWindow) {
+                $query->withSum([
+                    'orderItems as trending_score' => function($q) use ($salesWindow) {
+                        $q->where('created_at', '>=', $salesWindow)
+                          ->whereHas('order', function($q) {
+                              $q->where('status', '!=', 'cancelled');
+                          });
+                    }
+                ], 'quantity');
+            })
+            ->orderBy($mode === 'trending' ? 'trending_score' : 'sales_count', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->limit($limit)
+            ->get();
     }
 }
