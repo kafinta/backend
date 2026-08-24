@@ -87,9 +87,9 @@ class CheckoutController extends ImprovedController
             }
 
             $sessionId = $this->extractSessionId($request);
-            $cartContents = $this->cartService->getCartContents($sessionId);
+            $cart = $this->cartService->getCurrentCart($sessionId);
 
-            if (empty($cartContents['items'])) {
+            if (!$cart || !$cart->cartItems()->exists()) {
                 return $this->respondWithError('Your cart is empty', 400);
             }
 
@@ -105,6 +105,13 @@ class CheckoutController extends ImprovedController
 
             return $this->respondWithSuccess('Order placed successfully', 201, new OrderResource($order));
         } catch (\Exception $e) {
+            if (str_contains($e->getMessage(), 'must be authenticated') ||
+                str_contains($e->getMessage(), 'Cart is empty') ||
+                str_contains($e->getMessage(), 'no longer available') ||
+                str_contains($e->getMessage(), 'Insufficient stock')) {
+                return $this->respondWithError($e->getMessage(), 409);
+            }
+
             return $this->respondWithError('Error placing order: ' . $e->getMessage(), 500);
         }
     }

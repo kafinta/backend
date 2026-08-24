@@ -6,6 +6,7 @@ use App\Events\OrderStatusChanged;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
+use App\Models\Variant;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -109,6 +110,21 @@ class SellerOrderService
         return DB::transaction(function () use ($order, $sellerProductIds, $status) {
             $oldStatus = $order->status;
 
+            $sellerItems = $order->orderItems()
+                ->whereIn('product_id', $sellerProductIds)
+                ->lockForUpdate()
+                ->get();
+
+            if ($sellerItems->isEmpty()) {
+                throw new \Exception('This order does not contain any of your products');
+            }
+
+            foreach ($sellerItems as $item) {
+                if (!$this->canTransition($item->status, $status)) {
+                    throw new \Exception("Cannot change item status from {$item->status} to {$status}");
+                }
+            }
+
             // Update the status of order items for this seller's products
             $order->orderItems()
                 ->whereIn('product_id', $sellerProductIds)
@@ -133,6 +149,16 @@ class SellerOrderService
                 $order->orderItems()
                     ->whereIn('product_id', $sellerProductIds)
                     ->update(['cancelled_at' => now()]);
+
+                foreach ($sellerItems as $item) {
+                    $stockItem = $item->variant_id
+                        ? Variant::whereKey($item->variant_id)->lockForUpdate()->first()
+                        : Product::whereKey($item->product_id)->lockForUpdate()->first();
+
+                    if ($stockItem && $stockItem->manage_stock) {
+                        $stockItem->increment('stock_quantity', $item->quantity);
+                    }
+                }
             }
 
             // Update overall order status if needed
@@ -178,5 +204,18 @@ class SellerOrderService
         elseif ($itemStatuses->contains('processing')) {
             $order->update(['status' => 'processing']);
         }
+    }
+
+    protected function canTransition(string $from, string $to): bool
+    {
+        $transitions = [
+            'pending' => ['processing', 'cancelled'],
+            'processing' => ['shipped', 'cancelled'],
+            'shipped' => ['delivered'],
+            'delivered' => [],
+            'cancelled' => [],
+        ];
+
+        return in_array($to, $transitions[$from] ?? [], true);
     }
 }

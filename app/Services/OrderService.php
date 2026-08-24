@@ -40,8 +40,11 @@ class OrderService
                 throw new \Exception('Cannot create order: Cart is empty');
             }
 
-            // Get the current user
+            // Orders are only available to authenticated customers.
             $user = Auth::user();
+            if (!$user) {
+                throw new \Exception('You must be authenticated to place an order');
+            }
             $userId = $user->id;
 
             // Only check for seller's own products if the user is a seller
@@ -63,13 +66,35 @@ class OrderService
                 }
             }
 
-            // Calculate order totals
-            $cartContents = $this->cartService->getCartContents($sessionId);
-            $subtotal = $cartContents['total_price'];
+            // Re-read inventory and prices inside the transaction so checkout cannot
+            // use stale cart data or oversell concurrent orders.
+            $subtotal = 0;
+            $orderItems = [];
+            foreach ($cart->cartItems as $cartItem) {
+                $product = Product::whereKey($cartItem->product_id)->lockForUpdate()->first();
+                $variant = $cartItem->variant_id
+                    ? Variant::whereKey($cartItem->variant_id)->lockForUpdate()->first()
+                    : null;
+
+                if (!$product || $product->status !== 'active' || ($cartItem->variant_id && (!$variant || $variant->product_id !== $product->id))) {
+                    throw new \Exception('One or more items in your cart are no longer available');
+                }
+
+                $stockItem = $variant ?: $product;
+                if (!$stockItem->isInStock($cartItem->quantity)) {
+                    throw new \Exception("Insufficient stock for {$product->name}");
+                }
+
+                $price = $variant ? (float) $variant->price : $product->getDiscountedPrice();
+                $lineSubtotal = round($price * $cartItem->quantity, 2);
+                $subtotal += $lineSubtotal;
+                $orderItems[] = compact('product', 'variant', 'cartItem', 'price', 'lineSubtotal');
+            }
+            $subtotal = round($subtotal, 2);
 
             // Create the order
             $order = new Order([
-                'user_id' => Auth::id(),
+                'user_id' => $userId,
                 'order_number' => $this->generateOrderNumber(),
                 'status' => 'pending',
                 'subtotal' => $subtotal,
@@ -89,25 +114,29 @@ class OrderService
             $order->save();
 
             // Create order items from cart items
-            foreach ($cart->cartItems as $cartItem) {
-                $product = $cartItem->product;
-                $variant = $cartItem->variant;
-
-                // Determine price (use variant price if available, otherwise product price)
-                $price = $variant ? $variant->price : $product->price;
-
+            foreach ($orderItems as $item) {
+                $product = $item['product'];
+                $variant = $item['variant'];
+                $cartItem = $item['cartItem'];
+                $price = $item['price'];
+                $lineSubtotal = $item['lineSubtotal'];
                 $orderItem = new OrderItem([
                     'order_id' => $order->id,
                     'product_id' => $product->id,
                     'variant_id' => $variant ? $variant->id : null,
                     'quantity' => $cartItem->quantity,
                     'price' => $price,
-                    'subtotal' => $price * $cartItem->quantity,
+                    'subtotal' => $lineSubtotal,
                     'product_name' => $product->name,
                     'variant_name' => $variant ? $variant->name : null,
                 ]);
 
                 $orderItem->save();
+
+                $stockItem = $variant ?: $product;
+                if ($stockItem->manage_stock) {
+                    $stockItem->decrement('stock_quantity', $cartItem->quantity);
+                }
             }
 
             // Clear the cart
@@ -165,19 +194,37 @@ class OrderService
      */
     public function cancelOrder($orderId)
     {
-        $order = $this->getOrder($orderId);
+        return DB::transaction(function () use ($orderId) {
+            $order = Order::with('orderItems')->lockForUpdate()->findOrFail($orderId);
 
-        if ($order->status !== 'pending') {
-            throw new \Exception('Only pending orders can be cancelled');
-        }
+            if ($order->status !== 'pending') {
+                throw new \Exception('Only pending orders can be cancelled');
+            }
 
-        $oldStatus = $order->status;
-        $order->status = 'cancelled';
-        $order->save();
+            foreach ($order->orderItems as $orderItem) {
+                $stockItem = $orderItem->variant_id
+                    ? Variant::whereKey($orderItem->variant_id)->lockForUpdate()->first()
+                    : Product::whereKey($orderItem->product_id)->lockForUpdate()->first();
 
-        // Fire order status changed event
-        event(new OrderStatusChanged($order, $oldStatus, 'cancelled'));
+                if ($stockItem && $stockItem->manage_stock) {
+                    $stockItem->increment('stock_quantity', $orderItem->quantity);
+                }
 
-        return $order;
+                $orderItem->update([
+                    'status' => 'cancelled',
+                    'cancelled_at' => now(),
+                ]);
+            }
+
+            $oldStatus = $order->status;
+            $order->update([
+                'status' => 'cancelled',
+                'cancelled_at' => now(),
+            ]);
+
+            event(new OrderStatusChanged($order, $oldStatus, 'cancelled'));
+
+            return $order;
+        });
     }
 }
