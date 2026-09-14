@@ -168,6 +168,10 @@ class EmailService
         $user->email_verified_at = now();
         $user->save();
 
+        EmailVerificationToken::where('user_id', $user->id)
+            ->where('token', hash('sha256', $token))
+            ->delete();
+
         // Clear both token and code from cache
         Cache::forget("verification_token_{$token}");
         Cache::forget("verification_code_{$tokenData['code']}");
@@ -355,6 +359,7 @@ class EmailService
             'code' => $resetCode,
             'expires_at' => now()->addHours(1)
         ], now()->addHours(1));
+        Cache::put("password_reset_code_{$resetCode}", $token, now()->addHours(1));
 
         return [
             'token' => $token,
@@ -421,8 +426,8 @@ class EmailService
             ->where('email', $user->email)
             ->delete();
 
-
-
+        Cache::forget("password_reset_{$token}");
+        Cache::forget("password_reset_code_{$tokenData['code']}");
         Cache::forget("password_reset_{$token}");
 
         return [
