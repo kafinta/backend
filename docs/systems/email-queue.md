@@ -30,10 +30,10 @@ QUEUE_CONNECTION=database
 
 ```bash
 # Process all queues
-php artisan queue:work
+php artisan queue:work --queue=high,default
 
 # Process specific queue
-php artisan queue:work --queue=high
+php artisan queue:work --queue=high,default
 
 # Process with custom timeout
 php artisan queue:work --timeout=120
