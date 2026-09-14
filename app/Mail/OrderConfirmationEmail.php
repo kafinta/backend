@@ -23,7 +23,6 @@ class OrderConfirmationEmail extends Mailable
     public function build()
     {
         return $this->subject('Order Confirmation #' . $this->order->id . ' - Kafinta')
-                    ->from('aquadirmuhammad@gmail.com', 'Kafinta')
                     ->view('emails.order-confirmation')
                     ->with([
                         'user' => $this->user,

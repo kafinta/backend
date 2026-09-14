@@ -21,7 +21,6 @@ class WelcomeEmail extends Mailable
     public function build()
     {
         return $this->subject('Welcome to Kafinta!')
-                    ->from('aquadirmuhammad@gmail.com', 'Kafinta') // Use verified sender
                     ->view('emails.welcome')
                     ->with([
                         'user' => $this->user,

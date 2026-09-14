@@ -29,7 +29,6 @@ class SellerApplicationStatusEmail extends Mailable
             : 'Seller Application Update - Kafinta';
 
         return $this->subject($subject)
-                    ->from('aquadirmuhammad@gmail.com', 'Kafinta')
                     ->view('emails.seller-application-status')
                     ->with([
                         'user' => $this->user,

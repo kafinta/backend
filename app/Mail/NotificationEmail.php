@@ -27,7 +27,6 @@ class NotificationEmail extends Mailable
     public function build()
     {
         return $this->subject($this->emailSubject)
-                    ->from('aquadirmuhammad@gmail.com', 'Kafinta')
                     ->view($this->template)
                     ->with(array_merge($this->data, [
                         'user' => $this->user,
