@@ -24,6 +24,7 @@ class Order extends Model
         'tax',
         'shipping_cost',
         'total',
+        'currency',
         'shipping_name',
         'shipping_address',
         'shipping_city',
@@ -68,6 +69,11 @@ class Order extends Model
     public function orderItems(): HasMany
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    public function payment(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(Payment::class);
     }
 
     /**
