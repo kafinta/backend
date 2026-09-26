@@ -110,6 +110,10 @@ class SellerOrderService
         return DB::transaction(function () use ($order, $sellerProductIds, $status) {
             $oldStatus = $order->status;
 
+            if ($status !== 'cancelled' && !$order->paid_at) {
+                throw new \Exception('Only paid orders can be processed');
+            }
+
             $sellerItems = $order->orderItems()
                 ->whereIn('product_id', $sellerProductIds)
                 ->lockForUpdate()

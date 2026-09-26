@@ -7,6 +7,7 @@ use App\Http\Resources\CheckoutResource;
 use App\Http\Resources\OrderResource;
 use App\Services\CartService;
 use App\Services\OrderService;
+use App\Services\PaystackPaymentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -14,6 +15,7 @@ class CheckoutController extends ImprovedController
 {
     protected $cartService;
     protected $orderService;
+    protected $paymentService;
 
     /**
      * Create a new controller instance.
@@ -21,10 +23,11 @@ class CheckoutController extends ImprovedController
      * @param CartService $cartService
      * @param OrderService $orderService
      */
-    public function __construct(CartService $cartService, OrderService $orderService)
+    public function __construct(CartService $cartService, OrderService $orderService, PaystackPaymentService $paymentService)
     {
         $this->cartService = $cartService;
         $this->orderService = $orderService;
+        $this->paymentService = $paymentService;
     }
 
     /**
@@ -70,6 +73,8 @@ class CheckoutController extends ImprovedController
      */
     public function placeOrder(Request $request)
     {
+        $order = null;
+
         try {
             $validator = Validator::make($request->all(), [
                 'shipping_name' => 'required|string|max:255',
@@ -94,9 +99,11 @@ class CheckoutController extends ImprovedController
             }
 
             $order = $this->orderService->createOrder($request->all(), $sessionId);
+            $payment = $this->paymentService->initialize($order);
 
             // Load relationships for resource
-            $order->load(['orderItems.product', 'orderItems.variant']);
+            $order->load(['orderItems.product', 'orderItems.variant', 'payment']);
+            $order->setRelation('payment', $payment);
 
             // Add computed fields
             $order->item_count = $order->orderItems->count();
@@ -105,11 +112,23 @@ class CheckoutController extends ImprovedController
 
             return $this->respondWithSuccess('Order placed successfully', 201, new OrderResource($order));
         } catch (\Exception $e) {
+            if ($order && $order->exists && !$order->paid_at && $order->status === 'pending') {
+                try {
+                    $this->orderService->cancelOrder($order->id);
+                } catch (\Throwable $cleanupException) {
+                    report($cleanupException);
+                }
+            }
+
             if (str_contains($e->getMessage(), 'must be authenticated') ||
                 str_contains($e->getMessage(), 'Cart is empty') ||
                 str_contains($e->getMessage(), 'no longer available') ||
                 str_contains($e->getMessage(), 'Insufficient stock')) {
                 return $this->respondWithError($e->getMessage(), 409);
+            }
+
+            if (str_contains($e->getMessage(), 'Paystack')) {
+                return $this->respondWithError($e->getMessage(), 502);
             }
 
             return $this->respondWithError('Error placing order: ' . $e->getMessage(), 500);

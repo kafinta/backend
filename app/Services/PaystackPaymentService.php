@@ -16,13 +16,19 @@ class PaystackPaymentService
     {
         $this->ensureConfigured();
 
+        if ($order->status === 'cancelled') {
+            throw new RuntimeException('Cancelled orders cannot be paid');
+        }
+
         $existingPayment = $order->payment;
         if ($existingPayment && $existingPayment->status === 'success') {
             return $existingPayment;
         }
 
         $amountMinor = $this->amountToMinorUnits($order->total);
-        $reference = $existingPayment?->reference ?: $this->generateReference($order);
+        $reference = $existingPayment && $existingPayment->status === 'pending'
+            ? $existingPayment->reference
+            : $this->generateReference($order);
 
         $response = $this->client()->post('/transaction/initialize', [
             'email' => $order->user->email,

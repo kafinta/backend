@@ -16,6 +16,7 @@ use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\SellerOrderController;
 use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\PaymentController;
 
 use App\Http\Controllers\VerificationTokenController;
 use App\Http\Controllers\SocialAuthController;
@@ -318,6 +319,12 @@ Route::middleware(['auth:sanctum,web'])->group(function () {
         Route::post('/place-order', [CheckoutController::class, 'placeOrder'])->name('checkout.place-order');
     });
 
+    // Protected payment routes
+    Route::prefix('payments')->group(function () {
+        Route::post('/orders/{orderId}/initialize', [PaymentController::class, 'initialize'])->name('payments.initialize');
+        Route::get('/verify', [PaymentController::class, 'verify'])->name('payments.verify');
+    });
+
     // Protected Order Routes (require authentication)
     Route::prefix('orders')->group(function () {
         // List user's orders
@@ -330,6 +337,10 @@ Route::middleware(['auth:sanctum,web'])->group(function () {
         Route::post('/{id}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
     });
 });
+
+// Paystack calls these endpoints without the user's session.
+Route::get('/payments/paystack/callback', [PaymentController::class, 'callback'])->name('payments.paystack.callback');
+Route::post('/payments/paystack/webhook', [PaymentController::class, 'webhook'])->name('payments.paystack.webhook');
 
 // Public Product Routes
 Route::prefix('products')->group(function () {

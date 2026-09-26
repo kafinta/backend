@@ -101,6 +101,7 @@ class OrderService
                 'tax' => 0, // We'll implement tax calculation later
                 'shipping_cost' => 0, // We'll implement shipping cost calculation later
                 'total' => $subtotal, // For now, total = subtotal
+                'currency' => config('services.paystack.currency', 'NGN'),
                 'shipping_name' => $shippingDetails['shipping_name'],
                 'shipping_address' => $shippingDetails['shipping_address'],
                 'shipping_city' => $shippingDetails['shipping_city'],

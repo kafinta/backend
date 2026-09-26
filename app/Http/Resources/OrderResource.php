@@ -22,6 +22,7 @@ class OrderResource extends JsonResource
             'tax' => $this->tax,
             'shipping_cost' => $this->shipping_cost,
             'total' => $this->total,
+            'currency' => $this->currency,
             
             // Shipping information
             'shipping' => [
@@ -54,6 +55,9 @@ class OrderResource extends JsonResource
                 return new UserAccountResource($this->user);
             }),
             'items' => OrderItemResource::collection($this->whenLoaded('orderItems')),
+            'payment' => $this->whenLoaded('payment', function () {
+                return new PaymentResource($this->payment);
+            }),
             
             // Computed fields
             'item_count' => $this->when(isset($this->item_count), $this->item_count),
