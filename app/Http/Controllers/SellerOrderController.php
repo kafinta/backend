@@ -34,7 +34,7 @@ class SellerOrderController extends ImprovedController
             $orders = $this->sellerOrderService->getSellerOrders();
 
             // Load additional relationships for resource
-            $orders->load(['orderItems.product', 'orderItems.variant', 'user']);
+            $orders->load(['orderItems.product', 'orderItems.variant', 'user', 'payment']);
 
             return $this->respondWithSuccess('Seller orders retrieved successfully', 200, OrderResource::collection($orders));
         } catch (\Exception $e) {
@@ -54,7 +54,7 @@ class SellerOrderController extends ImprovedController
             $order = $this->sellerOrderService->getSellerOrder($id);
 
             // Load relationships for resource
-            $order->load(['orderItems.product', 'orderItems.variant', 'user']);
+            $order->load(['orderItems.product', 'orderItems.variant', 'user', 'payment']);
 
             // Add computed fields
             $order->item_count = $order->orderItems->count();
@@ -91,7 +91,7 @@ class SellerOrderController extends ImprovedController
             $order = $this->sellerOrderService->updateOrderStatus($id, $request->input('status'));
 
             // Load relationships for resource
-            $order->load(['orderItems.product', 'orderItems.variant', 'user']);
+            $order->load(['orderItems.product', 'orderItems.variant', 'user', 'payment']);
 
             // Add computed fields
             $order->item_count = $order->orderItems->count();

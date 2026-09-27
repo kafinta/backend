@@ -34,7 +34,7 @@ class OrderController extends ImprovedController
             $orders = $this->orderService->getUserOrders();
 
             // Load relationships for resource
-            $orders->load(['orderItems.product', 'orderItems.variant']);
+            $orders->load(['orderItems.product', 'orderItems.variant', 'payment']);
 
             return $this->respondWithSuccess('Orders retrieved successfully', 200, OrderResource::collection($orders));
         } catch (\Exception $e) {
@@ -59,7 +59,7 @@ class OrderController extends ImprovedController
             }
 
             // Load relationships for resource
-            $order->load(['orderItems.product', 'orderItems.variant']);
+            $order->load(['orderItems.product', 'orderItems.variant', 'payment']);
 
             // Add computed fields
             $order->item_count = $order->orderItems->count();
@@ -96,7 +96,7 @@ class OrderController extends ImprovedController
             $order = $this->orderService->cancelOrder($id);
 
             // Load relationships for resource
-            $order->load(['orderItems.product', 'orderItems.variant']);
+            $order->load(['orderItems.product', 'orderItems.variant', 'payment']);
 
             // Add computed fields
             $order->item_count = $order->orderItems->count();
