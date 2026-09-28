@@ -158,7 +158,7 @@ class OrderService
     protected function generateOrderNumber()
     {
         do {
-            $orderNumber = 'FO' . Str::upper(Str::random(14));
+            $orderNumber = 'KO' . Str::upper(Str::random(14));
         } while (Order::where('order_number', $orderNumber)->exists());
 
         return $orderNumber;
