@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Services\OrderService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class OrderController extends ImprovedController
 {
@@ -48,15 +49,10 @@ class OrderController extends ImprovedController
      * @param int $id
      * @return \Illuminate\Http\JsonResponse
      */
-    public function show($id)
+    public function show(string $orderNumber)
     {
         try {
-            $order = $this->orderService->getOrder($id);
-
-            // Check if the order belongs to the authenticated user
-            if ($order->user_id !== Auth::id()) {
-                return $this->respondWithError('You do not have permission to view this order', 403);
-            }
+            $order = $this->orderService->getUserOrderByNumber($orderNumber, Auth::id());
 
             // Load relationships for resource
             $order->load(['orderItems.product', 'orderItems.variant', 'payment']);
@@ -67,6 +63,8 @@ class OrderController extends ImprovedController
             $order->can_cancel = $order->status === 'pending';
 
             return $this->respondWithSuccess('Order retrieved successfully', 200, new OrderResource($order));
+        } catch (ModelNotFoundException $e) {
+            return $this->respondWithError('Order not found', 404);
         } catch (\Exception $e) {
             return $this->respondWithError('Error retrieving order: ' . $e->getMessage(), 500);
         }
@@ -78,22 +76,17 @@ class OrderController extends ImprovedController
      * @param int $id
      * @return \Illuminate\Http\JsonResponse
      */
-    public function cancel($id)
+    public function cancel(string $orderNumber)
     {
         try {
-            $order = $this->orderService->getOrder($id);
-
-            // Check if the order belongs to the authenticated user
-            if ($order->user_id !== Auth::id()) {
-                return $this->respondWithError('You do not have permission to cancel this order', 403);
-            }
+            $order = $this->orderService->getUserOrderByNumber($orderNumber, Auth::id());
 
             // Check if the order can be cancelled
             if ($order->status !== 'pending') {
                 return $this->respondWithError('Only pending orders can be cancelled', 400);
             }
 
-            $order = $this->orderService->cancelOrder($id);
+            $order = $this->orderService->cancelUserOrderByNumber($orderNumber, Auth::id());
 
             // Load relationships for resource
             $order->load(['orderItems.product', 'orderItems.variant', 'payment']);
@@ -104,7 +97,13 @@ class OrderController extends ImprovedController
             $order->can_cancel = false; // Just cancelled
 
             return $this->respondWithSuccess('Order cancelled successfully', 200, new OrderResource($order));
+        } catch (ModelNotFoundException $e) {
+            return $this->respondWithError('Order not found', 404);
         } catch (\Exception $e) {
+            if ($e->getMessage() === 'Only pending orders can be cancelled') {
+                return $this->respondWithError($e->getMessage(), 409);
+            }
+
             return $this->respondWithError('Error cancelling order: ' . $e->getMessage(), 500);
         }
     }

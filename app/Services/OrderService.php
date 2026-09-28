@@ -157,11 +157,11 @@ class OrderService
      */
     protected function generateOrderNumber()
     {
-        $prefix = 'ORD-';
-        $timestamp = now()->format('Ymd');
-        $random = strtoupper(Str::random(4));
+        do {
+            $orderNumber = 'FO' . Str::upper(Str::random(14));
+        } while (Order::where('order_number', $orderNumber)->exists());
 
-        return $prefix . $timestamp . '-' . $random;
+        return $orderNumber;
     }
 
     /**
@@ -173,6 +173,21 @@ class OrderService
     public function getOrder($orderId)
     {
         return Order::with('orderItems')->findOrFail($orderId);
+    }
+
+    public function getOrderByNumber(string $orderNumber): Order
+    {
+        return Order::with('orderItems')
+            ->where('order_number', strtoupper($orderNumber))
+            ->firstOrFail();
+    }
+
+    public function getUserOrderByNumber(string $orderNumber, int $userId): Order
+    {
+        return Order::with('orderItems')
+            ->where('user_id', $userId)
+            ->where('order_number', strtoupper($orderNumber))
+            ->firstOrFail();
     }
 
     /**
@@ -227,5 +242,19 @@ class OrderService
 
             return $order;
         });
+    }
+
+    public function cancelOrderByNumber(string $orderNumber): Order
+    {
+        $order = $this->getOrderByNumber($orderNumber);
+
+        return $this->cancelOrder($order->id);
+    }
+
+    public function cancelUserOrderByNumber(string $orderNumber, int $userId): Order
+    {
+        $order = $this->getUserOrderByNumber($orderNumber, $userId);
+
+        return $this->cancelOrder($order->id);
     }
 }

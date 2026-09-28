@@ -159,7 +159,7 @@ Route::prefix('attributes')->group(function () {
 // Public Checkout Routes
 Route::prefix('checkout')->group(function () {
     // Calculate totals (shipping, tax, etc.)
-    Route::post('/calculate', [CheckoutController::class, 'calculateTotals'])->name('checkout.calculate');
+    Route::post('/calculate', [CheckoutController::class, 'calculateTotals'])->middleware('throttle:30,1')->name('checkout.calculate');
 
     // Get shipping methods
     Route::get('/shipping-methods', [CheckoutController::class, 'getShippingMethods'])->name('checkout.shipping-methods');
@@ -316,13 +316,16 @@ Route::middleware(['auth:sanctum,web'])->group(function () {
     // Protected Checkout Routes (require authentication)
     Route::prefix('checkout')->group(function () {
         // Place an order
-        Route::post('/place-order', [CheckoutController::class, 'placeOrder'])->name('checkout.place-order');
+        Route::post('/place-order', [CheckoutController::class, 'placeOrder'])->middleware('throttle:10,1')->name('checkout.place-order');
     });
 
     // Protected payment routes
     Route::prefix('payments')->group(function () {
-        Route::post('/orders/{orderId}/initialize', [PaymentController::class, 'initialize'])->name('payments.initialize');
-        Route::get('/verify', [PaymentController::class, 'verify'])->name('payments.verify');
+        Route::post('/orders/{orderNumber}/initialize', [PaymentController::class, 'initialize'])
+            ->where('orderNumber', 'FO[A-Z0-9]{14}')
+            ->middleware('throttle:10,1')
+            ->name('payments.initialize');
+        Route::get('/verify', [PaymentController::class, 'verify'])->middleware('throttle:20,1')->name('payments.verify');
     });
 
     // Protected Order Routes (require authentication)
@@ -331,10 +334,15 @@ Route::middleware(['auth:sanctum,web'])->group(function () {
         Route::get('/', [OrderController::class, 'index'])->name('orders.index');
 
         // View a specific order
-        Route::get('/{id}', [OrderController::class, 'show'])->name('orders.show');
+        Route::get('/{orderNumber}', [OrderController::class, 'show'])
+            ->where('orderNumber', 'FO[A-Z0-9]{14}')
+            ->name('orders.show');
 
         // Cancel an order
-        Route::post('/{id}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
+        Route::post('/{orderNumber}/cancel', [OrderController::class, 'cancel'])
+            ->where('orderNumber', 'FO[A-Z0-9]{14}')
+            ->middleware('throttle:10,1')
+            ->name('orders.cancel');
     });
 });
 

@@ -15,10 +15,12 @@ class PaymentController extends ImprovedController
     {
     }
 
-    public function initialize($orderId)
+    public function initialize(string $orderNumber)
     {
         try {
-            $order = Order::where('user_id', Auth::id())->findOrFail($orderId);
+            $order = Order::where('user_id', Auth::id())
+                ->where('order_number', strtoupper($orderNumber))
+                ->firstOrFail();
             $payment = $this->paymentService->initialize($order);
 
             return $this->respondWithSuccess('Payment initialized successfully', 200, new PaymentResource($payment));
@@ -31,7 +33,11 @@ class PaymentController extends ImprovedController
 
     public function verify(Request $request)
     {
-        $reference = $request->input('reference');
+        $validated = $request->validate([
+            'reference' => ['required', 'string', 'regex:/^KAF-FO[A-Z0-9]{14}-[A-Z0-9]{8}$/'],
+        ]);
+        $reference = $validated['reference'];
+
         if (!$reference) {
             return $this->respondWithError('Payment reference is required', 422);
         }
