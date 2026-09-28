@@ -83,15 +83,15 @@ Successful response shape:
 {
   "success": true,
   "data": {
-    "id": 12,
-    "order_number": "ORD-20260927-ABCD",
+    "id": "KOA7B2M9X4Q8ZP1C",
+    "order_number": "KOA7B2M9X4Q8ZP1C",
     "status": "pending",
     "currency": "NGN",
     "subtotal": "5000.00",
     "total": "5000.00",
     "payment": {
       "provider": "paystack",
-      "reference": "KAF-ORD-20260927-ABCD-ABCDEFGH",
+      "reference": "KAF-KOA7B2M9X4Q8ZP1C-AB12CD34",
       "authorization_url": "https://checkout.paystack.com/...",
       "amount": 500000,
       "currency": "NGN",
@@ -111,6 +111,14 @@ Redirect the browser to `payment.authorization_url`:
 window.location.assign(response.data.payment.authorization_url)
 ```
 
+The backend callback verifies the Paystack reference and returns JSON. The frontend should use its own payment result route after redirecting to the callback, or call the authenticated verify endpoint with the returned reference:
+
+```text
+http://localhost:3000/{username}/buying/payment?reference=KAF-KO...&order={order_number}
+```
+
+The frontend route calls `GET /api/payments/verify?reference=...` and treats the backend response as authoritative. It must not infer payment success from the browser redirect alone.
+
 ### 4. Payment completion
 
 Paystack redirects to the configured backend callback. The backend verifies the reference with Paystack before setting `orders.paid_at`. The webhook also verifies successful charges and is the source of truth for asynchronous completion.
@@ -118,7 +126,7 @@ Paystack redirects to the configured backend callback. The backend verifies the 
 For a customer-facing result page, the Nuxt app can show a pending/payment-verifying state and then call:
 
 ```http
-GET /api/payments/verify?reference=KAF-...
+GET /api/payments/verify?reference=KAF-KO...
 ```
 
 The reference must belong to the authenticated user. A successful payment returns `payment.status: "success"` and `paid_at`; failed or abandoned payments remain unpaid.
@@ -126,7 +134,7 @@ The reference must belong to the authenticated user. A successful payment return
 ### 5. Refresh order state
 
 ```http
-GET /api/orders/{id}
+GET /api/orders/{order_number}
 GET /api/orders
 ```
 
@@ -150,7 +158,7 @@ Treat `order.paid_at` or `order.is_paid` as the paid-order signal. Do not mark a
 ## Order actions
 
 ```http
-POST /api/orders/{id}/cancel
+POST /api/orders/{order_number}/cancel
 ```
 
 Only pending orders can be cancelled. Cancellation restores reserved stock.
@@ -191,7 +199,22 @@ Seller processing is rejected until the order is paid. Terminal statuses cannot 
 7. Update `PAYSTACK_CALLBACK_URL` and the Paystack webhook URL with the current HTTPS tunnel URL.
 8. Add a product to the cart and place an order.
 9. Redirect to Paystack's authorization URL and use a Paystack test card.
-10. Confirm `GET /api/payments/verify` and `GET /api/orders/{id}` show the payment as successful.
+10. Confirm `GET /api/payments/verify` and `GET /api/orders/{order_number}` show the payment as successful.
 11. Confirm seller status updates work only after payment verification.
+
+## Backend requirements for the frontend order flow
+
+The frontend now expects these authenticated endpoints and response fields:
+
+- `POST /api/checkout/calculate` accepts the shipping payload and returns a successful server-side calculation.
+- `POST /api/checkout/place-order` returns `data.id`, `data.payment.reference`, and `data.payment.authorization_url`.
+- `GET /api/orders` returns an array, or `{ "orders": [] }`.
+- `GET /api/orders/{order_number}` returns the order with `items`, `total`, payment state, and status. The order number is `KO` followed by 14 uppercase letters/numbers.
+- `GET /api/payments/verify?reference=...` is scoped to the authenticated user and returns payment/order state.
+- `POST /api/orders/{order_number}/cancel` enforces cancellation rules and restores reserved stock.
+- `GET /api/sellers/seller/orders` returns seller-visible orders.
+- `PUT /api/sellers/seller/orders/{id}/status` validates paid-order and status-transition rules.
+
+The frontend must handle the JSON response from the Paystack callback or call the authenticated verify endpoint from its payment result page. CORS/session credentials, CSRF handling, authorization policies, stock reservation/release, webhook processing, and idempotency for repeated place-order requests are backend responsibilities.
 
 Never commit `.env`, the Paystack secret key, or real card details.
