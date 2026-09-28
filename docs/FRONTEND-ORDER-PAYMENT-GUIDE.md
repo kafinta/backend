@@ -83,15 +83,15 @@ Successful response shape:
 {
   "success": true,
   "data": {
-    "id": "KOA7B2M9X4Q8ZP1C",
-    "order_number": "KOA7B2M9X4Q8ZP1C",
+    "id": "ORD7B2M9X4Q8ZP1C",
+    "order_number": "ORD7B2M9X4Q8ZP1C",
     "status": "pending",
     "currency": "NGN",
     "subtotal": "5000.00",
     "total": "5000.00",
     "payment": {
       "provider": "paystack",
-      "reference": "KAF-KOA7B2M9X4Q8ZP1C-AB12CD34",
+      "reference": "KAF-ORD7B2M9X4Q8ZP1C-AB12CD34",
       "authorization_url": "https://checkout.paystack.com/...",
       "amount": 500000,
       "currency": "NGN",
@@ -114,7 +114,7 @@ window.location.assign(response.data.payment.authorization_url)
 The current backend callback verifies the Paystack reference and returns JSON; it does not automatically navigate to Nuxt. The frontend should provide a payment result route and call the authenticated verify endpoint with the payment reference. If automatic navigation is required, add a frontend redirect URL and callback redirect behavior as a separate configuration change:
 
 ```text
-http://localhost:3000/{username}/buying/payment?reference=KAF-KO...&order={order_number}
+http://localhost:3000/{username}/buying/payment?reference=KAF-ORD...&order={order_number}
 ```
 
 The frontend route calls `GET /api/payments/verify?reference=...` and treats the backend response as authoritative. It must not infer payment success from the browser redirect alone.
@@ -126,7 +126,7 @@ Paystack redirects to the configured backend callback. The backend verifies the 
 For a customer-facing result page, the Nuxt app can show a pending/payment-verifying state and then call:
 
 ```http
-GET /api/payments/verify?reference=KAF-KO...
+GET /api/payments/verify?reference=KAF-ORD...
 ```
 
 The reference must belong to the authenticated user. A successful payment returns `payment.status: "success"` and `paid_at`; failed or abandoned payments remain unpaid.
@@ -209,7 +209,7 @@ The frontend now expects these authenticated endpoints and response fields:
 - `POST /api/checkout/calculate` reads the current cart and returns a server-side calculation; its request body is optional.
 - `POST /api/checkout/place-order` returns `data.id`, `data.payment.reference`, and `data.payment.authorization_url`.
 - `GET /api/orders` returns an array, or `{ "orders": [] }`.
-- `GET /api/orders/{order_number}` returns the order with `items`, `total`, payment state, and status. The order number is `KO` followed by 14 uppercase letters/numbers.
+- `GET /api/orders/{order_number}` returns the order with `items`, `total`, payment state, and status. The order number is `ORD` followed by 14 uppercase letters/numbers.
 - `GET /api/payments/verify?reference=...` is scoped to the authenticated user and returns payment/order state.
 - `POST /api/orders/{order_number}/cancel` enforces cancellation rules and restores reserved stock.
 - `GET /api/sellers/seller/orders` returns seller-visible orders.

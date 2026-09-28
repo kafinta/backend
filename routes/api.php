@@ -322,7 +322,7 @@ Route::middleware(['auth:sanctum,web'])->group(function () {
     // Protected payment routes
     Route::prefix('payments')->group(function () {
         Route::post('/orders/{orderNumber}/initialize', [PaymentController::class, 'initialize'])
-            ->where('orderNumber', 'KO[A-Z0-9]{14}')
+            ->where('orderNumber', 'ORD[A-Z0-9]{14}')
             ->middleware('throttle:10,1')
             ->name('payments.initialize');
         Route::get('/verify', [PaymentController::class, 'verify'])->middleware('throttle:20,1')->name('payments.verify');
@@ -335,12 +335,12 @@ Route::middleware(['auth:sanctum,web'])->group(function () {
 
         // View a specific order
         Route::get('/{orderNumber}', [OrderController::class, 'show'])
-            ->where('orderNumber', 'KO[A-Z0-9]{14}')
+            ->where('orderNumber', 'ORD[A-Z0-9]{14}')
             ->name('orders.show');
 
         // Cancel an order
         Route::post('/{orderNumber}/cancel', [OrderController::class, 'cancel'])
-            ->where('orderNumber', 'KO[A-Z0-9]{14}')
+            ->where('orderNumber', 'ORD[A-Z0-9]{14}')
             ->middleware('throttle:10,1')
             ->name('orders.cancel');
     });

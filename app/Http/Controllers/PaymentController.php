@@ -34,7 +34,7 @@ class PaymentController extends ImprovedController
     public function verify(Request $request)
     {
         $validated = $request->validate([
-            'reference' => ['required', 'string', 'regex:/^KAF-KO[A-Z0-9]{14}-[A-Z0-9]{8}$/'],
+            'reference' => ['required', 'string', 'regex:/^KAF-ORD[A-Z0-9]{14}-[A-Z0-9]{8}$/'],
         ]);
         $reference = $validated['reference'];
 
