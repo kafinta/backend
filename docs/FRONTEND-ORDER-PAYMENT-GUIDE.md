@@ -54,7 +54,7 @@ For guest cart support, preserve the `cart_session_id` cookie or send the cart s
 POST /api/checkout/calculate
 ```
 
-The server is authoritative for prices, discounts, stock, and the final total. Do not calculate the payment amount from frontend state.
+The request body is optional; the endpoint calculates the current cart totals. The server is authoritative for prices, discounts, stock, and the final total. Do not calculate the payment amount from frontend state.
 
 ### 3. Create order and initialize Paystack
 
@@ -111,7 +111,7 @@ Redirect the browser to `payment.authorization_url`:
 window.location.assign(response.data.payment.authorization_url)
 ```
 
-The backend callback verifies the Paystack reference and returns JSON. The frontend should use its own payment result route after redirecting to the callback, or call the authenticated verify endpoint with the returned reference:
+The current backend callback verifies the Paystack reference and returns JSON; it does not automatically navigate to Nuxt. The frontend should provide a payment result route and call the authenticated verify endpoint with the payment reference. If automatic navigation is required, add a frontend redirect URL and callback redirect behavior as a separate configuration change:
 
 ```text
 http://localhost:3000/{username}/buying/payment?reference=KAF-KO...&order={order_number}
@@ -206,7 +206,7 @@ Seller processing is rejected until the order is paid. Terminal statuses cannot 
 
 The frontend now expects these authenticated endpoints and response fields:
 
-- `POST /api/checkout/calculate` accepts the shipping payload and returns a successful server-side calculation.
+- `POST /api/checkout/calculate` reads the current cart and returns a server-side calculation; its request body is optional.
 - `POST /api/checkout/place-order` returns `data.id`, `data.payment.reference`, and `data.payment.authorization_url`.
 - `GET /api/orders` returns an array, or `{ "orders": [] }`.
 - `GET /api/orders/{order_number}` returns the order with `items`, `total`, payment state, and status. The order number is `KO` followed by 14 uppercase letters/numbers.
