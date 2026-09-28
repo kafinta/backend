@@ -65,15 +65,48 @@ class PaymentController extends ImprovedController
     {
         $reference = $request->query('reference');
         if (!$reference) {
-            return $this->respondWithError('Payment reference is required', 422);
+            return $this->redirectToPaymentResult(null, null, 'failed');
         }
+
+        $paymentRecord = Payment::with(['order.user'])
+            ->where('reference', $reference)
+            ->first();
 
         try {
             $payment = $this->paymentService->verify($reference);
-            return $this->respondWithSuccess('Payment verification completed', 200, new PaymentResource($payment));
+            $payment->load(['order.user']);
+
+            return $this->redirectToPaymentResult(
+                $payment,
+                $reference,
+                $payment->status === 'success' ? 'success' : 'failed'
+            );
         } catch (\Throwable $e) {
-            return $this->respondWithError($e->getMessage(), 502);
+            return $this->redirectToPaymentResult($paymentRecord, $reference, 'failed');
         }
+    }
+
+    protected function redirectToPaymentResult(?Payment $payment, ?string $reference, string $status)
+    {
+        $order = $payment?->order;
+        $username = $order?->user?->username;
+        $orderNumber = $order?->order_number;
+
+        if (!$username || !$orderNumber) {
+            return $this->respondWithError('Payment result cannot be routed to the frontend', 502);
+        }
+
+        $query = array_filter([
+            'status' => $status,
+            'reference' => $reference,
+            'order' => $orderNumber,
+        ]);
+        $url = rtrim(config('services.paystack.frontend_url'), '/')
+            . '/' . rawurlencode($username)
+            . '/buying/payment?'
+            . http_build_query($query);
+
+        return redirect()->away($url);
     }
 
     public function webhook(Request $request)

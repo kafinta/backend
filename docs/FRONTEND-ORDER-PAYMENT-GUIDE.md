@@ -12,6 +12,7 @@ Update the backend `.env` whenever the tunnel URL changes:
 
 ```env
 PAYSTACK_CALLBACK_URL="https://YOUR-TUNNEL/api/payments/paystack/callback"
+PAYSTACK_FRONTEND_URL=http://localhost:3000
 ```
 
 Configure this Paystack webhook URL:
@@ -111,13 +112,13 @@ Redirect the browser to `payment.authorization_url`:
 window.location.assign(response.data.payment.authorization_url)
 ```
 
-The current backend callback verifies the Paystack reference and returns JSON; it does not automatically navigate to Nuxt. The frontend should provide a payment result route and call the authenticated verify endpoint with the payment reference. If automatic navigation is required, add a frontend redirect URL and callback redirect behavior as a separate configuration change:
+The backend callback verifies the Paystack reference, then redirects the browser to the Nuxt payment result route:
 
 ```text
-http://localhost:3000/{username}/buying/payment?reference=KAF-ORD...&order={order_number}
+http://localhost:3000/{username}/buying/payment?status=success&reference=KAF-ORD...&order={order_number}
 ```
 
-The frontend route calls `GET /api/payments/verify?reference=...` and treats the backend response as authoritative. It must not infer payment success from the browser redirect alone.
+The frontend route should still call `GET /api/payments/verify?reference=...` and treat that response as authoritative. It must not infer payment success from the redirect query alone. Failed callbacks redirect with `status=failed`.
 
 ### 4. Payment completion
 
@@ -215,6 +216,6 @@ The frontend now expects these authenticated endpoints and response fields:
 - `GET /api/sellers/seller/orders` returns seller-visible orders.
 - `PUT /api/sellers/seller/orders/{id}/status` validates paid-order and status-transition rules.
 
-The frontend must handle the JSON response from the Paystack callback or call the authenticated verify endpoint from its payment result page. CORS/session credentials, CSRF handling, authorization policies, stock reservation/release, webhook processing, and idempotency for repeated place-order requests are backend responsibilities.
+The frontend must call the authenticated verify endpoint from its payment result page after the callback redirect. CORS/session credentials, CSRF handling, authorization policies, stock reservation/release, webhook processing, and idempotency for repeated place-order requests are backend responsibilities.
 
 Never commit `.env`, the Paystack secret key, or real card details.

@@ -65,6 +65,7 @@ return [
         'currency' => env('PAYSTACK_CURRENCY', 'NGN'),
         'base_url' => env('PAYSTACK_BASE_URL', 'https://api.paystack.co'),
         'callback_url' => env('PAYSTACK_CALLBACK_URL', env('APP_URL') . '/api/payments/paystack/callback'),
+        'frontend_url' => env('PAYSTACK_FRONTEND_URL', 'http://localhost:3000'),
     ],
 
 ];
