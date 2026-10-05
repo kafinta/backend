@@ -16,10 +16,10 @@ class CheckoutResource extends JsonResource
     {
         return [
             // Order totals
-            'subtotal' => $this->when(isset($this->subtotal), $this->subtotal),
-            'tax' => $this->when(isset($this->tax), $this->tax),
-            'shipping' => $this->when(isset($this->shipping), $this->shipping),
-            'total' => $this->when(isset($this->total), $this->total),
+            'subtotal' => data_get($this->resource, 'subtotal'),
+            'tax' => data_get($this->resource, 'tax'),
+            'shipping' => data_get($this->resource, 'shipping'),
+            'total' => data_get($this->resource, 'total'),
             
             // Cart items for checkout
             'items' => $this->when(isset($this->items), function () {
@@ -31,8 +31,8 @@ class CheckoutResource extends JsonResource
             'total_quantity' => $this->when(isset($this->total_quantity), $this->total_quantity),
             
             // Available options
-            'shipping_methods' => $this->when(isset($this->shipping_methods), $this->shipping_methods),
-            'payment_methods' => $this->when(isset($this->payment_methods), $this->payment_methods),
+            'shipping_methods' => data_get($this->resource, 'shipping_methods', []),
+            'payment_methods' => data_get($this->resource, 'payment_methods', []),
             
             // Validation info
             'can_checkout' => $this->when(isset($this->can_checkout), $this->can_checkout),

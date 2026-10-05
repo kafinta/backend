@@ -57,6 +57,18 @@ POST /api/checkout/calculate
 
 The request body is optional; the endpoint calculates the current cart totals. The server is authoritative for prices, discounts, stock, and the final total. Do not calculate the payment amount from frontend state.
 
+For testing, shipping is configurable and currently uses these rates:
+
+- `standard`: NGN 1,500, default
+- `express`: NGN 3,500
+- `free`: NGN 0
+
+Pass the selected method when calculating totals:
+
+```json
+{ "shipping_method": "standard" }
+```
+
 ### 3. Create order and initialize Paystack
 
 ```http
@@ -74,6 +86,7 @@ Request:
   "shipping_postal_code": "100001",
   "shipping_country": "Nigeria",
   "shipping_phone": "+2348000000000",
+  "shipping_method": "standard",
   "notes": "Leave at reception"
 }
 ```
@@ -88,13 +101,15 @@ Successful response shape:
     "order_number": "ORD7B2M9X4Q8ZP1C",
     "status": "pending",
     "currency": "NGN",
+    "shipping_method": "standard",
     "subtotal": "5000.00",
-    "total": "5000.00",
+    "shipping_cost": "1500.00",
+    "total": "6500.00",
     "payment": {
       "provider": "paystack",
       "reference": "KAF-ORD7B2M9X4Q8ZP1C-AB12CD34",
       "authorization_url": "https://checkout.paystack.com/...",
-      "amount": 500000,
+      "amount": 650000,
       "currency": "NGN",
       "status": "pending",
       "paid_at": null
@@ -104,7 +119,7 @@ Successful response shape:
 }
 ```
 
-`payment.amount` is in kobo. `500000` means `NGN 5,000.00`.
+`payment.amount` is in kobo. `650000` means `NGN 6,500.00`.
 
 Redirect the browser to `payment.authorization_url`:
 

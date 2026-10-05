@@ -92,6 +92,14 @@ class OrderService
             }
             $subtotal = round($subtotal, 2);
 
+            $shippingMethod = $shippingDetails['shipping_method'] ?? config('checkout.default_shipping_method');
+            $shippingOption = config("checkout.shipping_methods.{$shippingMethod}");
+            if (!$shippingOption) {
+                throw new \Exception('Invalid shipping method');
+            }
+            $shippingCost = (float) $shippingOption['price'];
+            $total = round($subtotal + $shippingCost, 2);
+
             // Create the order
             $order = new Order([
                 'user_id' => $userId,
@@ -99,8 +107,9 @@ class OrderService
                 'status' => 'pending',
                 'subtotal' => $subtotal,
                 'tax' => 0, // We'll implement tax calculation later
-                'shipping_cost' => 0, // We'll implement shipping cost calculation later
-                'total' => $subtotal, // For now, total = subtotal
+                'shipping_cost' => $shippingCost,
+                'shipping_method' => $shippingMethod,
+                'total' => $total,
                 'currency' => config('services.paystack.currency', 'NGN'),
                 'shipping_name' => $shippingDetails['shipping_name'],
                 'shipping_address' => $shippingDetails['shipping_address'],

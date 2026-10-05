@@ -23,6 +23,7 @@ class Order extends Model
         'subtotal',
         'tax',
         'shipping_cost',
+        'shipping_method',
         'total',
         'currency',
         'shipping_name',

@@ -19,6 +19,7 @@ return new class extends Migration
             $table->decimal('subtotal', 10, 2);
             $table->decimal('tax', 10, 2)->default(0);
             $table->decimal('shipping_cost', 10, 2)->default(0);
+            $table->string('shipping_method')->default('standard');
             $table->decimal('total', 10, 2);
 
             // Shipping information

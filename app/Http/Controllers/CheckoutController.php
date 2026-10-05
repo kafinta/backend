@@ -39,6 +39,13 @@ class CheckoutController extends ImprovedController
     public function calculateTotals(Request $request)
     {
         try {
+            $shippingMethod = $request->input('shipping_method', config('checkout.default_shipping_method'));
+            $shipping = config("checkout.shipping_methods.{$shippingMethod}");
+
+            if (!$shipping) {
+                return $this->respondWithError('Invalid shipping method', 422);
+            }
+
             $sessionId = $this->extractSessionId($request);
             $cartContents = $this->cartService->getCartContents($sessionId);
 
@@ -50,11 +57,13 @@ class CheckoutController extends ImprovedController
             $checkoutData = (object) [
                 'subtotal' => $cartContents['total_price'],
                 'tax' => 0,
-                'shipping' => 0,
-                'total' => $cartContents['total_price'],
+                'shipping' => $shipping['price'],
+                'total' => round($cartContents['total_price'] + $shipping['price'], 2),
                 'items' => $cartContents['items'],
                 'item_count' => $cartContents['item_count'],
                 'total_quantity' => $cartContents['total_quantity'] ?? 0,
+                'shipping_methods' => array_values(config('checkout.shipping_methods', [])),
+                'payment_methods' => config('checkout.payment_methods', []),
                 'can_checkout' => true,
                 'checkout_errors' => []
             ];
@@ -84,11 +93,17 @@ class CheckoutController extends ImprovedController
                 'shipping_postal_code' => 'required|string|max:20',
                 'shipping_country' => 'required|string|max:255',
                 'shipping_phone' => 'required|string|max:20',
+                'shipping_method' => 'nullable|string',
                 'notes' => 'nullable|string|max:1000',
             ]);
 
             if ($validator->fails()) {
                 return $this->respondWithError($validator->errors(), 422);
+            }
+
+            if ($request->filled('shipping_method') &&
+                !array_key_exists($request->input('shipping_method'), config('checkout.shipping_methods', []))) {
+                return $this->respondWithError('Invalid shipping method', 422);
             }
 
             $sessionId = $this->extractSessionId($request);
@@ -131,6 +146,10 @@ class CheckoutController extends ImprovedController
                 return $this->respondWithError($e->getMessage(), 502);
             }
 
+            if (str_contains($e->getMessage(), 'Invalid shipping method')) {
+                return $this->respondWithError($e->getMessage(), 422);
+            }
+
             return $this->respondWithError('Error placing order: ' . $e->getMessage(), 500);
         }
     }
@@ -142,31 +161,8 @@ class CheckoutController extends ImprovedController
      */
     public function getShippingMethods()
     {
-        // For now, we'll just return some dummy shipping methods
-        // In the future, this could be fetched from a database or shipping API
-        $shippingMethods = [
-            [
-                'id' => 'standard',
-                'name' => 'Standard Shipping',
-                'description' => '3-5 business days',
-                'price' => 5.99
-            ],
-            [
-                'id' => 'express',
-                'name' => 'Express Shipping',
-                'description' => '1-2 business days',
-                'price' => 12.99
-            ],
-            [
-                'id' => 'free',
-                'name' => 'Free Shipping',
-                'description' => '5-7 business days',
-                'price' => 0.00
-            ]
-        ];
-
         return $this->respondWithSuccess('Shipping methods retrieved', 200, [
-            'shipping_methods' => $shippingMethods
+            'shipping_methods' => array_values(config('checkout.shipping_methods', [])),
         ]);
     }
 
@@ -177,23 +173,8 @@ class CheckoutController extends ImprovedController
      */
     public function getPaymentMethods()
     {
-        // For now, we'll just return some dummy payment methods
-        // In the future, this could be fetched from a database or payment gateway
-        $paymentMethods = [
-            [
-                'id' => 'cash',
-                'name' => 'Cash on Delivery',
-                'description' => 'Pay when you receive your order'
-            ],
-            [
-                'id' => 'bank_transfer',
-                'name' => 'Bank Transfer',
-                'description' => 'Pay via bank transfer'
-            ]
-        ];
-
         return $this->respondWithSuccess('Payment methods retrieved', 200, [
-            'payment_methods' => $paymentMethods
+            'payment_methods' => config('checkout.payment_methods', []),
         ]);
     }
 
