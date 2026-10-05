@@ -95,7 +95,8 @@ class EmailService
         ]);
 
         // Generate verification URL pointing to the frontend
-        $verificationUrl = "http://localhost:3000/auth/verify-email/token?token=" . $token;
+        $frontendUrl = rtrim(config('app.frontend_url'), '/');
+        $verificationUrl = $frontendUrl . "/auth/verify-email/token?token=" . $token;
 
         // Store token and code in cache for 24 hours
         Cache::put("verification_token_{$token}", [
@@ -351,7 +352,8 @@ class EmailService
         ]);
 
         // Generate reset URL pointing to the frontend
-        $resetUrl = "http://localhost:3000/auth/reset-password?token=" . $token;
+        $frontendUrl = rtrim(config('app.frontend_url'), '/');
+        $resetUrl = $frontendUrl . "/auth/reset-password?token=" . $token;
 
         // Store token and code in cache for 1 hour
         Cache::put("password_reset_{$token}", [
