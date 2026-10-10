@@ -99,27 +99,27 @@ class CartService
         $cart = $this->getCurrentCart($sessionId);
         $product = Product::findOrFail($productId);
 
-        // Check if the product is already in the cart
-        $cartItem = $cart->cartItems()
-            ->where('product_id', $productId)
-            ->where('variant_id', null)
-            ->first();
+        return DB::transaction(function () use ($cart, $productId, $quantity) {
+            // Serialize additions for this cart so concurrent requests cannot
+            // both read the same quantity or create duplicate cart items.
+            $cart = Cart::whereKey($cart->id)->lockForUpdate()->firstOrFail();
+            $cartItem = $cart->cartItems()
+                ->where('product_id', $productId)
+                ->whereNull('variant_id')
+                ->first();
 
-        if ($cartItem) {
-            // Update quantity if the product is already in the cart
-            $cartItem->update([
-                'quantity' => $cartItem->quantity + $quantity
-            ]);
-        } else {
-            // Add new cart item
-            $cartItem = $cart->cartItems()->create([
-                'product_id' => $productId,
-                'variant_id' => null,
-                'quantity' => $quantity
-            ]);
-        }
+            if ($cartItem) {
+                $cartItem->increment('quantity', $quantity);
+            } else {
+                $cartItem = $cart->cartItems()->create([
+                    'product_id' => $productId,
+                    'variant_id' => null,
+                    'quantity' => $quantity
+                ]);
+            }
 
-        return $cartItem;
+            return $cartItem->refresh();
+        });
     }
 
     /**
@@ -134,26 +134,25 @@ class CartService
         $cart = $this->getCurrentCart($sessionId);
         $variant = Variant::with('product')->findOrFail($variantId);
 
-        // Check if the variant is already in the cart
-        $cartItem = $cart->cartItems()
-            ->where('variant_id', $variantId)
-            ->first();
+        return DB::transaction(function () use ($cart, $variant, $variantId, $quantity) {
+            // Lock the cart row for the same reason as product additions.
+            $cart = Cart::whereKey($cart->id)->lockForUpdate()->firstOrFail();
+            $cartItem = $cart->cartItems()
+                ->where('variant_id', $variantId)
+                ->first();
 
-        if ($cartItem) {
-            // Update quantity if the variant is already in the cart
-            $cartItem->update([
-                'quantity' => $cartItem->quantity + $quantity
-            ]);
-        } else {
-            // Add new cart item
-            $cartItem = $cart->cartItems()->create([
-                'product_id' => $variant->product->id,
-                'variant_id' => $variantId,
-                'quantity' => $quantity
-            ]);
-        }
+            if ($cartItem) {
+                $cartItem->increment('quantity', $quantity);
+            } else {
+                $cartItem = $cart->cartItems()->create([
+                    'product_id' => $variant->product->id,
+                    'variant_id' => $variantId,
+                    'quantity' => $quantity
+                ]);
+            }
 
-        return $cartItem;
+            return $cartItem->refresh();
+        });
     }
 
     /**
