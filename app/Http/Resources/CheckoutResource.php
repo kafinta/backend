@@ -23,6 +23,10 @@ class CheckoutResource extends JsonResource
             
             // Cart items for checkout
             'items' => $this->when(isset($this->items), function () {
+                if (is_array($this->items)) {
+                    return $this->items;
+                }
+
                 return CartItemResource::collection(collect($this->items));
             }),
             
