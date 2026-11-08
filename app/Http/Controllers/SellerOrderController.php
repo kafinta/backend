@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Resources\OrderResource;
+use App\Http\Resources\SellerOrderResource;
 use App\Services\SellerOrderService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -36,7 +36,7 @@ class SellerOrderController extends ImprovedController
             // Load additional relationships for resource
             $orders->load(['orderItems.product', 'orderItems.variant', 'user', 'payment']);
 
-            return $this->respondWithSuccess('Seller orders retrieved successfully', 200, OrderResource::collection($orders));
+            return $this->respondWithSuccess('Seller orders retrieved successfully', 200, SellerOrderResource::collection($orders));
         } catch (\Exception $e) {
             return $this->respondWithError('Error retrieving seller orders: ' . $e->getMessage(), 500);
         }
@@ -60,7 +60,7 @@ class SellerOrderController extends ImprovedController
             $order->item_count = $order->orderItems->count();
             $order->total_quantity = $order->orderItems->sum('quantity');
 
-            return $this->respondWithSuccess('Seller order retrieved successfully', 200, new OrderResource($order));
+            return $this->respondWithSuccess('Seller order retrieved successfully', 200, new SellerOrderResource($order));
         } catch (\Exception $e) {
             if (str_contains($e->getMessage(), 'No query results for model')) {
                 return $this->respondWithError('Order not found', 404);
@@ -97,10 +97,14 @@ class SellerOrderController extends ImprovedController
             $order->item_count = $order->orderItems->count();
             $order->total_quantity = $order->orderItems->sum('quantity');
 
-            return $this->respondWithSuccess('Order status updated successfully', 200, new OrderResource($order));
+            return $this->respondWithSuccess('Order status updated successfully', 200, new SellerOrderResource($order));
         } catch (\Exception $e) {
             if (str_contains($e->getMessage(), 'No query results for model')) {
                 return $this->respondWithError('Order not found', 404);
+            }
+
+            if ($e->getMessage() === 'Paid orders cannot be cancelled by sellers until refunds are supported') {
+                return $this->respondWithError($e->getMessage(), 409);
             }
 
             return $this->respondWithError('Error updating order status: ' . $e->getMessage(), 500);

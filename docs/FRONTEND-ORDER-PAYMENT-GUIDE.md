@@ -202,6 +202,9 @@ Request:
 ```
 
 Seller processing is rejected until the order is paid. Terminal statuses cannot be moved backwards.
+Seller order responses contain only the seller's own order items and fulfillment-relevant customer/shipping details. Payment gateway credentials and authorization URLs are not exposed.
+Seller order endpoints are restricted to users with the `seller` role; administrators do not use these endpoints.
+Paid orders cannot be cancelled until refund support is implemented.
 
 ## Local test checklist
 

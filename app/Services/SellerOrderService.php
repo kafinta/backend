@@ -36,7 +36,7 @@ class SellerOrderService
         // Extract unique order IDs
         $orderIds = $orderItems->pluck('order.id')->unique()->toArray();
 
-        // Get the full orders with their items
+        // Get the orders with only this seller's items.
         return Order::whereIn('id', $orderIds)
             ->with(['orderItems' => function($query) use ($sellerProductIds) {
                 // Only include items for this seller's products
@@ -63,20 +63,14 @@ class SellerOrderService
             throw new \Exception('No products found for this seller');
         }
 
-        // Find the order
-        $order = Order::findOrFail($orderId);
-
-        // Load only the order items for this seller's products
-        $order->load(['orderItems' => function($query) use ($sellerProductIds) {
-            $query->whereIn('product_id', $sellerProductIds);
-        }]);
-
-        // Check if the order contains any of the seller's products
-        if ($order->orderItems->isEmpty()) {
-            throw new \Exception('This order does not contain any of your products');
-        }
-
-        return $order;
+        return Order::whereKey($orderId)
+            ->whereHas('orderItems', function ($query) use ($sellerProductIds) {
+                $query->whereIn('product_id', $sellerProductIds);
+            })
+            ->with(['orderItems' => function ($query) use ($sellerProductIds) {
+                $query->whereIn('product_id', $sellerProductIds);
+            }])
+            ->firstOrFail();
     }
 
     /**
@@ -103,8 +97,11 @@ class SellerOrderService
             throw new \Exception('No products found for this seller');
         }
 
-        // Find the order
-        $order = Order::findOrFail($orderId);
+        $order = Order::whereKey($orderId)
+            ->whereHas('orderItems', function ($query) use ($sellerProductIds) {
+                $query->whereIn('product_id', $sellerProductIds);
+            })
+            ->firstOrFail();
 
         // Start a database transaction
         return DB::transaction(function () use ($order, $sellerProductIds, $status) {
@@ -112,6 +109,10 @@ class SellerOrderService
 
             if ($status !== 'cancelled' && !$order->paid_at) {
                 throw new \Exception('Only paid orders can be processed');
+            }
+
+            if ($status === 'cancelled' && $order->paid_at) {
+                throw new \Exception('Paid orders cannot be cancelled by sellers until refunds are supported');
             }
 
             $sellerItems = $order->orderItems()

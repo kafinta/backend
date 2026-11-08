@@ -100,7 +100,10 @@ class OrderController extends ImprovedController
         } catch (ModelNotFoundException $e) {
             return $this->respondWithError('Order not found', 404);
         } catch (\Exception $e) {
-            if ($e->getMessage() === 'Only pending orders can be cancelled') {
+            if (in_array($e->getMessage(), [
+                'Only pending orders can be cancelled',
+                'Paid orders cannot be cancelled until refunds are supported',
+            ], true)) {
                 return $this->respondWithError($e->getMessage(), 409);
             }
 

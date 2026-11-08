@@ -226,6 +226,10 @@ class OrderService
                 throw new \Exception('Only pending orders can be cancelled');
             }
 
+            if ($order->paid_at) {
+                throw new \Exception('Paid orders cannot be cancelled until refunds are supported');
+            }
+
             foreach ($order->orderItems as $orderItem) {
                 $stockItem = $orderItem->variant_id
                     ? Variant::whereKey($orderItem->variant_id)->lockForUpdate()->first()
